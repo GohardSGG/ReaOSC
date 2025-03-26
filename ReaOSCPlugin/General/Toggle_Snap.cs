@@ -4,24 +4,39 @@ namespace Loupedeck.ReaOSCPlugin.General
     using Loupedeck;
     using Loupedeck.ReaOSCPlugin;
 
-    public class Add_Region : PluginDynamicCommand
+    public class Toggle_Snap : PluginDynamicAdjustment
     {
-        public static string fullName = "Add Region";
-        public static string chineseName = "添加区域";
-        public static string typeName = "Region";
-        public Add_Region()
+        public static string fullName = "Toggle Snap";
+        public static string chineseName = "切换吸附";
+        public static string typeName = "General";
+        public Toggle_Snap()
             : base(
                 displayName: fullName,
                 description: chineseName,
-                groupName: typeName)
+                groupName: typeName,
+                hasReset:false)
         {
             this.AddParameter(fullName, chineseName + "按钮", typeName);
         }
 
+        // 处理旋钮旋转
+        protected override void ApplyAdjustment(string actionParameter, int ticks)
+        {
+
+
+            if (ticks > 0)
+            {
+                ReaOSCPlugin.SendGeneralMessage("Toggle/Snap", 1);
+            }
+            else if (ticks < 0)
+            {
+                ReaOSCPlugin.SendGeneralMessage("Toggle/Snap", 0);
+            }
+
+            this.AdjustmentValueChanged(actionParameter);
+        }
         protected override void RunCommand(string actionParameter)
         {
-            ReaOSCPlugin.SendGeneralMessage("Add/Region", 1);
-            PluginLog.Info("已触发" + chineseName + "请求");
         }
 
         protected override BitmapImage GetCommandImage(string actionParameter, PluginImageSize imageSize)
@@ -30,12 +45,12 @@ namespace Loupedeck.ReaOSCPlugin.General
             {
                 bitmap.Clear(BitmapColor.Black);
                 bitmap.DrawText(
-                    text: "Region",
-                    fontSize: 23,
+                    text: "Snap",
+                    fontSize: 19,
                     color: BitmapColor.White
                 );
                 bitmap.DrawText(
-                    text: "Add",
+                    text: "",
                     x:50,
                     y:55,
                     width:14,
