@@ -162,34 +162,71 @@ namespace Loupedeck.ReaOSCPlugin
             }
         }
 
+        private static void DebugStringChars(string prefix, string s)
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.Append($"{prefix} => s.Length={s.Length}, chars:");
+            for (int i = 0; i < s.Length; i++)
+            {
+                sb.Append($" [i={i}]='\\u{(int)s[i]:X4}'");
+            }
+            PluginLog.Info(sb.ToString());
+        }
+
         // 将 (地址 + float数值) 封装成简单的OSC二进制格式
         private static byte[] CreateOSCMessage(string address, float value)
         {
-            var addressBytes = Encoding.ASCII.GetBytes(address);
-            int addressPad = (4 - (addressBytes.Length % 4)) % 4;
-            var addressBuf = new byte[addressBytes.Length + addressPad];
-            Buffer.BlockCopy(addressBytes, 0, addressBuf, 0, addressBytes.Length);
+            // 第0步：若传入地址是null或空字符串，给个默认，以免后续出现异常
+            if (string.IsNullOrEmpty(address))
+            {
+                address = "/EmptyAddress";
+            }
 
-            // ,f
+            // 第1步：强制去掉所有非可见 ASCII 字符，防止潜在的 \0、零宽字符、回车等
+            //  可见ASCII范围：0x20(空格) ~ 0x7E(~)
+            address = System.Text.RegularExpressions.Regex.Replace(address, @"[^\x20-\x7E]", "");
+
+            // 第2步：统一在末尾加上 '\0'，无论它原本是否带有
+            //   先 TrimEnd('\0') 清除尾部已有的 \0，再追加一次
+            address = address.TrimEnd('\0') + "\0";
+
+            // 第3步：用 ASCII 编码再做 4 字节对齐
+            var addressBytes = Encoding.ASCII.GetBytes(address);
+            int pad = (4 - (addressBytes.Length % 4)) % 4;
+            var addressBuf = new byte[addressBytes.Length + pad];
+            Buffer.BlockCopy(addressBytes, 0, addressBuf, 0, addressBytes.Length);
+            // 不用手动补零，new 出来的 byte[] 默认都是 0，正好满足对齐需求
+
+            // 第4步：类型标签 ",f\0\0"
             var typeTagBytes = new byte[] { 0x2C, 0x66, 0x00, 0x00 };
 
-            // float值要大端序
+            // 第5步：处理 float 为大端序
             var valueBytes = BitConverter.GetBytes(value);
             if (BitConverter.IsLittleEndian)
             {
                 Array.Reverse(valueBytes);
             }
 
+            // 第6步：拼接成最终的 OSC 消息
             var oscMessage = new byte[addressBuf.Length + typeTagBytes.Length + valueBytes.Length];
             Buffer.BlockCopy(addressBuf, 0, oscMessage, 0, addressBuf.Length);
             Buffer.BlockCopy(typeTagBytes, 0, oscMessage, addressBuf.Length, typeTagBytes.Length);
             Buffer.BlockCopy(valueBytes, 0, oscMessage, addressBuf.Length + typeTagBytes.Length, valueBytes.Length);
 
-            // 这里没有打包成 bundle，直接发单条消息。依赖你的 OSC 服务器是否能接受单条消息。
+            // 你可以保留日志打印，便于检查最终字节长度
+            //DebugLogHex(oscMessage, "一劳永逸的OSC数据:");
             return oscMessage;
         }
 
- 
+
+
+        private static void DebugLogHex(byte[] data, string title)
+        {
+            var hex = BitConverter.ToString(data).Replace("-", " ");
+            PluginLog.Info($"{title} 长度={data.Length}\n{hex}\n");
+        }
+
+
         /// <summary>
         /// 插件加载完成时触发
         /// </summary>

@@ -13,7 +13,7 @@
             groupName: "Edit",          // 指定组名
             displayName: "Edit Auto Fade",
             description: "自动交叉淡化",
-            oscAddress: "Auto Fade",         // 实际地址为 "/MIDI/Mute"
+            oscAddress: "Crossfade/Auto_Fade",         // 实际地址为 "/MIDI/Mute"
             activeColor: new BitmapColor(255, 0, 0))
         { }
 
