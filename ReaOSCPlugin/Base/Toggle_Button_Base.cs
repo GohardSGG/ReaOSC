@@ -7,15 +7,15 @@
 
     using BitmapColor = Loupedeck.BitmapColor;
 
-    public abstract class Button_Base : PluginDynamicCommand, IDisposable
+    public abstract class Toggle_Button_Base : PluginDynamicCommand, IDisposable
     {
         protected bool _isActive;
-        protected readonly string OriginalOscAddress; // 存储原始传入的地址（保留大小写）
+        protected readonly string DisplayName; // 存储原始传入的地址（保留大小写）
         protected readonly string FullOscAddress;     // 完整的OSC地址（含分组）
         protected readonly BitmapColor ActiveColor;
         protected readonly BitmapColor DefaultColor = BitmapColor.Black;
 
-        protected Button_Base(
+        protected Toggle_Button_Base(
             string displayName,
             string description,
             string groupName,
@@ -24,10 +24,10 @@
             : base(displayName, description, groupName)
         {
             // 存储原始地址（保留用户传入的大小写）
-            OriginalOscAddress = oscAddress?.Trim('/');
+            DisplayName = displayName;
 
             // 构建完整OSC地址（格式：/GroupName/OscAddress）
-            FullOscAddress = $"/{groupName?.Trim('/')}/{OriginalOscAddress}";
+            FullOscAddress = $"/{groupName?.Trim('/')}/{oscAddress}";
 
             ActiveColor = activeColor;
 
@@ -77,10 +77,10 @@
         protected virtual void DrawButtonContent(BitmapBuilder bitmap)
         {
             // 使用原始地址显示，自动调整字体大小
-            var fontSize = CalculateOptimalFontSize(OriginalOscAddress);
+            var fontSize = CalculateOptimalFontSize(DisplayName);
 
             bitmap.DrawText(
-                text: OriginalOscAddress,
+                text: DisplayName,
                 fontSize: fontSize,
                 color: BitmapColor.White);
         }

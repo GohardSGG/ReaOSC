@@ -7,13 +7,13 @@
     using System.Threading.Tasks;
     using Loupedeck.ReaOSCPlugin.Base;
 
-    public class Edit_Auto_Fade : Toggle_Button_Base
+    public class Edit_Smart_Snap : Single_Button_Base
     {
-        public Edit_Auto_Fade() : base(
+        public Edit_Smart_Snap() : base(
             groupName: "Edit",          // 指定组名
-            displayName: "Auto Fade",
+            displayName: "Smart Snap",
             description: "自动交叉淡化",
-            oscAddress: "Crossfade/Auto_Fade",         // 实际地址为 "/MIDI/Mute"
+            oscAddress: "Smart_Snap",         // 实际地址为 "/MIDI/Mute"
             activeColor: new BitmapColor(255, 0, 0))
         { }
 
