@@ -20,10 +20,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="metadata\Toggle_Play.png" />
     <None Remove="metadata\Toggle_Record.png" />
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="metadata\Toggle_Play.png" />
     <EmbeddedResource Include="metadata\Toggle_Record.png" />
   </ItemGroup>
 
@@ -54,6 +56,11 @@
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Render\" />
+    <Folder Include="View\" />
   </ItemGroup>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">

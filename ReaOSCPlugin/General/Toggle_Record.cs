@@ -13,7 +13,7 @@ namespace Loupedeck.ReaOSCPlugin.General
         public Toggle_Record() : base(
                 groupName: "General",
                 displayName: "Record",
-                description: "自动交叉淡化",
+                description: "切换录音",
                 oscAddress: "Record/Toggle",
                 activeColor: new BitmapColor(255, 0, 0),
                 buttonImage: "Toggle_Record.png") // 自动从 /metadata 中加载

@@ -1,49 +1,26 @@
 namespace Loupedeck.ReaOSCPlugin.Automation
 {
     using Loupedeck;
-    using Loupedeck.ReaOSCPlugin.Automation;
+    using Loupedeck.ReaOSCPlugin.Base;
 
-    public class Automation_Trim : PluginDynamicCommand
+    public class Automation_Trim : Toggle_Button_Base
     {
-        public static string fullName = "Automation Trim";
-        public static string chineseName = "调整轨道自动化为Trim";
-        public static string typeName = "Automation";
-        public Automation_Trim()
-            : base(
-                displayName: fullName,
-                description: chineseName,
-                groupName: typeName)
-        {
-            this.AddParameter(fullName, chineseName + "按钮", typeName);
-        }
+        public Automation_Trim() : base(
+            displayName: "Automation Trim",
+            description: "切换自动化模式为Trim",
+            groupName: "Automation",
+            oscAddress: "Trim/Toggle",
+            activeColor: BitmapColor.White,
+            // 不传 activeTextColor => 激活时文字自动黑色
+            deactiveTextColor: BitmapColor.White
+        )
+        { }
 
-        protected override void RunCommand(string actionParameter)
+        protected override void DrawButtonContent(BitmapBuilder bitmap)
         {
-            ReaOSCPlugin.SendGeneralMessage("Automation/Trim", 1);
-            PluginLog.Info("已触发" + chineseName + "请求");
-        }
-
-        protected override BitmapImage GetCommandImage(string actionParameter, PluginImageSize imageSize)
-        {
-            using (var bitmap = new BitmapBuilder(imageSize))
-            {
-                bitmap.Clear(BitmapColor.Black);
-                bitmap.DrawText(
-                    text: "Trim",
-                    fontSize: 26,
-                    color: BitmapColor.White
-                );
-                bitmap.DrawText(
-                    text: "",
-                    x:50,
-                    y:55,
-                    width:14,
-                    height:14,
-                    fontSize: 14,
-                    color: new BitmapColor(136, 226, 255)
-                );
-                return bitmap.ToImage();
-            }
+            var fontSize = 26;
+            bitmap.DrawText("Trim", fontSize: fontSize,
+                color: this._isActive ? this._actualActiveTextColor : this._actualDeactiveTextColor);
         }
     }
 }

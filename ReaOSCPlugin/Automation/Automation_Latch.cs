@@ -1,50 +1,27 @@
 namespace Loupedeck.ReaOSCPlugin.Automation
 {
-
     using Loupedeck;
-    using Loupedeck.ReaOSCPlugin.Automation;
+    using Loupedeck.ReaOSCPlugin.Base;
 
-    public class Automation_Latch : PluginDynamicCommand
+    public class Automation_Latch : Toggle_Button_Base
     {
-        public static string fullName = "Automation Latch";
-        public static string chineseName = "自动化模式为Latch";
-        public static string typeName = "Automation";
-        public Automation_Latch()
-            : base(
-                displayName: fullName,
-                description: chineseName,
-                groupName: typeName)
-        {
-            this.AddParameter(fullName, chineseName + "按钮", typeName);
-        }
+        public Automation_Latch() : base(
+            displayName: "Automation Latch",
+            description: "切换自动化模式为Latch",
+            groupName: "Automation",
+            oscAddress: "Latch/Toggle",
+            activeColor: new BitmapColor(236, 170, 122),
+            // 不传 activeTextColor => 激活时文字自动黑色
+            deactiveTextColor: new BitmapColor(236, 170, 122)
+        )
+        { }
 
-        protected override void RunCommand(string actionParameter)
+        protected override void DrawButtonContent(BitmapBuilder bitmap)
         {
-            ReaOSCPlugin.SendGeneralMessage("Automation/Latch", 1);
-            PluginLog.Info("已触发" + chineseName + "请求");
-        }
-
-        protected override BitmapImage GetCommandImage(string actionParameter, PluginImageSize imageSize)
-        {
-            using (var bitmap = new BitmapBuilder(imageSize))
-            {
-                bitmap.Clear(BitmapColor.Black);
-                bitmap.DrawText(
-                    text: "Latch",
-                    fontSize: 26,
-                    color: new BitmapColor(236, 170, 122)
-                );
-                bitmap.DrawText(
-                    text: "",
-                    x:50,
-                    y:55,
-                    width:14,
-                    height:14,
-                    fontSize: 14,
-                    color: new BitmapColor(140, 61, 3)
-                );
-                return bitmap.ToImage();
-            }
+            var fontSize = 26;
+            // 激活/未激活时使用父类逻辑决定文字颜色
+            bitmap.DrawText("Latch", fontSize: fontSize,
+                color: this._isActive ? this._actualActiveTextColor : this._actualDeactiveTextColor);
         }
     }
 }
