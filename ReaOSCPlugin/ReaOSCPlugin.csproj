@@ -59,7 +59,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Render\" />
     <Folder Include="View\" />
   </ItemGroup>
 

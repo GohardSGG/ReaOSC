@@ -1,4 +1,4 @@
-namespace Loupedeck.ReaOSCPlugin.General
+namespace Loupedeck.ReaOSCPlugin.General.Track
 {
 
     using Loupedeck;

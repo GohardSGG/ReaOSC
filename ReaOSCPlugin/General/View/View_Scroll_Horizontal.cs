@@ -1,4 +1,4 @@
-﻿namespace Loupedeck.ReaOSCPlugin.Edit
+﻿namespace Loupedeck.ReaOSCPlugin.General.View
 {
     using System;
     using System.Collections.Generic;
