@@ -146,7 +146,7 @@
             using (var bitmap = new BitmapBuilder(imageSize))
             {
                 bitmap.Clear(BitmapColor.Black);
-                bitmap.DrawText("Export", fontSize: 20, color: BitmapColor.White);
+                bitmap.DrawText("Export", fontSize: 23, color: BitmapColor.White);
                 return bitmap.ToImage();
             }
         }

@@ -4,12 +4,12 @@ namespace Loupedeck.ReaOSCPlugin.General.FX
     using Loupedeck;
     using Loupedeck.ReaOSCPlugin;
 
-    public class FX_Show_In_TCP : PluginDynamicCommand
+    public class FX_Show_In_TCP_Button : PluginDynamicCommand
     {
         public static string fullName = "FX Show In TCP";
         public static string chineseName = "效果显示在TCP";
         public static string typeName = "FX";
-        public FX_Show_In_TCP()
+        public FX_Show_In_TCP_Button()
             : base(
                 displayName: fullName,
                 description: chineseName,
@@ -31,7 +31,7 @@ namespace Loupedeck.ReaOSCPlugin.General.FX
                 bitmap.Clear(BitmapColor.Black);
                 bitmap.DrawText(
                     text: "TCP",
-                    fontSize: 26,
+                    fontSize: 21,
                     color: BitmapColor.White
                 );
                 bitmap.DrawText(

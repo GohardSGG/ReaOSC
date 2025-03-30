@@ -26,12 +26,12 @@ namespace Loupedeck.ReaOSCPlugin.Render
                 if (isActive)
                 {
                     bitmap.Clear(BitmapColor.White);
-                    bitmap.DrawText("Track", fontSize: 20, color: BitmapColor.Black);
+                    bitmap.DrawText("Track", fontSize: 23, color: BitmapColor.Black);
                 }
                 else
                 {
                     bitmap.Clear(BitmapColor.Black);
-                    bitmap.DrawText("Track", fontSize: 20, color: BitmapColor.White);
+                    bitmap.DrawText("Track", fontSize: 23, color: BitmapColor.White);
                 }
                 return bitmap.ToImage();
             }

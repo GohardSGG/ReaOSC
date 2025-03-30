@@ -21,7 +21,7 @@ using Loupedeck.ReaOSCPlugin;
         protected override void RunCommand(string actionParameter)
         {
             // 发送消息（无需持有插件实例）
-            ReaOSCPlugin.SendFXMessage("Add/FabFilter/Pro-Q 3", 1);
+            ReaOSCPlugin.SendFXMessage("Add/FabFilter/Pro_Q_3", 1);
             PluginLog.Info("已触发Pro-Q 3添加请求");
         }
 

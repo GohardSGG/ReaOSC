@@ -233,41 +233,43 @@ namespace Loupedeck.ReaOSCPlugin
         public override void Load() => PluginLog.Info("插件已加载");
 
         /// <summary>
-        /// 通用OSC消息发送方法
+        /// 发送带一个 float 参数的通用OSC消息
         /// </summary>
-        /// <param name="category">消息类别（如FX/General）</param>
-        /// <param name="address">目标地址</param>
-        /// <param name="value">发送的数值</param>
         public static void SendGeneralMessage(string category, string address, int value)
         {
-            // 检查WebSocket连接状态
             if (Instance?._wsClient?.IsAlive != true)
             {
                 PluginLog.Error("连接未就绪");
                 return;
             }
 
-            var message = $"/{category}/{address}"; // 构建OSC消息路径
-            try
-            {
-                Instance._wsClient.Send(message); // 发送消息
-                PluginLog.Verbose($"已发送: {message}");
-            }
-            catch (Exception ex)
-            {
-                PluginLog.Error($"发送失败: {ex.Message}");
-            }
+            // 拼接地址: /category/address
+            var fullAddress = $"/{category}/{address}".Replace("//", "/");
+            float floatValue = value;
+
+            // 走真正的 OSC 封装
+            var oscData = CreateOSCMessage(fullAddress, floatValue);
+
+            // 通过WebSocket发送二进制
+            Instance._wsClient.Send(oscData);
+            PluginLog.Verbose($"[SendGeneralMessage] 已发送: {fullAddress} -> {floatValue}");
         }
 
         // ========== 专用消息发送方法 ==========
 
         /// <summary>
-        /// 发送FX效果器控制消息
+        /// 发送FX效果器控制消息 (将原先int value作为OSC的float发送)
         /// </summary>
-        /// <param name="address">效果器参数地址</param>
-        /// <param name="value">参数值</param>
         public static void SendFXMessage(string address, int value)
-            => SendGeneralMessage("FX", address, value);
+        {
+            // 先拼完整地址: /FX/xxx
+            var fullAddress = $"/FX/{address}".Replace("//", "/");
+            // 把 int 转成 float, 如果你想保持 float 语义
+            float floatValue = value;
+
+            // 直接调用 SendOSCMessage 进行封装并发送二进制
+            SendOSCMessage(fullAddress, floatValue);
+        }
 
         /// <summary>
         /// 发送常规控制消息

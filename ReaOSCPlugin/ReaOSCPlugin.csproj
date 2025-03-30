@@ -22,11 +22,13 @@
   <ItemGroup>
     <None Remove="metadata\Toggle_Play.png" />
     <None Remove="metadata\Toggle_Record.png" />
+    <None Remove="metadata\Toggle_Repeat.png" />
   </ItemGroup>
 
   <ItemGroup>
     <EmbeddedResource Include="metadata\Toggle_Play.png" />
     <EmbeddedResource Include="metadata\Toggle_Record.png" />
+    <EmbeddedResource Include="metadata\Toggle_Repeat.png" />
   </ItemGroup>
 
   <ItemGroup>

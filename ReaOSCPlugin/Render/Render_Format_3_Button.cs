@@ -28,12 +28,12 @@
                 if (isActive)
                 {
                     bitmap.Clear(BitmapColor.White);
-                    bitmap.DrawText(text, fontSize: 18, color: BitmapColor.Black);
+                    bitmap.DrawText(text, fontSize: 23, color: BitmapColor.Black);
                 }
                 else
                 {
                     bitmap.Clear(BitmapColor.Black);
-                    bitmap.DrawText(text, fontSize: 18, color: BitmapColor.White);
+                    bitmap.DrawText(text, fontSize: 23, color: BitmapColor.White);
                 }
                 return bitmap.ToImage();
             }

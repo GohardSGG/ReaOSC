@@ -7,17 +7,17 @@
     using System.Threading.Tasks;
 
     using Loupedeck.ReaOSCPlugin.Base;
-    public class Note_Move_Dial : Tick_Dial_Base
+    public class Note_Legato_Dial : Tick_Dial_Base
     {
         
-        public Note_Move_Dial()
+        public Note_Legato_Dial()
             : base(
-                displayName: "Move",
-                description: "微调位置",
+                displayName: "Legato",
+                description: "调整连奏",
                 groupName: "MIDI",
-                increaseOSCAddress: "Note/Move_Right",
-                decreaseOSCAddress: "Note/Move_Left",
-                resetOSCAddress: "Note/Move_Reset")
+                increaseOSCAddress: "Note/Legato_Right",
+                decreaseOSCAddress: "Note/Legato_Left",
+                resetOSCAddress: "Note/Legato_Reset")
         {
             // 可在此添加额外初始化
         }
