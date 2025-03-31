@@ -17,7 +17,8 @@
                 groupName: "View",
                 increaseOSCAddress: "Scroll_Right",
                 decreaseOSCAddress: "Scroll_Left",
-                resetOSCAddress: "Scroll_Reset")
+                resetOSCAddress: "Scroll_Reset",
+                accelerationFactor: 1.5f)
         {
             // 可在此添加额外初始化
         }

@@ -37,8 +37,8 @@
             {
                 bitmap.Clear(active ? BitmapColor.White : BitmapColor.Black);
                 bitmap.DrawText("Parallel", fontSize: 21, color: active ? BitmapColor.Black : BitmapColor.White);
-                var mode = FX_State_Manager.CurrentMode == FX_State_Manager.FXModeType.FX ? "FX" : "Chain";
-                bitmap.DrawText(mode, x: 50, y: 55, width: 14, height: 14, fontSize: 14, color: new BitmapColor(136, 226, 255));
+                //var mode = FX_State_Manager.CurrentMode == FX_State_Manager.FXModeType.FX ? "FX" : "Chain";
+                //bitmap.DrawText(mode, x: 50, y: 55, width: 14, height: 14, fontSize: 14, color: new BitmapColor(136, 226, 255));
                 return bitmap.ToImage();
             }
         }

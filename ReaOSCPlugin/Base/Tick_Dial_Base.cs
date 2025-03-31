@@ -12,63 +12,81 @@ namespace Loupedeck.ReaOSCPlugin.Base
         protected readonly string DecreaseOSCAddress;
         protected readonly string ResetOSCAddress;
         protected readonly string DisplayName;
+        protected readonly float AccelerationFactor;  // 新增字段：加速系数
 
-        // 根据是否有Reset地址决定hasReset
-        // Tick_Dial_Base.cs
+        // 时间间隔计算相关
+        private DateTime _lastEventTime = DateTime.Now.AddSeconds(-1);
+
+        // 修改构造函数，添加加速系数参数
         protected Tick_Dial_Base(
             string displayName,
             string description,
             string groupName,
             string increaseOSCAddress,
             string decreaseOSCAddress,
-            string resetOSCAddress = null)
-            : base(displayName,
-                  description,
-                  groupName,
-                  hasReset: !string.IsNullOrEmpty(resetOSCAddress))
+            string resetOSCAddress = null,
+            float accelerationFactor = 1f  // 必须传入的加速系数
+        ) : base(
+            displayName,
+            description,
+            groupName,
+            hasReset: !string.IsNullOrEmpty(resetOSCAddress)
+        )
         {
             DisplayName = displayName;
+            AccelerationFactor = accelerationFactor;
 
-            // 正确拼接地址：/GroupName/SubPath
+            // 拼接OSC地址
             IncreaseOSCAddress = $"/{groupName?.Trim('/')}/{increaseOSCAddress?.Trim('/')}";
             DecreaseOSCAddress = $"/{groupName?.Trim('/')}/{decreaseOSCAddress?.Trim('/')}";
             ResetOSCAddress = resetOSCAddress != null
                 ? $"/{groupName?.Trim('/')}/{resetOSCAddress?.Trim('/')}"
                 : null;
 
-           // PluginLog.Info($"[DEBUG] Tick_Dial_Base => final IncreaseOSCAddress = <{IncreaseOSCAddress}> (length={IncreaseOSCAddress.Length})");
-
-
             this.AddParameter($"{groupName}.{displayName}", displayName, groupName);
         }
 
-        // 处理旋钮旋转
+        // 核心修改：根据速度和加速系数发送多次消息
         protected override void ApplyAdjustment(string actionParameter, int ticks)
         {
-            //PluginLog.Info($"[DEBUG] ApplyAdjustment => ticks={ticks}, calling SendOSCMessage with <{IncreaseOSCAddress}>");
             if (ticks == 0)
                 return;
 
-            // 根据旋转方向设置状态
-            if (ticks > 0) // 向右旋转
+            var now = DateTime.Now;
+            var elapsed = now - _lastEventTime;
+            _lastEventTime = now;
+
+            // 计算速度因子（时间间隔越短，速度越快）
+            double speedFactor = 1.0 / Math.Max(elapsed.TotalSeconds, 0.001);
+            int baseCount = Math.Abs(ticks);
+            int totalCount = (int)(baseCount * AccelerationFactor * speedFactor);
+
+            // 限制发送次数范围（1~10次）
+            totalCount = Math.Clamp(totalCount, 1, 10);
+
+            // 根据方向发送多次消息
+            for (int i = 0; i < totalCount; i++)
             {
-                ReaOSCPlugin.SendOSCMessage(IncreaseOSCAddress, 1f);
-            }
-            else // 向左旋转
-            {
-                ReaOSCPlugin.SendOSCMessage(DecreaseOSCAddress, 1f);
+                if (ticks > 0)
+                {
+                    ReaOSCPlugin.SendOSCMessage(IncreaseOSCAddress, 1f);
+                }
+                else
+                {
+                    ReaOSCPlugin.SendOSCMessage(DecreaseOSCAddress, 1f);
+                }
             }
         }
 
-        // 处理按钮按下（Reset功能）
+        // 以下方法保持不变
         protected override void RunCommand(string actionParameter)
         {
-
+            if (!string.IsNullOrEmpty(ResetOSCAddress))
+            {
                 ReaOSCPlugin.SendOSCMessage(ResetOSCAddress, 1f);
-
+            }
         }
 
-        // 默认绘制逻辑（显示displayName）
         protected override BitmapImage GetCommandImage(string actionParameter, PluginImageSize imageSize)
         {
             using (var bitmap = new BitmapBuilder(imageSize))
