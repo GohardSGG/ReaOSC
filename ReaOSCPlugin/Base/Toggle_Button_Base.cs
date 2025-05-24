@@ -178,9 +178,9 @@
         {
             if (text.Length > 15)
                 return 14;
-            if (text.Length > 10)
-                return 16;
-            return 21;
+            if (text.Length > 5)
+                return 21;
+            return 26;
         }
 
         public void Dispose() => OSCStateManager.Instance.StateChanged -= this.OnOSCStateChanged;
