@@ -1,5 +1,6 @@
 {
   "Edit": [
+    // --- 您最初提供的、现已恢复的条目 ---
     {
       "DisplayName": "Item Volume",
       "ActionType": "TickDial",
@@ -11,6 +12,77 @@
       "ActionType": "TriggerButton",
       "Title": "Smart Snap",
       "ActiveColor": "#FF0000"
+    },
+    // --- 从 Edit_Auto_Fade.cs 转换 ---
+    {
+      "DisplayName": "Auto Fade",
+      "ActionType": "ToggleButton",
+      "Title": "Auto Fade",
+      "OscAddress": "Crossfade/Auto Fade",
+      "ActiveColor": "#FF0000"
+    },
+    // --- 从 Edit_Auto_Freeze.cs 转换 ---
+    {
+      "DisplayName": "Auto Freeze",
+      "ActionType": "TriggerButton",
+      "Title": "Freeze",
+      "Text": "Auto",
+      "TextColor": "#88E2FF"
+    },
+    // --- 从 Edit_Auto_Render.cs 转换 ---
+    {
+      "DisplayName": "Auto Render",
+      "ActionType": "TriggerButton",
+      "Title": "Render",
+      "Text": "Auto",
+      "TextColor": "#88E2FF"
+    },
+    // --- 从 Edit_Channel_Split.cs 转换 ---
+    {
+      "DisplayName": "Channel Split",
+      "ActionType": "TriggerButton",
+      "Title": "Channel",
+      "TitleSize": "19",
+      "Text": "Split",
+      "TextColor": "#88E2FF"
+    },
+    // --- 从 Edit_Cross_Fade.cs 转换 ---
+    {
+      "DisplayName": "Cross Fade",
+      "ActionType": "TickDial",
+      "Title": "Cross Fade",
+      "IncreaseOSCAddress": "Crossfade/Move/Forward",
+      "DecreaseOSCAddress": "Crossfade/Move/Backward",
+      "ResetOSCAddress": "Crossfade/Manager"
+    },
+    // --- 从 Edit_Dynamic_Split.cs 转换 ---
+    {
+      "DisplayName": "Dynamic Split",
+      "ActionType": "TriggerButton",
+      "Title": "Dynamic",
+      "TitleSize": "19",
+      "Text": "Split",
+      "TextColor": "#88E2FF"
+    },
+    // --- 从 Edit_Glue.cs 转换 ---
+    {
+      "DisplayName": "Glue",
+      "ActionType": "TriggerButton",
+      "Title": "Glue"
+    },
+    // --- 从 Edit_Reverse.cs 转换 ---
+    {
+      "DisplayName": "Reverse",
+      "ActionType": "TriggerButton",
+      "Title": "Reverse"
+    },
+    // --- 从 Edit_Trim_Split.cs 转换 ---
+    {
+      "DisplayName": "Trim Split",
+      "ActionType": "TriggerButton",
+      "Title": "Trim",
+      "Text": "Split",
+      "TextColor": "#88E2FF"
     }
   ],
   "MIDI": [
@@ -18,8 +90,134 @@
       "DisplayName": "Snap",
       "ActionType": "ToggleDial",
       "Title": "Snap",
-      "ResetOscAddress": "Manager", // 显式定义，因为它不是默认的 "Reset"
+      "ResetOscAddress": "Manager",
       "ActiveColor": "#88E2FF"
+    },
+    {
+      "DisplayName": "Fix Overlap",
+      "ActionType": "ToggleButton",
+      "Title": "Fix Overlap",
+      "OscAddress": "Fix_Overlap/Toggle",
+      "ActiveColor": "#FF8F15"
+    },
+    {
+      "DisplayName": "Scale",
+      "ActionType": "ToggleButton",
+      "Title": "Scale",
+      "OscAddress": "Scale/Toggle",
+      "ActiveColor": "#FF8F15"
+    },
+    {
+      "DisplayName": "Step",
+      "ActionType": "ToggleButton",
+      "Title": "Step",
+      "OscAddress": "Step/Toggle",
+      "ActiveColor": "#FF8F15"
+    },
+    {
+      "DisplayName": "Swing",
+      "ActionType": "ToggleButton",
+      "Title": "Swing",
+      "OscAddress": "Swing/Toggle",
+      "ActiveColor": "#FF8F15"
+    },
+    {
+      "DisplayName": "Arpeggio",
+      "ActionType": "TickDial",
+      "Title": "Arpeggio",
+      "IncreaseOSCAddress": "Note/Arpeggio_Right",
+      "DecreaseOSCAddress": "Note/Arpeggio_Left",
+      "ResetOSCAddress": "Note/Arpeggio_Reset"
+    },
+    {
+      "DisplayName": "Legato",
+      "ActionType": "TickDial",
+      "Title": "Legato",
+      "IncreaseOSCAddress": "Note/Legato_Right",
+      "DecreaseOSCAddress": "Note/Legato_Left",
+      "ResetOSCAddress": "Note/Legato_Reset"
+    },
+    {
+      "DisplayName": "Move",
+      "ActionType": "TickDial",
+      "Title": "Move",
+      "IncreaseOSCAddress": "Note/Move_Right",
+      "DecreaseOSCAddress": "Note/Move_Left",
+      "ResetOSCAddress": "Note/Move_Reset"
+    },
+    {
+      "DisplayName": "Note Shift",
+      "ActionType": "2ModeTickDial",
+      "Title": "Shift",
+      "Title_Mode2": "Octave",
+      "BackgroundColor_Mode2": "#FFFFFF",
+      "TitleColor_Mode2": "#000000"
+    }
+  ],
+  "Automation": [
+    {
+      "DisplayName": "Touch",
+      "ActionType": "ToggleButton",
+      "Title": "Touch",
+      "ActiveColor": "#F1CF43",
+      "DeactiveTextColor": "#F1CF43"
+    },
+    {
+      "DisplayName": "Trim",
+      "ActionType": "ToggleButton",
+      "Title": "Trim",
+      "ActiveColor": "#FFFFFF",
+      "DeactiveTextColor": "#FFFFFF"
+    },
+    {
+      "DisplayName": "Write",
+      "ActionType": "ToggleButton",
+      "Title": "Write",
+      "ActiveColor": "#DC8CFA",
+      "DeactiveTextColor": "#DC8CFA"
+    },
+    {
+      "DisplayName": "Latch",
+      "ActionType": "ToggleButton",
+      "Title": "Latch",
+      "ActiveColor": "#ECAA7A",
+      "DeactiveTextColor": "#ECAA7A"
+    },
+    {
+      "DisplayName": "Preview",
+      "ActionType": "ToggleButton",
+      "Title": "Preview",
+      "ActiveColor": "#75C4F0",
+      "DeactiveTextColor": "#75C4F0"
+    },
+    {
+      "DisplayName": "Read",
+      "ActionType": "ToggleButton",
+      "Title": "Read",
+      "ActiveColor": "#88EBB3",
+      "DeactiveTextColor": "#88EBB3"
+    }
+  ],
+  "FX": [
+    {
+      "DisplayName": "Over Sampling",
+      "ActionType": "TriggerButton",
+      "Title": "Over Sampling"
+    },
+    {
+      "DisplayName": "Show In TCP",
+      "ActionType": "TriggerButton",
+      "Title": "TCP",
+      "Text": "Show",
+      "TextColor": "#88E2FF"
+    },
+    {
+      "DisplayName": "Browser",
+      "ActionType": "ToggleButton",
+      "Title": "Browser",
+      "ActiveColor": "#00FF00",
+      "Text": "Add-Fx",
+      "TextColor": "#88E2FF"
     }
   ],
   "General": [
@@ -28,6 +226,74 @@
       "ActionType": "ToggleButton",
       "Title": "Play",
       "ActiveColor": "#00FF00"
+    },
+    {
+      "DisplayName": "Repeat",
+      "ActionType": "ToggleButton",
+      "Title": "Repeat",
+      "ActiveColor": "#FF8F15",
+      "ButtonImage": "Toggle_Repeat.png"
+    },
+    {
+      "DisplayName": "Record",
+      "ActionType": "ToggleButton",
+      "Title": "Record",
+      "ActiveColor": "#FF0000",
+      "ButtonImage": "Toggle_Record.png"
+    },
+    {
+      "DisplayName": "Snap",
+      "ActionType": "ToggleDial",
+      "Title": "Snap",
+      "ActiveColor": "#88E2FF",
+      "ResetOscAddress": "Snap/Manager"
+    }
+  ],
+  "Marker": [
+    {
+      "DisplayName": "Add Marker",
+      "ActionType": "TriggerButton",
+      "Title": "Marker",
+      "OscAddress": "Add",
+      "Text": "Add",
+      "TextColor": "#88E2FF"
+    }
+  ],
+  "Region": [
+    {
+      "DisplayName": "Add Region",
+      "ActionType": "TriggerButton",
+      "Title": "Region",
+      "OscAddress": "Add",
+      "Text": "Add",
+      "TextColor": "#88E2FF"
+    }
+  ],
+  "View": [
+    {
+      "DisplayName": "Region",
+      "ActionType": "TickDial",
+      "Title": "Region",
+      "IncreaseOSCAddress": "Region/Scroll_Right",
+      "DecreaseOSCAddress": "Region/Scroll_Left",
+      "ResetOscAddress": "Region/Scroll_Reset"
+    },
+    {
+      "DisplayName": "Scroll",
+      "ActionType": "TickDial",
+      "Title": "Scroll",
+      "IncreaseOSCAddress": "Scroll_Right",
+      "DecreaseOSCAddress": "Scroll_Left",
+      "ResetOscAddress": "Scroll_Reset",
+      "AccelerationFactor": 1.5
+    },
+    {
+      "DisplayName": "Marker",
+      "ActionType": "TickDial",
+      "Title": "Marker",
+      "IncreaseOSCAddress": "Marker/Scroll_Right",
+      "DecreaseOSCAddress": "Marker/Scroll_Left",
+      "ResetOscAddress": "Marker/Scroll_Reset"
     }
   ]
 }

@@ -225,7 +225,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     if (!String.IsNullOrEmpty(config.Text))
                     {
                         var textSize = config.TextSize ?? 14;
-                        var textX = config.TextX ?? 35;
+                        var textX = config.TextX ?? 50;
                         var textY = config.TextY ?? 55;
                         var textWidth = config.TextWidth ?? 14;
                         var textHeight = config.TextHeight ?? 14;
@@ -244,7 +244,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
             { return 23; }
             var totalLengthWithSpaces = title.Length;
             int effectiveLength;
-            if (totalLengthWithSpaces <= 10)
+            if (totalLengthWithSpaces <= 8)
             { effectiveLength = totalLengthWithSpaces; }
             else
             { var words = title.Split(' '); effectiveLength = words.Length > 0 ? words.Max(word => word.Length) : 0; if (effectiveLength == 0 && totalLengthWithSpaces > 0) { effectiveLength = totalLengthWithSpaces; } }
@@ -254,8 +254,9 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 2 => 33,
                 3 => 31,
                 4 => 26,
-                5 => 26,
-                >= 6 and <= 7 => 20,
+                5 => 23,
+                6 => 22,
+                7 => 20,
                 8 => 18,
                 9 => 17,
                 10 => 16,
