@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
@@ -20,18 +20,21 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Base\Effects_List.json" />
     <None Remove="metadata\Toggle_Play.png" />
     <None Remove="metadata\Toggle_Record.png" />
     <None Remove="metadata\Toggle_Repeat.png" />
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Base\Effects_List.json" />
     <EmbeddedResource Include="metadata\Toggle_Play.png" />
     <EmbeddedResource Include="metadata\Toggle_Record.png" />
     <EmbeddedResource Include="metadata\Toggle_Repeat.png" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="WebSocketSharp-netstandard" Version="1.0.1" />
   </ItemGroup>
 

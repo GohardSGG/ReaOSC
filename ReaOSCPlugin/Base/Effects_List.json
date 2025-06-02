@@ -1,0 +1,564 @@
+{
+  "Eventide FX": [
+    {
+      "DisplayName": "Blackhole",
+      "Title": "Blackhole"
+    },
+    {
+      "DisplayName": "DeBoom",
+      "Title": "DeBoom"
+    },
+    {
+      "DisplayName": "Omnipressor",
+      "Title": "Omnipressor"
+    },
+    {
+      "DisplayName": "Physion II",
+      "Title": "Physion",
+      "Text": "II",
+      "TextColor": "#FFE200",
+      "TextX": 50
+    },
+    {
+      "DisplayName": "Sheen Machine",
+      "Title": "Sheen Machine"
+    },
+    {
+      "DisplayName": "SP2016",
+      "Title": "SP2016"
+    },
+    {
+      "DisplayName": "SplitEQ",
+      "Title": "SplitEQ"
+    },
+    {
+      "DisplayName": "Blackhole Immersive",
+      "Title": "Blackhole",
+      "Text": "Immersive",
+      "TextColor": "#FFE200"
+    },
+    {
+      "DisplayName": "H3000 Delays II",
+      "Title": "H3000",
+      "Text": "Delays II",
+      "TextColor": "#FFE200"
+    },
+    {
+      "DisplayName": "H3000 Factory II",
+      "Title": "H3000",
+      "Text": "Factory II",
+      "TextColor": "#FFE200"
+    },
+    {
+      "DisplayName": "MicroPitch",
+      "Title": "MicroPitch"
+    },
+    {
+      "DisplayName": "MicroPitch Immersive",
+      "Title": "MicroPitch",
+      "Text": "Immersive",
+      "TextColor": "#FFE200"
+    }
+  ],
+  "FabFilter FX": [
+    {
+      "DisplayName": "Add Pro-C 2",
+      "Title": "C",
+      "Text": "2",
+      "TextColor": "#FF0000",
+      "TextX": 55
+    },
+    {
+      "DisplayName": "Add Pro-DS",
+      "Title": "DS",
+      "TitleColor": "#FFFF00"
+    },
+    {
+      "DisplayName": "Add Pro-G",
+      "Title": "G"
+    },
+    {
+      "DisplayName": "Add Pro-L 2",
+      "Title": "L",
+      "Text": "2",
+      "TextColor": "#FF0000",
+      "TextX": 55
+    },
+    {
+      "DisplayName": "Add Pro-MB",
+      "Title": "MB"
+    },
+    {
+      "DisplayName": "Add Pro-Q 3",
+      "Title": "Q",
+      "Text": "3",
+      "TextColor": "#3370FF",
+      "TextX": 55
+    },
+    {
+      "DisplayName": "Add Pro-Q 4",
+      "Title": "Q",
+      "Text": "4",
+      "TextColor": "#33FFFF",
+      "TextX": 55
+    },
+    {
+      "DisplayName": "Add Pro-R 2",
+      "Title": "R",
+      "Text": "2",
+      "TextColor": "#FF0000",
+      "TextX": 55
+    },
+    {
+      "DisplayName": "Add Saturn 2",
+      "Title": "Saturn",
+      "Text": "2",
+      "TextColor": "#FF0000",
+      "TextX": 55
+    },
+    {
+      "DisplayName": "Add Timeless 3",
+      "Title": "Time",
+      "Text": "3",
+      "TextColor": "#3370FF",
+      "TextX": 55
+    },
+    {
+      "DisplayName": "Add Twin 3",
+      "Title": "Twin",
+      "Text": "3",
+      "TextColor": "#3370FF",
+      "TextX": 55
+    },
+    {
+      "DisplayName": "Add Volcano 3",
+      "Title": "Volcano",
+      "Text": "3",
+      "TextColor": "#3370FF",
+      "TextX": 55
+    }
+  ],
+  "Kiive Audio FX": [
+    {
+      "DisplayName": "Distinct Pro",
+      "Title": "Distinct Pro"
+    },
+    {
+      "DisplayName": "Filkchannel MK2",
+      "Title": "Filkchannel",
+      "Text": "MK2",
+      "TextColor": "#FFE200",
+      "TextX": 50
+    },
+    {
+      "DisplayName": "NFuse",
+      "Title": "NFuse"
+    },
+    {
+      "DisplayName": "Tape Face",
+      "Title": "Tape Face"
+    },
+    {
+      "DisplayName": "Tube KC-1",
+      "Title": "KC-1",
+      "Text": "Tube",
+      "TextColor": "#FFE200",
+      "TextX": 50
+    },
+    {
+      "DisplayName": "Tubetizer",
+      "Title": "Tubetizer"
+    },
+    {
+      "DisplayName": "XTComp",
+      "Title": "XTComp"
+    },
+    {
+      "DisplayName": "Xtressor",
+      "Title": "Xtressor"
+    }
+  ],
+  "Sonible FX": [
+    {
+      "DisplayName": "Prime Vocal",
+      "Title": "Vocal",
+      "Text": "Prime",
+      "TextColor": "#FFE200",
+      "TextX": 50
+    },
+    {
+      "DisplayName": "Pure Comp",
+      "Title": "Comp",
+      "Text": "Pure",
+      "TextColor": "#999999",
+      "TextX": 50
+    },
+    {
+      "DisplayName": "Pure Limit",
+      "Title": "Limit",
+      "Text": "Pure",
+      "TextColor": "#999999",
+      "TextX": 50
+    },
+    {
+      "DisplayName": "Pure Verb",
+      "Title": "Verb",
+      "Text": "Pure",
+      "TextColor": "#999999",
+      "TextX": 50
+    },
+    {
+      "DisplayName": "Smart Comp 2",
+      "Title": "Comp-2",
+      "Text": "Smart",
+      "TextColor": "#00C79C",
+      "TextX": 50
+    },
+    {
+      "DisplayName": "Smart Deess",
+      "Title": "Deess",
+      "Text": "Smart",
+      "TextColor": "#00C79C",
+      "TextX": 50
+    },
+    {
+      "DisplayName": "Smart EQ 4",
+      "Title": "EQ-4",
+      "Text": "Smart",
+      "TextColor": "#00C79C",
+      "TextX": 50
+    },
+    {
+      "DisplayName": "Smart Gate",
+      "Title": "Gate",
+      "Text": "Smart",
+      "TextColor": "#00C79C",
+      "TextX": 50
+    },
+    {
+      "DisplayName": "Smart Limit",
+      "Title": "Limit",
+      "Text": "Smart",
+      "TextColor": "#00C79C",
+      "TextX": 50
+    },
+    {
+      "DisplayName": "Smart Verb",
+      "Title": "Verb",
+      "Text": "Smart",
+      "TextColor": "#00C79C",
+      "TextX": 50
+    },
+    {
+      "DisplayName": "True Balance",
+      "Title": "Balance",
+      "Text": "True",
+      "TextColor": "#FF0000",
+      "TextX": 50
+    },
+    {
+      "DisplayName": "True Level",
+      "Title": "Level",
+      "Text": "True",
+      "TextColor": "#FF0000",
+      "TextX": 50
+    }
+  ],
+  "SSL FX": [
+    {
+      "DisplayName": "DeEss",
+      "Title": "DeEss"
+    },
+    {
+      "DisplayName": "Drum Strip",
+      "Title": "Drum",
+      "Text": "Strip",
+      "TextColor": "#FFE200",
+      "TextX": 50
+    },
+    {
+      "DisplayName": "Fusion Drive",
+      "Title": "Drive",
+      "Text": "Fusion",
+      "TextColor": "#FFE200",
+      "TextX": 50
+    },
+    {
+      "DisplayName": "Fusion HF Comp",
+      "Title": "HF Comp",
+      "Text": "Fusion",
+      "TextColor": "#FFE200",
+      "TextX": 50
+    },
+    {
+      "DisplayName": "Fusion Image",
+      "Title": "Image",
+      "Text": "Fusion",
+      "TextColor": "#FFE200",
+      "TextX": 50
+    },
+    {
+      "DisplayName": "Fusion Transformer",
+      "Title": "Transformer",
+      "Text": "Fusion",
+      "TextColor": "#FFE200",
+      "TextX": 50
+    },
+    {
+      "DisplayName": "Guitar Strip",
+      "Title": "Strip",
+      "Text": "Guitar",
+      "TextColor": "#FFE200",
+      "TextX": 50
+    },
+    {
+      "DisplayName": "LMC+",
+      "Title": "LMC+"
+    },
+    {
+      "DisplayName": "Meter",
+      "Title": "Meter"
+    },
+    {
+      "DisplayName": "Multi BusComp G3",
+      "Title": "BusComp G3",
+      "Text": "Multi",
+      "TextColor": "#FFE200",
+      "TextX": 50
+    },
+    {
+      "DisplayName": "Native BusComp 2",
+      "Title": "BusComp 2",
+      "Text": "Native",
+      "TextColor": "#FFE200",
+      "TextX": 50
+    },
+    {
+      "DisplayName": "SubGen",
+      "Title": "SubGen"
+    }
+  ],
+  "UAD FX": [
+    {
+      "DisplayName": "1176 FET",
+      "Title": "1176",
+      "Text": "FET",
+      "TextColor": "#FFE200",
+      "TextX": 50
+    },
+    {
+      "DisplayName": "1176LN Rev E",
+      "Title": "1176LN",
+      "Text": "Rev.E",
+      "TextColor": "#FFE200",
+      "TextX": 50
+    },
+    {
+      "DisplayName": "API 2500 Bus",
+      "Title": "API 2500",
+      "Text": "Bus",
+      "TextColor": "#FFE200",
+      "TextX": 50
+    },
+    {
+      "DisplayName": "LA-2A Gray",
+      "Title": "LA-2A",
+      "Text": "Gray",
+      "TextColor": "#FFE200",
+      "TextX": 50
+    },
+    {
+      "DisplayName": "LA-2A Silver",
+      "Title": "LA-2A",
+      "Text": "Silver",
+      "TextColor": "#FFE200",
+      "TextX": 50
+    },
+    {
+      "DisplayName": "Lexicon 224",
+      "Title": "224",
+      "Text": "Lexicon",
+      "TextColor": "#FFE200",
+      "TextX": 50
+    },
+    {
+      "DisplayName": "Neve 1073",
+      "Title": "1073",
+      "Text": "Neve",
+      "TextColor": "#FFE200",
+      "TextX": 50
+    },
+    {
+      "DisplayName": "Pultec EQP-1A",
+      "Title": "EQP-1A",
+      "Text": "Pultec",
+      "TextColor": "#FFE200",
+      "TextX": 50
+    },
+    {
+      "DisplayName": "Pultec HLF-3C",
+      "Title": "HLF-3C",
+      "Text": "Pultec",
+      "TextColor": "#FFE200",
+      "TextX": 50
+    },
+    {
+      "DisplayName": "Pultec MEQ-5",
+      "Title": "MEQ-5",
+      "Text": "Pultec",
+      "TextColor": "#FFE200",
+      "TextX": 50
+    },
+    {
+      "DisplayName": "SSL G Bus",
+      "Title": "SSL G",
+      "Text": "Bus",
+      "TextColor": "#FFE200",
+      "TextX": 50
+    },
+    {
+      "DisplayName": "Tape Echo Galaxy",
+      "Title": "Tape Echo",
+      "Text": "Galaxy",
+      "TextColor": "#FFE200",
+      "TextX": 50
+    }
+  ],
+  "Waves FX": [
+    {
+      "DisplayName": "ADT",
+      "Title": "ADT"
+    },
+    {
+      "DisplayName": "Bass Rider",
+      "Title": "Bass",
+      "Text": "Rider",
+      "TextColor": "#3370FF",
+      "TextX": 55
+    },
+    {
+      "DisplayName": "CLA Epic",
+      "Title": "Epic",
+      "Text": "CLA",
+      "TextColor": "#3370FF",
+      "TextX": 55
+    },
+    {
+      "DisplayName": "CLA-2A",
+      "Title": "2A",
+      "Text": "CLA",
+      "TextColor": "#3370FF",
+      "TextX": 55
+    },
+    {
+      "DisplayName": "CLA-76",
+      "Title": "76",
+      "Text": "CLA",
+      "TextColor": "#3370FF",
+      "TextX": 55
+    },
+    {
+      "DisplayName": "Curves Equator",
+      "Title": "Curves Equator"
+    },
+    {
+      "DisplayName": "DeReverb Pro",
+      "Title": "DeReverb",
+      "Text": "Pro",
+      "TextColor": "#3370FF",
+      "TextX": 55
+    },
+    {
+      "DisplayName": "DTS DownMix",
+      "Title": "DownMix",
+      "Text": "DTS",
+      "TextColor": "#3370FF",
+      "TextX": 55
+    },
+    {
+      "DisplayName": "DTS UpMix",
+      "Title": "UpMix",
+      "Text": "DTS",
+      "TextColor": "#3370FF",
+      "TextX": 55
+    },
+    {
+      "DisplayName": "EV2",
+      "Title": "EV2"
+    },
+    {
+      "DisplayName": "Harmony",
+      "Title": "Harmony"
+    },
+    {
+      "DisplayName": "H-Delay",
+      "Title": "H-Delay"
+    },
+    {
+      "DisplayName": "IDX Dynamics",
+      "Title": "Dynamics",
+      "Text": "IDX",
+      "TextColor": "#3370FF",
+      "TextX": 55
+    },
+    {
+      "DisplayName": "Immersive Wrapper",
+      "Title": "Immersive Wrapper"
+    },
+    {
+      "DisplayName": "J37",
+      "Title": "J37"
+    },
+    {
+      "DisplayName": "Magma Channel",
+      "Title": "Channel",
+      "Text": "Magma",
+      "TextColor": "#3370FF",
+      "TextX": 45
+    },
+    {
+      "DisplayName": "MaxxBass",
+      "Title": "Bass",
+      "Text": "Maxx",
+      "TextColor": "#3370FF",
+      "TextX": 55
+    },
+    {
+      "DisplayName": "MV2",
+      "Title": "MV2"
+    },
+    {
+      "DisplayName": "Omni",
+      "Title": "Omni"
+    },
+    {
+      "DisplayName": "RComp",
+      "Title": "RComp"
+    },
+    {
+      "DisplayName": "Silk Vocal",
+      "Title": "Silk Vocal"
+    },
+    {
+      "DisplayName": "Springs",
+      "Title": "Springs",
+      "Text": "Magma",
+      "TextColor": "#3370FF",
+      "TextX": 45
+    },
+    {
+      "DisplayName": "Vocal Rider",
+      "Title": "Vocal",
+      "Text": "Rider",
+      "TextColor": "#3370FF",
+      "TextX": 55
+    },
+    {
+      "DisplayName": "Vx Pro",
+      "Title": "Vx",
+      "Text": "Pro",
+      "TextColor": "#3370FF",
+      "TextX": 55
+    }
+  ]
+}
