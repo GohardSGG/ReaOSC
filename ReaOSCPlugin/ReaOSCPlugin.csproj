@@ -21,13 +21,17 @@
 
   <ItemGroup>
     <None Remove="Base\Effects_List.json" />
+    <None Remove="Effects\Effects_List.json" />
+    <None Remove="General\General_List.json" />
     <None Remove="metadata\Toggle_Play.png" />
     <None Remove="metadata\Toggle_Record.png" />
     <None Remove="metadata\Toggle_Repeat.png" />
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="Base\Effects_List.json" />
+    <EmbeddedResource Include="Effects\Effects_List.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
     <EmbeddedResource Include="metadata\Toggle_Play.png" />
     <EmbeddedResource Include="metadata\Toggle_Record.png" />
     <EmbeddedResource Include="metadata\Toggle_Repeat.png" />
@@ -65,6 +69,12 @@
 
   <ItemGroup>
     <Folder Include="View\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="General\General_List.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
   </ItemGroup>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">

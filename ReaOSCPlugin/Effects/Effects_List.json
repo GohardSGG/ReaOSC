@@ -209,7 +209,7 @@
     },
     {
       "DisplayName": "Smart Comp 2",
-      "Title": "Comp-2",
+      "Title": "Comp 2",
       "Text": "Smart",
       "TextColor": "#00C79C",
       "TextX": 50
@@ -223,7 +223,7 @@
     },
     {
       "DisplayName": "Smart EQ 4",
-      "Title": "EQ-4",
+      "Title": "EQ 4",
       "Text": "Smart",
       "TextColor": "#00C79C",
       "TextX": 50
@@ -559,6 +559,92 @@
       "Text": "Pro",
       "TextColor": "#3370FF",
       "TextX": 55
+    }
+  ],
+  "Airwindows FX": [
+    {
+      "DisplayName": "Airwindows",
+      "Title": "Airwindows",
+      "Text": "Consolidated",
+      "TextColor": "#FFE200",
+      "TextX": 50
+    }
+  ],
+  "Cockos FX": [
+    {
+      "DisplayName": "Container",
+      "Title": "Container"
+    },
+    {
+      "DisplayName": "ReaPitch",
+      "Title": "Pitch",
+      "Text": "Rea",
+      "TextColor": "#FFE200",
+      "TextX": 50
+    },
+    {
+      "DisplayName": "ReaSurroundPan",
+      "Title": "SurroundPan",
+      "Text": "Rea",
+      "TextColor": "#FFE200",
+      "TextX": 50
+    },
+    {
+      "DisplayName": "ReaTune",
+      "Title": "Tune",
+      "Text": "Rea",
+      "TextColor": "#FFE200",
+      "TextX": 50
+    }
+  ],
+  "Fiedler Audio FX": [
+    {
+      "DisplayName": "Dolby Atmos Beam",
+      "Title": "Beam",
+      "Text": "Dolby",
+      "TextColor": "#FFE200",
+      "TextX": 50
+    },
+    {
+      "DisplayName": "Dolby Atmos Composer",
+      "Title": "Composer",
+      "Text": "Dolby",
+      "TextColor": "#FFE200",
+      "TextX": 50
+    },
+    {
+      "DisplayName": "Spacelab",
+      "Title": "Spacelab"
+    },
+    {
+      "DisplayName": "Spacelab Beam",
+      "Title": "Spacelab",
+      "Text": "Beam",
+      "TextColor": "#FFE200",
+      "TextX": 50
+    }
+  ],
+  "Native Instruments FX": [
+    {
+      "DisplayName": "Kontakt 6",
+      "Title": "Kontakt",
+      "Text": "6",
+      "TextColor": "#FFE200",
+      "TextX": 50
+    },
+    {
+      "DisplayName": "Kontakt 7",
+      "Title": "Kontakt",
+      "Text": "7",
+      "TextColor": "#FFE200",
+      "TextX": 50
+    },
+    {
+      "DisplayName": "Kontakt 8",
+      "Title": "Kontakt",
+      "Text": "8",
+      "TextColor": "#FFE200",
+      "TextX": 50
     }
   ]
 }

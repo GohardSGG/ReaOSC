@@ -1,0 +1,33 @@
+{
+  "Edit": [
+    {
+      "DisplayName": "Item Volume",
+      "ActionType": "TickDial",
+      "Title": "Item Volume",
+      "AccelerationFactor": 1.0
+    },
+    {
+      "DisplayName": "Smart Snap",
+      "ActionType": "TriggerButton",
+      "Title": "Smart Snap",
+      "ActiveColor": "#FF0000"
+    }
+  ],
+  "MIDI": [
+    {
+      "DisplayName": "Snap",
+      "ActionType": "ToggleDial",
+      "Title": "Snap",
+      "ResetOscAddress": "Manager", // 显式定义，因为它不是默认的 "Reset"
+      "ActiveColor": "#88E2FF"
+    }
+  ],
+  "General": [
+    {
+      "DisplayName": "Play",
+      "ActionType": "ToggleButton",
+      "Title": "Play",
+      "ActiveColor": "#00FF00"
+    }
+  ]
+}
