@@ -28,11 +28,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
         private readonly Dictionary<string, int> _currentModes = new Dictionary<string, int>();
         private readonly Dictionary<string, Action> _modeChangedEvents = new Dictionary<string, Action>();
 
-        // 从OSC通信地址到actionParameter的映射，主要用于ToggleDial
         private readonly Dictionary<string, string> _oscAddressToActionParameterMap = new Dictionary<string, string>();
-
-        // 当受管理的命令状态（主要指ToggleDial/ToggleButton的开关状态）因OSC反馈而改变时触发此事件
-        // 参数: actionParameter (状态已改变的控件的actionParameter)
         public event EventHandler<string> CommandStateNeedsRefresh;
 
         private Logic_Manager_Base() { }
@@ -96,20 +92,21 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     continue;
                 }
 
-                string groupNameForPath = config.GroupName.Replace(" FX", "").Replace(" ", "/").Trim('/');
+                // 【统一】所有从JSON读取的、用于构建路径部分的字符串，空格都替换为 "_"
+                string groupNameForPath = config.GroupName.Replace(" FX", "").Replace(" ", "_").Trim('/');
                 string actionParameter;
                 string baseOscNamePart;
 
                 if (isFx)
                 {
-                    baseOscNamePart = config.DisplayName.Replace(" ", "/").TrimStart('/');
+                    baseOscNamePart = config.DisplayName.Replace(" ", "_").TrimStart('/');
                     actionParameter = $"Add/{groupNameForPath}/{baseOscNamePart}".Replace("//", "/");
                 }
                 else
                 {
                     baseOscNamePart = String.IsNullOrEmpty(config.OscAddress)
-                        ? config.DisplayName.Replace(" ", "/").TrimStart('/')
-                        : config.OscAddress.Replace(" ", "/").TrimStart('/');
+                        ? config.DisplayName.Replace(" ", "_").TrimStart('/')
+                        : config.OscAddress.Replace(" ", "_").TrimStart('/');
                     actionParameter = $"/{groupNameForPath}/{baseOscNamePart}".Replace("//", "/");
 
                     if (config.ActionType == "TickDial" || config.ActionType == "ToggleDial")
@@ -120,20 +117,16 @@ namespace Loupedeck.ReaOSCPlugin.Base
 
                 if (this._allConfigs.ContainsKey(actionParameter))
                     continue;
-
                 this._allConfigs[actionParameter] = config;
 
                 string effectiveOscAddressForStateListener = null;
 
                 if (config.ActionType == "ToggleButton" || config.ActionType == "ToggleDial")
                 {
-                    string effective_groupName = config.GroupName.Replace(" ", "/").Trim('/');
-                    string effective_pathSuffix;
-
-                    // ToggleButton 和 ToggleDial 的 OSC 通信地址构建逻辑相同
-                    effective_pathSuffix = string.IsNullOrEmpty(config.OscAddress)
-                        ? config.DisplayName.Replace(" ", "/").TrimStart('/') // 使用DisplayName
-                        : config.OscAddress.Replace(" ", "/").TrimStart('/');   // 使用OscAddress
+                    string effective_groupName = config.GroupName.Replace(" ", "_").Trim('/');
+                    string effective_pathSuffix = string.IsNullOrEmpty(config.OscAddress)
+                        ? config.DisplayName.Replace(" ", "_").TrimStart('/')
+                        : config.OscAddress.Replace(" ", "_").TrimStart('/');
 
                     effectiveOscAddressForStateListener = $"/{effective_groupName}/{effective_pathSuffix}".Replace("//", "/");
 
@@ -192,7 +185,19 @@ namespace Loupedeck.ReaOSCPlugin.Base
         }
 
         public int GetDialMode(string actionParameter) => this._dialModes.TryGetValue(actionParameter, out var m) ? m : 0;
-        public void ProcessGeneralButtonPress(ButtonConfig config, string actionParameter) { if (config == null) return; float valueToSend = 1f; if (config.ActionType == "ToggleButton") { valueToSend = this.GetToggleState(actionParameter) ? 0f : 1f; } ReaOSCPlugin.SendOSCMessage(actionParameter, valueToSend); }
+
+        public void ProcessGeneralButtonPress(ButtonConfig config, string actionParameter)
+        {
+            if (config == null)
+                return;
+            float valueToSend = 1f;
+            if (config.ActionType == "ToggleButton")
+            {
+                valueToSend = this.GetToggleState(actionParameter) ? 0f : 1f;
+            }
+            ReaOSCPlugin.SendOSCMessage(actionParameter, valueToSend);
+        }
+
         public void ProcessFxButtonPress(string actionParameter) => ReaOSCPlugin.SendFXMessage(actionParameter, 1);
 
         public void ProcessDialAdjustment(ButtonConfig config, int ticks, string actionParameter, Dictionary<string, DateTime> lastEventTimes)
@@ -200,8 +205,9 @@ namespace Loupedeck.ReaOSCPlugin.Base
             if (config == null)
                 return;
 
-            string groupNameForPath = config.GroupName.Replace(" ", "/").Trim('/');
-            string displayNameForPath = config.DisplayName.Replace(" ", "/").TrimStart('/');
+            // 【统一】从配置中读取的、用于构建路径的字符串，空格都替换为 "_"
+            string groupNameForPath = config.GroupName.Replace(" ", "_").Trim('/');
+            string displayNameForPath = config.DisplayName.Replace(" ", "_").TrimStart('/');
 
 
             if (config.ActionType == "ToggleDial")
@@ -209,7 +215,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 string basePathSuffix;
                 if (!string.IsNullOrEmpty(config.OscAddress))
                 {
-                    basePathSuffix = config.OscAddress.Replace(" ", "/").TrimStart('/');
+                    basePathSuffix = config.OscAddress.Replace(" ", "_").TrimStart('/');
                 }
                 else
                 {
@@ -249,28 +255,28 @@ namespace Loupedeck.ReaOSCPlugin.Base
 
             if (!string.IsNullOrEmpty(jsonIncreaseAddress))
             {
-                string suffix = jsonIncreaseAddress.Replace(" ", "/").TrimStart('/');
+                string suffix = jsonIncreaseAddress.Replace(" ", "_").TrimStart('/');
                 finalIncreaseOscAddress = $"/{groupNameForPath}/{suffix}";
                 finalIncreaseOscAddress = finalIncreaseOscAddress.Replace("//", "/");
                 // PluginLog.Info($"[LogicManager] Dial '{actionParameter}' (增加) 使用JSON配置地址 (带组名): {finalIncreaseOscAddress}");
             }
             else
             {
-                finalIncreaseOscAddress = $"/{groupNameForPath}/{displayNameForPath}/Right"; // 确保 displayNameForPath 已 TrimStart('/')
+                finalIncreaseOscAddress = $"/{groupNameForPath}/{displayNameForPath}/Right";
                 finalIncreaseOscAddress = finalIncreaseOscAddress.Replace("//", "/");
                 PluginLog.Info($"[LogicManager] Dial '{actionParameter}' (增加) 使用默认地址: {finalIncreaseOscAddress}");
             }
 
             if (!string.IsNullOrEmpty(jsonDecreaseAddress))
             {
-                string suffix = jsonDecreaseAddress.Replace(" ", "/").TrimStart('/');
+                string suffix = jsonDecreaseAddress.Replace(" ", "_").TrimStart('/');
                 finalDecreaseOscAddress = $"/{groupNameForPath}/{suffix}";
                 finalDecreaseOscAddress = finalDecreaseOscAddress.Replace("//", "/");
                 // PluginLog.Info($"[LogicManager] Dial '{actionParameter}' (减少) 使用JSON配置地址 (带组名): {finalDecreaseOscAddress}");
             }
             else
             {
-                finalDecreaseOscAddress = $"/{groupNameForPath}/{displayNameForPath}/Left"; // 确保 displayNameForPath 已 TrimStart('/')
+                finalDecreaseOscAddress = $"/{groupNameForPath}/{displayNameForPath}/Left";
                 finalDecreaseOscAddress = finalDecreaseOscAddress.Replace("//", "/");
                 PluginLog.Info($"[LogicManager] Dial '{actionParameter}' (减少) 使用默认地址: {finalDecreaseOscAddress}");
             }
@@ -282,7 +288,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 if (timeDiff < 100)
                 { acceleration = config.AccelerationFactor.Value; }
             }
-            // lastEventTimes[actionParameter] = DateTime.Now; // 更新时间戳应在 General_Dial_Base 中
+            // lastEventTimes 的更新在 General_Dial_Base 中
 
             string targetAddress = ticks > 0 ? finalIncreaseOscAddress : finalDecreaseOscAddress;
             if (!string.IsNullOrEmpty(targetAddress) && targetAddress != "/")
@@ -306,8 +312,9 @@ namespace Loupedeck.ReaOSCPlugin.Base
             }
             if (!string.IsNullOrEmpty(config.ResetOscAddress))
             {
-                string groupNameForPath = config.GroupName.Replace(" ", "/").Trim('/');
-                string resetPathSuffix = config.ResetOscAddress.Replace(" ", "/").TrimStart('/');
+                // 【统一】从配置中读取的、用于构建路径的字符串，空格都替换为 "_"
+                string groupNameForPath = config.GroupName.Replace(" ", "_").Trim('/');
+                string resetPathSuffix = config.ResetOscAddress.Replace(" ", "_").TrimStart('/');
                 string fullResetAddress = $"/{groupNameForPath}/{resetPathSuffix}";
                 fullResetAddress = fullResetAddress.Replace("//", "/");
                 if (string.IsNullOrEmpty(fullResetAddress) || fullResetAddress == "/")

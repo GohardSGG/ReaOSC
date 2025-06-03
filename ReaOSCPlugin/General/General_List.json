@@ -1,6 +1,5 @@
 {
   "Edit": [
-    // --- 您最初提供的、现已恢复的条目 ---
     {
       "DisplayName": "Item Volume",
       "ActionType": "TickDial",
@@ -13,7 +12,6 @@
       "Title": "Smart Snap",
       "ActiveColor": "#FF0000"
     },
-    // --- 从 Edit_Auto_Fade.cs 转换 ---
     {
       "DisplayName": "Auto Fade",
       "ActionType": "ToggleButton",
@@ -21,7 +19,6 @@
       "OscAddress": "/Crossfade/Auto Fade",
       "ActiveColor": "#FF0000"
     },
-    // --- 从 Edit_Auto_Freeze.cs 转换 ---
     {
       "DisplayName": "Auto Freeze",
       "ActionType": "TriggerButton",
@@ -29,7 +26,6 @@
       "Text": "Auto",
       "TextColor": "#88E2FF"
     },
-    // --- 从 Edit_Auto_Render.cs 转换 ---
     {
       "DisplayName": "Auto Render",
       "ActionType": "TriggerButton",
@@ -37,7 +33,6 @@
       "Text": "Auto",
       "TextColor": "#88E2FF"
     },
-    // --- 从 Edit_Channel_Split.cs 转换 ---
     {
       "DisplayName": "Channel Split",
       "ActionType": "TriggerButton",
@@ -46,7 +41,6 @@
       "Text": "Split",
       "TextColor": "#88E2FF"
     },
-    // --- 从 Edit_Cross_Fade.cs 转换 ---
     {
       "DisplayName": "Cross Fade",
       "ActionType": "TickDial",
@@ -55,7 +49,6 @@
       "DecreaseOSCAddress": "/Crossfade/Move/Backward",
       "ResetOSCAddress": "/Crossfade/Manager"
     },
-    // --- 从 Edit_Dynamic_Split.cs 转换 ---
     {
       "DisplayName": "Dynamic Split",
       "ActionType": "TriggerButton",
@@ -64,19 +57,16 @@
       "Text": "Split",
       "TextColor": "#88E2FF"
     },
-    // --- 从 Edit_Glue.cs 转换 ---
     {
       "DisplayName": "Glue",
       "ActionType": "TriggerButton",
       "Title": "Glue"
     },
-    // --- 从 Edit_Reverse.cs 转换 ---
     {
       "DisplayName": "Reverse",
       "ActionType": "TriggerButton",
       "Title": "Reverse"
     },
-    // --- 从 Edit_Trim_Split.cs 转换 ---
     {
       "DisplayName": "Trim Split",
       "ActionType": "TriggerButton",
