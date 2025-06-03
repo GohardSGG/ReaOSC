@@ -7,12 +7,7 @@
       "Title": "Track",
       "OscAddress": "Track",
       "Text": "Insert",
-      "TextColor": "#88E2FF",
-      "TextX": 50,
-      "TextY": 55,
-      "TextWidth": 14,
-      "TextHeight": 14,
-      "TextSize": 14
+      "TextColor": "#88E2FF"
     },
     {
       "ActionType": "TriggerButton",
@@ -21,12 +16,7 @@
       "Title": "Aux",
       "OscAddress": "Aux Track",
       "Text": "Insert",
-      "TextColor": "#88E2FF",
-      "TextX": 50,
-      "TextY": 55,
-      "TextWidth": 14,
-      "TextHeight": 14,
-      "TextSize": 14
+      "TextColor": "#88E2FF"
     },
     {
       "ActionType": "TriggerButton",
@@ -35,12 +25,7 @@
       "Title": "Bus",
       "OscAddress": "Bus Track",
       "Text": "Insert",
-      "TextColor": "#88E2FF",
-      "TextX": 50,
-      "TextY": 55,
-      "TextWidth": 14,
-      "TextHeight": 14,
-      "TextSize": 14
+      "TextColor": "#88E2FF"
     },
     {
       "ActionType": "TriggerButton",
@@ -49,12 +34,7 @@
       "Title": "VCA",
       "OscAddress": "VCA Track",
       "Text": "Insert",
-      "TextColor": "#88E2FF",
-      "TextX": 50,
-      "TextY": 55,
-      "TextWidth": 14,
-      "TextHeight": 14,
-      "TextSize": 14
+      "TextColor": "#88E2FF"
     }
   ],
   "Dials": []

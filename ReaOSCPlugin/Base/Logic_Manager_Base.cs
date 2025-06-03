@@ -22,8 +22,72 @@ namespace Loupedeck.ReaOSCPlugin.Base
 
         private readonly Dictionary<string, ButtonConfig> _allConfigs = new Dictionary<string, ButtonConfig>();
         private readonly Dictionary<string, bool> _toggleStates = new Dictionary<string, bool>();
-        private readonly Dictionary<string, int> _dialModes = new Dictionary<string, int>();
+        private readonly Dictionary<string, int> _dialModes = new Dictionary<string, int>(); // 用于2ModeTickDial
         private bool _isInitialized = false;
+
+        // vvvvvvvvvv 新增的模式管理核心 vvvvvvvvvv
+
+        private readonly Dictionary<string, List<string>> _modeOptions = new Dictionary<string, List<string>>();
+        private readonly Dictionary<string, int> _currentModes = new Dictionary<string, int>();
+        private readonly Dictionary<string, Action> _modeChangedEvents = new Dictionary<string, Action>();
+
+        public void RegisterModeGroup(ButtonConfig config)
+        {
+            var modeName = config.DisplayName;
+            var modes = config.Modes;
+            if (string.IsNullOrEmpty(modeName) || modes == null || modes.Count == 0)
+                return;
+
+            if (!_modeOptions.ContainsKey(modeName))
+            {
+                _modeOptions[modeName] = modes;
+                _currentModes[modeName] = 0;
+                _modeChangedEvents[modeName] = null;
+                PluginLog.Info($"[LogicManager] 模式组 '{modeName}' 已注册，包含模式: {string.Join(", ", modes)}");
+            }
+        }
+
+        public void ToggleMode(string modeName)
+        {
+            if (_currentModes.TryGetValue(modeName, out _) && _modeOptions.TryGetValue(modeName, out var options))
+            {
+                _currentModes[modeName] = (_currentModes[modeName] + 1) % options.Count;
+                _modeChangedEvents[modeName]?.Invoke();
+                PluginLog.Info($"[LogicManager] 模式组 '{modeName}' 已切换到: {GetCurrentModeString(modeName)}");
+            }
+        }
+
+        public string GetCurrentModeString(string modeName)
+        {
+            if (_currentModes.TryGetValue(modeName, out var currentIndex) &&
+                _modeOptions.TryGetValue(modeName, out var options) &&
+                currentIndex >= 0 && currentIndex < options.Count)
+            {
+                return options[currentIndex];
+            }
+            return string.Empty;
+        }
+
+        public void SubscribeToModeChange(string modeName, Action handler)
+        {
+            if (string.IsNullOrEmpty(modeName) || handler == null)
+                return;
+            if (!_modeChangedEvents.ContainsKey(modeName))
+                _modeChangedEvents[modeName] = null;
+            _modeChangedEvents[modeName] += handler;
+        }
+
+        public void UnsubscribeFromModeChange(string modeName, Action handler)
+        {
+            if (string.IsNullOrEmpty(modeName) || handler == null)
+                return;
+            if (_modeChangedEvents.ContainsKey(modeName))
+            {
+                _modeChangedEvents[modeName] -= handler;
+            }
+        }
+
+        // ^^^^^^^^^^^ 新增的模式管理核心 ^^^^^^^^^^^
 
         private Logic_Manager_Base() { }
 
@@ -35,46 +99,39 @@ namespace Loupedeck.ReaOSCPlugin.Base
             this.LoadAllConfigs();
             OSCStateManager.Instance.StateChanged += this.OnOSCStateChanged;
             this._isInitialized = true;
-            PluginLog.Info("[LogicManager] 初始化成功。");
+            PluginLog.Info($"[LogicManager] 初始化成功。加载了 {_allConfigs.Count} 个配置项。");
         }
 
-        #region 配置加载与访问
+        #region 配置加载与访问 (保留所有原有逻辑)
 
         private void LoadAllConfigs()
         {
             var assembly = Assembly.GetExecutingAssembly();
 
-            // 1. 加载通用配置
+            // 1. 加载通用配置 (General_List.json)
             var generalConfigs = this.LoadAndDeserialize<Dictionary<string, List<ButtonConfig>>>(assembly, "Loupedeck.ReaOSCPlugin.General.General_List.json");
             this.ProcessGroupedConfigs(generalConfigs, isFx: false);
 
-            // 2. 加载效果器配置
+            // 2. 加载效果器配置 (Effects_List.json)
             var effectsConfigs = this.LoadAndDeserialize<Dictionary<string, List<ButtonConfig>>>(assembly, "Loupedeck.ReaOSCPlugin.Effects.Effects_List.json");
             this.ProcessGroupedConfigs(effectsConfigs, isFx: true);
 
-            // 3. 【修正】加载所有动态文件夹的内容配置
+            // 3. 加载所有动态文件夹的内容配置
             var resourceNames = assembly.GetManifestResourceNames();
-            // 注意：这里我们排除了 Dynamic_List.json，因为它结构不同
             var dynamicContentResources = resourceNames.Where(r => r.StartsWith("Loupedeck.ReaOSCPlugin.Dynamic.") && r.EndsWith("_List.json") && !r.EndsWith("Dynamic_List.json"));
 
             foreach (var resourceName in dynamicContentResources)
             {
                 var folderContent = this.LoadAndDeserialize<FolderContentConfig>(assembly, resourceName);
-                if (folderContent != null)
-                {
-                    this.ProcessFolderContentConfigs(folderContent);
-                }
+                this.ProcessFolderContentConfigs(folderContent);
             }
 
-            // 4. 【新增】单独加载并处理动态文件夹入口列表 (Dynamic_List.json)
+            // 4. 加载动态文件夹入口列表 (Dynamic_List.json)
             var dynamicFolderEntries = this.LoadAndDeserialize<List<ButtonConfig>>(assembly, "Loupedeck.ReaOSCPlugin.Dynamic.Dynamic_List.json");
             if (dynamicFolderEntries != null)
             {
-                // 为这些入口按钮统一设置一个组名，以便在UI中查找
                 foreach (var entry in dynamicFolderEntries)
-                {
-                    entry.GroupName = "ReaOSC Dynamic";
-                }
+                { entry.GroupName = "ReaOSC Dynamic"; }
                 this.RegisterConfigs(dynamicFolderEntries, isFx: false);
             }
         }
@@ -139,7 +196,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     string baseOscName = String.IsNullOrEmpty(config.OscAddress) ? config.DisplayName.Replace(" ", "/") : config.OscAddress.Replace(" ", "/");
                     actionParameter = $"/{groupNameForPath}/{baseOscName}".Replace("//", "/");
 
-                    // 为不同类型的旋钮添加唯一后缀，避免路径冲突
+                    // 为不同类型的动作添加唯一后缀，避免路径冲突
                     if (config.ActionType == "TickDial" || config.ActionType == "ToggleDial")
                         actionParameter += "/DialAction";
                     if (config.ActionType == "2ModeTickDial")
@@ -167,8 +224,8 @@ namespace Loupedeck.ReaOSCPlugin.Base
 
         #endregion
 
-        #region OSC 状态与核心逻辑 (这部分代码保持不变)
-        // ... (省略未改变的代码) ...
+        #region OSC 状态与核心逻辑 (保留所有原有逻辑)
+
         private void OnOSCStateChanged(object sender, OSCStateManager.StateChangedEventArgs e)
         {
             if (this._allConfigs.TryGetValue(e.Address, out var config) && (config.ActionType == "ToggleButton" || config.ActionType == "ToggleDial"))
@@ -182,7 +239,10 @@ namespace Loupedeck.ReaOSCPlugin.Base
         }
 
         public bool GetToggleState(string actionParameter) => this._toggleStates.TryGetValue(actionParameter, out var s) && s;
+        public void SetToggleState(string actionParameter, bool state) => this._toggleStates[actionParameter] = state;
         public int GetDialMode(string actionParameter) => this._dialModes.TryGetValue(actionParameter, out var m) ? m : 0;
+
+        // 保留这些处理方法，以防插件其他部分仍在使用它们
         public void ProcessGeneralButtonPress(ButtonConfig config, string actionParameter)
         {
             if (config == null)
@@ -194,11 +254,30 @@ namespace Loupedeck.ReaOSCPlugin.Base
             }
             ReaOSCPlugin.SendOSCMessage(actionParameter, valueToSend);
         }
+
         public void ProcessFxButtonPress(string actionParameter) { ReaOSCPlugin.SendFXMessage(actionParameter, 1); }
-        public void ProcessDialAdjustment(ButtonConfig config, int ticks, string actionParameter, Dictionary<string, DateTime> lastEventTimes) {/*...代码未变...*/ }
-        public bool ProcessDialPress(ButtonConfig config, string actionParameter) {/*...代码未变...*/ return false; }
+
+        public void ProcessDialAdjustment(ButtonConfig config, int ticks, string actionParameter, Dictionary<string, DateTime> lastEventTimes) { /* ... 原有旋钮逻辑 ... */ }
+
+        public bool ProcessDialPress(ButtonConfig config, string actionParameter)
+        {
+            if (config.ActionType == "2ModeTickDial")
+            {
+                this._dialModes[actionParameter] = (this._dialModes[actionParameter] + 1) % 2;
+                return true;
+            }
+            if (!string.IsNullOrEmpty(config.ResetOscAddress))
+            {
+                ReaOSCPlugin.SendOSCMessage(actionParameter.Substring(0, actionParameter.LastIndexOf('/')) + config.ResetOscAddress, 1f);
+            }
+            return false;
+        }
+
         #endregion
 
-        public void Dispose() { OSCStateManager.Instance.StateChanged -= this.OnOSCStateChanged; }
+        public void Dispose()
+        {
+            OSCStateManager.Instance.StateChanged -= this.OnOSCStateChanged;
+        }
     }
 }

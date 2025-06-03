@@ -212,7 +212,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 if (!String.IsNullOrEmpty(config.Text))
                 {
                     var textColor = String.IsNullOrEmpty(config.TextColor) ? BitmapColor.White : HexToBitmapColor(config.TextColor);
-                    bitmapBuilder.DrawText(text: config.Text, x: config.TextX ?? 35, y: config.TextY ?? 55, width: config.TextWidth ?? 14, height: config.TextHeight ?? 14, color: textColor, fontSize: config.TextSize ?? 14);
+                    bitmapBuilder.DrawText(text: config.Text, x: config.TextX ?? 50, y: config.TextY ?? 55, width: config.TextWidth ?? 14, height: config.TextHeight ?? 14, color: textColor, fontSize: config.TextSize ?? 14);
                 }
                 return bitmapBuilder.ToImage();
             }
@@ -232,7 +232,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 if (!String.IsNullOrEmpty(this._entryConfig.Text))
                 {
                     var textColor = String.IsNullOrEmpty(this._entryConfig.TextColor) ? BitmapColor.White : HexToBitmapColor(this._entryConfig.TextColor);
-                    bitmapBuilder.DrawText(text: this._entryConfig.Text, x: this._entryConfig.TextX ?? 35, y: this._entryConfig.TextY ?? 55, width: this._entryConfig.TextWidth ?? 14, height: this._entryConfig.TextHeight ?? 14, color: textColor, fontSize: this._entryConfig.TextSize ?? 14);
+                    bitmapBuilder.DrawText(text: this._entryConfig.Text, x: this._entryConfig.TextX ?? 50, y: this._entryConfig.TextY ?? 55, width: this._entryConfig.TextWidth ?? 14, height: this._entryConfig.TextHeight ?? 14, color: textColor, fontSize: this._entryConfig.TextSize ?? 14);
                 }
                 return bitmapBuilder.ToImage();
             }

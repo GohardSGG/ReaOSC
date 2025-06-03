@@ -3,168 +3,197 @@ namespace Loupedeck.ReaOSCPlugin.Base
 {
     using System;
     using System.Collections.Generic;
-    using System.Globalization;
-    using System.Linq;
-    using System.Timers;
 
+    // 一个统一的基类，可以处理普通按钮、模式选择按钮和受模式控制的按钮
     public class General_Button_Base : PluginDynamicCommand, IDisposable
     {
-        // 【UI状态回归】瞬时高亮相关的状态和定时器由本类管理
-        private readonly Dictionary<string, bool> _triggerTemporaryActiveStates = new Dictionary<string, bool>();
-        private readonly Dictionary<string, Timer> _triggerResetTimers = new Dictionary<string, Timer>();
+        private readonly Logic_Manager_Base _logicManager = Logic_Manager_Base.Instance;
+        private readonly Dictionary<string, Action> _modeHandlers = new Dictionary<string, Action>();
 
-        public General_Button_Base() : base()
+        // vvvvvvvvvv 【已修正】 vvvvvvvvvv
+        // 错误 CS0426 的修正：将 OSCStateManager.StateChangedEventHandler 替换为正确的 EventHandler<OSCStateManager.StateChangedEventArgs>
+        private readonly Dictionary<string, EventHandler<OSCStateManager.StateChangedEventArgs>> _oscHandlers = new Dictionary<string, EventHandler<OSCStateManager.StateChangedEventArgs>>();
+        // ^^^^^^^^^^^ 【已修正】 ^^^^^^^^^^^
+
+        public General_Button_Base()
         {
-            Logic_Manager_Base.Instance.Initialize();
-
-            foreach (var entry in Logic_Manager_Base.Instance.GetAllConfigs())
+            // 遍历 Logic_Manager 中加载的所有按钮配置
+            foreach (var kvp in this._logicManager.GetAllConfigs())
             {
-                var config = entry.Value;
-                if (config.ActionType == "TriggerButton" || config.ActionType == "ToggleButton")
-                {
-                    this.AddParameter(entry.Key, config.DisplayName, config.GroupName, $"按钮操作: {config.DisplayName}");
+                var actionParameter = kvp.Key;
+                var config = kvp.Value;
 
-                    if (config.ActionType == "TriggerButton")
+                // 只处理本基类应该负责的按钮类型
+                if (config.ActionType != "TriggerButton" && config.ActionType != "ToggleButton" && config.ActionType != "SelectModeButton")
+                {
+                    continue;
+                }
+
+                // 为每个按钮创建参数，这样它们才会出现在Loupedeck的UI中
+                this.AddParameter(actionParameter, config.DisplayName, config.GroupName, config.Description);
+
+                // 根据配置类型，设置不同的逻辑
+                if (config.ActionType == "SelectModeButton")
+                {
+                    // 行为1: 这是一个主管理按钮
+                    this._logicManager.RegisterModeGroup(config);
+
+                    // 创建一个唯一的委托来订阅事件
+                    Action handler = () => this.ActionImageChanged(actionParameter);
+                    this._modeHandlers[actionParameter] = handler;
+                    this._logicManager.SubscribeToModeChange(config.DisplayName, handler);
+                }
+                else if (!string.IsNullOrEmpty(config.ModeName))
+                {
+                    // 行为2: 这是一个受控按钮
+                    Action handler = () => this.ActionImageChanged(actionParameter);
+                    this._modeHandlers[actionParameter] = handler;
+                    this._logicManager.SubscribeToModeChange(config.ModeName, handler);
+
+                    // 如果是ToggleButton，还需要订阅OSC状态反馈
+                    if (config.ActionType == "ToggleButton")
                     {
-                        this._triggerTemporaryActiveStates[entry.Key] = false;
-                        var timer = new Timer(500) { AutoReset = false };
-                        timer.Elapsed += (s, e) => {
-                            this._triggerTemporaryActiveStates[entry.Key] = false;
-                            this.ActionImageChanged(entry.Key);
-                        };
-                        this._triggerResetTimers[entry.Key] = timer;
+                        // vvvvvvvvvv 【已修正】 vvvvvvvvvv
+                        // 同样修正这里的类型声明
+                        EventHandler<OSCStateManager.StateChangedEventArgs> oscHandler = (s, e) => this.OnOscStateChanged(s, e, config, actionParameter);
+                        // ^^^^^^^^^^^ 【已修正】 ^^^^^^^^^^^
+                        this._oscHandlers[actionParameter] = oscHandler;
+                        OSCStateManager.Instance.StateChanged += oscHandler;
                     }
                 }
+                // 行为3: 普通按钮，无需额外设置
             }
-            // 订阅事件，仅用于触发重绘
-            OSCStateManager.Instance.StateChanged += (s, e) => {
-                if (Logic_Manager_Base.Instance.GetConfig(e.Address)?.ActionType == "ToggleButton")
-                {
-                    this.ActionImageChanged(e.Address);
-                }
-            };
+        }
+
+        private void OnOscStateChanged(object sender, OSCStateManager.StateChangedEventArgs e, ButtonConfig config, string actionParameter)
+        {
+            var currentMode = this._logicManager.GetCurrentModeString(config.ModeName);
+            if (string.IsNullOrEmpty(currentMode) || string.IsNullOrEmpty(config.OscAddress))
+                return;
+
+            var expectedAddress = config.OscAddress.Replace("{mode}", currentMode);
+            if (e.Address == expectedAddress)
+            {
+                this._logicManager.SetToggleState(actionParameter, e.Value > 0.5f);
+                this.ActionImageChanged(actionParameter);
+            }
         }
 
         protected override void RunCommand(string actionParameter)
         {
-            var config = Logic_Manager_Base.Instance.GetConfig(actionParameter);
-            if (config == null)
+            if (this._logicManager.GetConfig(actionParameter) is not { } config)
                 return;
 
-            // 调用管理器处理核心逻辑
-            Logic_Manager_Base.Instance.ProcessGeneralButtonPress(config, actionParameter);
-
-            // 处理UI反馈
-            if (config.ActionType == "TriggerButton" && this._triggerResetTimers.TryGetValue(actionParameter, out var timer))
+            // 根据按钮类型执行不同的命令
+            if (config.ActionType == "SelectModeButton")
             {
-                this._triggerTemporaryActiveStates[actionParameter] = true;
-                this.ActionImageChanged(actionParameter);
-                timer.Stop();
-                timer.Start();
+                this._logicManager.ToggleMode(config.DisplayName);
+            }
+            else if (!string.IsNullOrEmpty(config.ModeName))
+            {
+                // 受控按钮
+                var currentMode = this._logicManager.GetCurrentModeString(config.ModeName);
+                if (string.IsNullOrEmpty(currentMode))
+                    return;
+
+                var finalOscAddress = config.OscAddress.Replace("{mode}", currentMode);
+
+                if (config.ActionType == "ToggleButton")
+                {
+                    var currentState = this._logicManager.GetToggleState(actionParameter);
+                    ReaOSCPlugin.SendOSCMessage(finalOscAddress, currentState ? 0f : 1f);
+                    this._logicManager.SetToggleState(actionParameter, !currentState);
+                    this.ActionImageChanged(actionParameter);
+                }
+                else // TriggerButton
+                {
+                    ReaOSCPlugin.SendOSCMessage(finalOscAddress, 1f);
+                }
+            }
+            else
+            {
+                // 普通按钮
+                if (config.ActionType == "ToggleButton")
+                {
+                    var currentState = this._logicManager.GetToggleState(actionParameter);
+                    ReaOSCPlugin.SendOSCMessage(config.OscAddress, currentState ? 0f : 1f);
+                    this._logicManager.SetToggleState(actionParameter, !currentState);
+                    this.ActionImageChanged(actionParameter);
+                }
+                else // TriggerButton
+                {
+                    ReaOSCPlugin.SendOSCMessage(config.OscAddress, 1f);
+                }
             }
         }
 
-        // 【UI代码回归】图像生成逻辑由本类负责
         protected override BitmapImage GetCommandImage(string actionParameter, PluginImageSize imageSize)
         {
-            var config = Logic_Manager_Base.Instance.GetConfig(actionParameter);
-            if (config == null)
-                return base.GetCommandImage(actionParameter, imageSize);
+            if (this._logicManager.GetConfig(actionParameter) is not { } config)
+                return null;
 
             using (var bitmapBuilder = new BitmapBuilder(imageSize))
             {
-                BitmapColor currentBgColor = BitmapColor.Black;
-                BitmapColor currentTitleColor = String.IsNullOrEmpty(config.TitleColor) ? BitmapColor.White : HexToBitmapColor(config.TitleColor);
-                bool iconDrawn = false;
+                var title = config.Title ?? config.DisplayName;
 
-                if (config.ActionType == "TriggerButton")
+                if (config.ActionType == "SelectModeButton")
                 {
-                    var isTempActive = this._triggerTemporaryActiveStates.TryGetValue(actionParameter, out var tempState) && tempState;
-                    currentBgColor = isTempActive && !String.IsNullOrEmpty(config.ActiveColor) ? HexToBitmapColor(config.ActiveColor) : BitmapColor.Black;
+                    // 绘制主管理按钮
+                    var currentModeString = this._logicManager.GetCurrentModeString(config.DisplayName);
+                    var isModeActive = config.Modes?.IndexOf(currentModeString) > 0;
+
+                    var bgColor = isModeActive ? HexToBitmapColor(config.ActiveColor) : BitmapColor.Black;
+                    var titleColor = isModeActive ? HexToBitmapColor(config.TitleColor) : HexToBitmapColor(config.DeactiveTextColor);
+
+                    bitmapBuilder.Clear(bgColor);
+                    bitmapBuilder.DrawText(currentModeString, color: titleColor, fontSize: 23);
                 }
-                else if (config.ActionType == "ToggleButton")
+                else
                 {
-                    var isActive = Logic_Manager_Base.Instance.GetToggleState(actionParameter);
-                    currentBgColor = isActive && !String.IsNullOrEmpty(config.ActiveColor) ? HexToBitmapColor(config.ActiveColor) : BitmapColor.Black;
-                    currentTitleColor = isActive
-                        ? (String.IsNullOrEmpty(config.ActiveTextColor) ? BitmapColor.White : HexToBitmapColor(config.ActiveTextColor))
-                        : (String.IsNullOrEmpty(config.DeactiveTextColor) ? BitmapColor.White : HexToBitmapColor(config.DeactiveTextColor));
+                    // 绘制普通或受控按钮
+                    var isActive = config.ActionType == "ToggleButton" && this._logicManager.GetToggleState(actionParameter);
 
-                    var imageName = String.IsNullOrEmpty(config.ButtonImage) ? $"{config.DisplayName}.png" : config.ButtonImage;
-                    if (!String.IsNullOrEmpty(imageName))
-                    {
-                        try
-                        {
-                            var icon = PluginResources.ReadImage(imageName);
-                            if (icon != null)
-                            {
-                                bitmapBuilder.Clear(currentBgColor);
-                                int iconHeight = 46;
-                                int iconWidth = icon.Width * iconHeight / icon.Height;
-                                int iconX = (bitmapBuilder.Width - iconWidth) / 2;
-                                int iconY = 8;
-                                bitmapBuilder.DrawImage(icon, iconX, iconY, iconWidth, iconHeight);
-                                bitmapBuilder.DrawText(text: config.DisplayName, x: 0, y: bitmapBuilder.Height - 23, width: bitmapBuilder.Width, height: 20, fontSize: 12, color: currentTitleColor);
-                                iconDrawn = true;
-                            }
-                        }
-                        catch { }
-                    }
-                }
+                    var bgColor = isActive ? HexToBitmapColor(config.ActiveColor) : BitmapColor.Black;
+                    var titleColor = isActive ? HexToBitmapColor(config.ActiveTextColor ?? config.TitleColor) : HexToBitmapColor(config.DeactiveTextColor ?? config.TitleColor);
 
-                if (!iconDrawn)
-                {
-                    bitmapBuilder.Clear(currentBgColor);
-                    if (!String.IsNullOrEmpty(config.Title))
+                    bitmapBuilder.Clear(bgColor);
+                    bitmapBuilder.DrawText(title, color: titleColor, fontSize: 21);
+
+                    // 如果是受控按钮，额外绘制模式小字
+                    if (!string.IsNullOrEmpty(config.ModeName))
                     {
-                        bitmapBuilder.DrawText(text: config.Title, fontSize: this.GetAutomaticTitleFontSize(config.Title), color: currentTitleColor);
-                    }
-                    if (!String.IsNullOrEmpty(config.Text))
-                    {
-                        bitmapBuilder.DrawText(text: config.Text, x: config.TextX ?? 50, y: config.TextY ?? 55, width: config.TextWidth ?? 14, height: config.TextHeight ?? 14, color: String.IsNullOrEmpty(config.TextColor) ? BitmapColor.White : HexToBitmapColor(config.TextColor), fontSize: config.TextSize ?? 14);
+                        var currentMode = this._logicManager.GetCurrentModeString(config.ModeName);
+                        bitmapBuilder.DrawText(currentMode, x: 50, y: 55, width: 14, height: 14, fontSize: 14, color: new BitmapColor(136, 226, 255));
                     }
                 }
                 return bitmapBuilder.ToImage();
             }
         }
 
-        #region UI辅助方法
-        private int GetAutomaticTitleFontSize(String title)
-        {
-            if (String.IsNullOrEmpty(title))
-                return 23;
-            var totalLengthWithSpaces = title.Length;
-            int effectiveLength;
-            if (totalLengthWithSpaces <= 8)
-            { effectiveLength = totalLengthWithSpaces; }
-            else
-            { var words = title.Split(' '); effectiveLength = words.Length > 0 ? words.Max(word => word.Length) : 0; if (effectiveLength == 0 && totalLengthWithSpaces > 0) { effectiveLength = totalLengthWithSpaces; } }
-            return effectiveLength switch { 1 => 38, 2 => 33, 3 => 31, 4 => 26, 5 => 23, 6 => 22, 7 => 20, 8 => 18, 9 => 17, 10 => 16, 11 => 13, _ => 18 };
-        }
-
-        private static BitmapColor HexToBitmapColor(string hexColor)
-        {
-            if (String.IsNullOrEmpty(hexColor) || !hexColor.StartsWith("#"))
-                return BitmapColor.White;
-            var hex = hexColor.Substring(1);
-            if (hex.Length != 6)
-                return BitmapColor.White;
-            try
-            {
-                var r = (byte)Int32.Parse(hex.Substring(0, 2), NumberStyles.HexNumber);
-                var g = (byte)Int32.Parse(hex.Substring(2, 2), NumberStyles.HexNumber);
-                var b = (byte)Int32.Parse(hex.Substring(4, 2), NumberStyles.HexNumber);
-                return new BitmapColor(r, g, b);
-            }
-            catch { return BitmapColor.Red; }
-        }
-        #endregion
-
         public void Dispose()
         {
-            foreach (var timer in this._triggerResetTimers.Values)
-                timer.Dispose();
-            this._triggerResetTimers.Clear();
+            // 循环并取消所有事件订阅，防止内存泄漏
+            foreach (var kvp in this._logicManager.GetAllConfigs())
+            {
+                var actionParameter = kvp.Key;
+                var config = kvp.Value;
+
+                if (this._modeHandlers.TryGetValue(actionParameter, out var handler))
+                {
+                    var modeName = config.ActionType == "SelectModeButton" ? config.DisplayName : config.ModeName;
+                    if (!string.IsNullOrEmpty(modeName))
+                    {
+                        this._logicManager.UnsubscribeFromModeChange(modeName, handler);
+                    }
+                }
+                if (this._oscHandlers.TryGetValue(actionParameter, out var oscHandler))
+                {
+                    OSCStateManager.Instance.StateChanged -= oscHandler;
+                }
+            }
         }
+
+        // 颜色转换辅助方法
+        private static BitmapColor HexToBitmapColor(string hex) { if (String.IsNullOrEmpty(hex)) return BitmapColor.White; try { hex = hex.TrimStart('#'); var r = (byte)Int32.Parse(hex.Substring(0, 2), System.Globalization.NumberStyles.HexNumber); var g = (byte)Int32.Parse(hex.Substring(2, 2), System.Globalization.NumberStyles.HexNumber); var b = (byte)Int32.Parse(hex.Substring(4, 2), System.Globalization.NumberStyles.HexNumber); return new BitmapColor(r, g, b); } catch { return BitmapColor.Red; } }
     }
 }

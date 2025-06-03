@@ -1,6 +1,8 @@
 ﻿// 文件名: Base/JSON_Config_Base.cs
 namespace Loupedeck.ReaOSCPlugin.Base
 {
+    using System.Collections.Generic;
+
     using Newtonsoft.Json;
 
     public class ButtonConfig
@@ -9,13 +11,31 @@ namespace Loupedeck.ReaOSCPlugin.Base
         public string DisplayName { get; set; }
         public string Title { get; set; }
         public string TitleColor { get; set; }
-
-        public string ActionType { get; set; }
-        // 可能的值: "TriggerButton", "ToggleButton", "TickDial", "ToggleDial", "2ModeTickDial"
-
-        // 【修正】移除 [JsonIgnore] 特性，这是问题的根本原因。
-        // 现在，GroupName 可以从JSON文件中正确读取。
         public string GroupName { get; set; }
+        public string ActionType { get; set; }
+        // 可能的值: "TriggerButton", "ToggleButton", "TickDial", "ToggleDial", "2ModeTickDial", "SelectModeButton"
+
+        // vvvvvvvvvv 新增的属性 vvvvvvvvvv
+
+        /// <summary>
+        /// 用于在Loupedeck UI中显示动作的详细描述。
+        /// </summary>
+        public string Description { get; set; }
+
+        /// <summary>
+        /// 定义此按钮/旋钮所属的模式组名称。
+        /// 对于受控按钮，此名称指向它所归属的主管理按钮的 DisplayName。
+        /// </summary>
+        public string ModeName { get; set; }
+
+        /// <summary>
+        /// 仅用于 ActionType 为 "SelectModeButton" 的主管理按钮。
+        /// 定义了该模式组拥有的所有模式的列表。
+        /// 例如： ["Track", "Take"] 或 ["FX", "Chain"]
+        /// </summary>
+        public List<string> Modes { get; set; }
+
+        // ^^^^^^^^^^^ 新增的属性 ^^^^^^^^^^^
 
         // === 按钮相关 ===
         public string OscAddress { get; set; }
