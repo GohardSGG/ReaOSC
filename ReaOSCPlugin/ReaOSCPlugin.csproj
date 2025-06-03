@@ -27,6 +27,8 @@
 
   <ItemGroup>
     <None Remove="Base\Effects_List.json" />
+    <None Remove="Dynamic\Add_Track_List.json" />
+    <None Remove="Dynamic\Dynamic_List.json" />
     <None Remove="Effects\Effects_List.json" />
     <None Remove="General\General_List.json" />
     <None Remove="metadata\Toggle_Play.png" />
@@ -35,6 +37,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Dynamic\Add_Track_List.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Dynamic\Dynamic_List.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
     <EmbeddedResource Include="Effects\Effects_List.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </EmbeddedResource>

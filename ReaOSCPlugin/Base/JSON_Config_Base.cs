@@ -11,9 +11,10 @@ namespace Loupedeck.ReaOSCPlugin.Base
         public string TitleColor { get; set; }
 
         public string ActionType { get; set; }
-        // 可能的值: "TriggerButton", "ToggleButton", "TickDial", "ToggleDial", "2ModeTickDial" // 【注释已更新】
+        // 可能的值: "TriggerButton", "ToggleButton", "TickDial", "ToggleDial", "2ModeTickDial"
 
-        [JsonIgnore]
+        // 【修正】移除 [JsonIgnore] 特性，这是问题的根本原因。
+        // 现在，GroupName 可以从JSON文件中正确读取。
         public string GroupName { get; set; }
 
         // === 按钮相关 ===
@@ -26,8 +27,8 @@ namespace Loupedeck.ReaOSCPlugin.Base
         public string ButtonImage { get; set; }
 
         // === 旋钮相关 (TickDial, ToggleDial, 2ModeTickDial) ===
-        public string IncreaseOSCAddress { get; set; } // TickDial/2ModeTickDial模式1 的增加地址
-        public string DecreaseOSCAddress { get; set; } // TickDial/2ModeTickDial模式1 的减少地址
+        public string IncreaseOSCAddress { get; set; }
+        public string DecreaseOSCAddress { get; set; }
         public float? AccelerationFactor { get; set; }
         public string ResetOscAddress { get; set; }
 
@@ -41,7 +42,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
         public int? TextHeight { get; set; }
 
         // =======================================================
-        // === 新增: 2ModeTickDial 特有配置 ===
+        // === 2ModeTickDial 特有配置 ===
         // =======================================================
         public string Title_Mode2 { get; set; }
         public string TitleColor_Mode2 { get; set; }

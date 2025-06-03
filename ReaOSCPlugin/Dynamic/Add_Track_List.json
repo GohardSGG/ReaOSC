@@ -1,0 +1,61 @@
+{
+  "Buttons": [
+    {
+      "ActionType": "TriggerButton",
+      "GroupName": "Insert",
+      "DisplayName": "Insert Track",
+      "Title": "Track",
+      "OscAddress": "Track",
+      "Text": "Insert",
+      "TextColor": "#88E2FF",
+      "TextX": 50,
+      "TextY": 55,
+      "TextWidth": 14,
+      "TextHeight": 14,
+      "TextSize": 14
+    },
+    {
+      "ActionType": "TriggerButton",
+      "GroupName": "Insert",
+      "DisplayName": "Insert Aux Track",
+      "Title": "Aux",
+      "OscAddress": "Aux Track",
+      "Text": "Insert",
+      "TextColor": "#88E2FF",
+      "TextX": 50,
+      "TextY": 55,
+      "TextWidth": 14,
+      "TextHeight": 14,
+      "TextSize": 14
+    },
+    {
+      "ActionType": "TriggerButton",
+      "GroupName": "Insert",
+      "DisplayName": "Insert Bus Track",
+      "Title": "Bus",
+      "OscAddress": "Bus Track",
+      "Text": "Insert",
+      "TextColor": "#88E2FF",
+      "TextX": 50,
+      "TextY": 55,
+      "TextWidth": 14,
+      "TextHeight": 14,
+      "TextSize": 14
+    },
+    {
+      "ActionType": "TriggerButton",
+      "GroupName": "Insert",
+      "DisplayName": "Insert VCA Track",
+      "Title": "VCA",
+      "OscAddress": "VCA Track",
+      "Text": "Insert",
+      "TextColor": "#88E2FF",
+      "TextX": 50,
+      "TextY": 55,
+      "TextWidth": 14,
+      "TextHeight": 14,
+      "TextSize": 14
+    }
+  ],
+  "Dials": []
+}
