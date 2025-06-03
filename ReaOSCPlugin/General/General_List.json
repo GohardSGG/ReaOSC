@@ -295,6 +295,7 @@
       "ActionType": "TriggerButton",
       "GroupName": "Envelope",
       "ModeName": "Envelope Select Mode",
+      "Title": "Volume",
       "OscAddress": "/{mode}/Toggle/Volume"
     },
     {
@@ -302,6 +303,7 @@
       "ActionType": "ToggleButton",
       "GroupName": "Envelope",
       "ModeName": "Envelope Select Mode",
+      "Title": "Pan",
       "OscAddress": "/{mode}/Toggle/Pan",
       "ActiveColor": "#FFFFFF",
       "TitleColor": "#000000",
