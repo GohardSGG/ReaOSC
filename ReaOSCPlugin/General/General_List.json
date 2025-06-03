@@ -386,5 +386,67 @@
       "DecreaseOSCAddress": "/Marker/Scroll_Left",
       "ResetOscAddress": "/Marker/Scroll_Reset"
     }
+  ],
+  "Track": [
+    {
+      "DisplayName": "Solo",
+      "ActionType": "ToggleButton",
+      "Text": "Select",
+      "TextColor": "#88E2FF"
+    },
+    {
+      "DisplayName": "Mute",
+      "ActionType": "ToggleButton",
+      "Text": "Select",
+      "TextColor": "#88E2FF"
+    },
+    {
+      "DisplayName": "Arm",
+      "ActionType": "ToggleButton",
+      "Text": "Record",
+      "TextColor": "#88E2FF"
+    },
+    {
+      "DisplayName": "Monitor",
+      "ActionType": "ToggleButton",
+      "Text": "Record",
+      "TextColor": "#88E2FF"
+    },
+    {
+      "DisplayName": "Track Template",
+      "ActionType": "TriggerButton",
+      "Title": "Template",
+      "Text": "Track",
+      "TextColor": "#88E2FF"
+    },
+    {
+      "DisplayName": "Lock",
+      "ActionType": "ToggleButton",
+      "Text": "Select",
+      "TextColor": "#88E2FF"
+    },
+    {
+      "DisplayName": "Random Color",
+      "ActionType": "TriggerButton",
+      "Title": "Color",
+      "Text": "Random",
+      "TextColor": "#88E2FF"
+    },
+    {
+      "DisplayName": "Group",
+      "ActionType": "ToggleButton",
+      "Text": "Manager",
+      "TextColor": "#88E2FF"
+    },
+    {
+      "DisplayName": "Arm Auto",
+      "ActionType": "ToggleButton"
+    },
+    {
+      "DisplayName": "Disable",
+      "ActionType": "ToggleButton",
+      "Text": "Select",
+      "TextColor": "#88E2FF"
+    }
   ]
 }
