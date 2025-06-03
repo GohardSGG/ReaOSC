@@ -153,11 +153,11 @@ namespace Loupedeck.ReaOSCPlugin
                 var oscData = CreateOSCMessage(address, value);
                 Instance._wsClient.Send(oscData);
 
-                //PluginLog.Info($"发送OSC消息成功: {address} -> {value}");
+                PluginLog.Info($"发送OSC消息成功: {address} -> {value}");
             }
             catch (Exception ex)
             {
-                //PluginLog.Error($"发送消息失败: {ex.Message}");
+                PluginLog.Error($"发送消息失败: {ex.Message}");
                 Instance.ScheduleReconnect();
             }
         }
