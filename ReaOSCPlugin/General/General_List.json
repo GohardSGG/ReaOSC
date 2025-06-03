@@ -280,6 +280,46 @@
       "TitleColor": "#FFFFFF"
     }
   ],
+  "Envelope": [
+    {
+      "DisplayName": "Envelope Select Mode",
+      "ActionType": "SelectModeButton",
+      "GroupName": "Envelope",
+      "Description": "切换包络的 Track ↔ Take 模式",
+      "Modes": [ "Track", "Take" ],
+      "ActiveColor": "#FFFFFF",
+      "TitleColor": "#000000",
+      "DeactiveTextColor": "#FFFFFF"
+    },
+    {
+      "DisplayName": "Volume Toggle",
+      "ActionType": "TriggerButton",
+      "GroupName": "Envelope",
+      "ModeName": "Envelope Select Mode",
+      "OscAddress": "/Envelope/{mode}/Toggle/Volume"
+    },
+    {
+      "DisplayName": "Pan Toggle",
+      "ActionType": "ToggleButton",
+      "GroupName": "Envelope",
+      "ModeName": "Envelope Select Mode",
+      "OscAddress": "/Envelope/{mode}/Toggle/Pan",
+      "ActiveColor": "#FFFFFF",
+      "TitleColor": "#000000",
+      "DeactiveTextColor": "#FFFFFF"
+    },
+    {
+      "DisplayName": "Width/Pitch Toggle",
+      "ActionType": "TriggerButton",
+      "GroupName": "Envelope",
+      "ModeName": "Envelope Select Mode",
+      "Titles": [ "Width", "Pitch" ],
+      "OscAddresses": [
+        "/Envelope/Track/Toggle/Width",
+        "/Envelope/Take/Toggle/Pitch"
+      ]
+    }
+  ],
   "General": [
     {
       "DisplayName": "Play",

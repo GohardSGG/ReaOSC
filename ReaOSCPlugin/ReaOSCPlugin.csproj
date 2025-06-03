@@ -20,8 +20,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="General\FX\**" />
     <Compile Remove="View\**" />
+    <EmbeddedResource Remove="General\FX\**" />
     <EmbeddedResource Remove="View\**" />
+    <None Remove="General\FX\**" />
     <None Remove="View\**" />
   </ItemGroup>
 
@@ -85,10 +88,6 @@
     <EmbeddedResource Include="General\General_List.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </EmbeddedResource>
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="General\FX\" />
   </ItemGroup>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
