@@ -1,0 +1,114 @@
+// 文件路径: Loupedeck.ReaOSCPlugin.Dynamic.Render_List.json
+// 注意：此文件需要设置为“嵌入的资源” (Embedded Resource)
+{
+  "Buttons": [
+    // --- ParameterButtons ---
+    {
+      "ActionType": "ParameterButton",
+      "GroupName": "Render", // GroupName 必须与文件夹本身的 GroupName 一致
+      "DisplayName": "Source Display", // ParameterButton 自身的 DisplayName
+      "Title": "Source", // 按钮上可能固定显示的小标题
+      "ParameterSourceDial": "Source" // 指向下面定义的 "Source" ParameterDial
+    },
+    {
+      "ActionType": "ParameterButton",
+      "GroupName": "Render",
+      "DisplayName": "Format Display",
+      "Title": "Format",
+      "ParameterSourceDial": "Format" // 指向下面定义的 "Format" ParameterDial
+    },
+    // --- ToggleButtons ---
+    {
+      "ActionType": "ToggleButton",
+      "GroupName": "Render",
+      "DisplayName": "TimeCode", // 如果ON，贡献 "TimeCode" (或其OscAddress字段值) 给CombineButton
+      "Title": "TimeCode"
+      // "OscAddress": "TC" // 可选, 如果提供, 则贡献 "TC" 给CombineButton
+    },
+    {
+      "ActionType": "ToggleButton",
+      "GroupName": "Render",
+      "DisplayName": "Tail", // 假设您指的是 "Tail" 而不是 "Tial"
+      "Title": "Tail"
+      // "OscAddress": "RenderTail" // 可选
+    },
+    {
+      "ActionType": "ToggleButton",
+      "GroupName": "Render",
+      "DisplayName": "Tempo",
+      "Title": "Tempo"
+    },
+    {
+      "ActionType": "ToggleButton",
+      "GroupName": "Render",
+      "DisplayName": "Online",
+      "Title": "Online"
+    },
+    {
+      "ActionType": "ToggleButton",
+      "GroupName": "Render",
+      "DisplayName": "Folder", // 指的是渲染到子文件夹吗？
+      "Title": "Folder"
+    },
+    {
+      "ActionType": "ToggleButton",
+      "GroupName": "Render",
+      "DisplayName": "Auto Channel",
+      "Title": "Auto CH" // 较短的标题以适应按钮
+    },
+    // --- CombineButton ---
+    {
+      "ActionType": "CombineButton",
+      "GroupName": "Render",
+      "DisplayName": "Export",
+      "Title": "Export",
+      "ParameterOrder": [ // 定义了 Export 按钮按下时收集参数的顺序和来源 (DisplayName)
+        "Source", // 来自 "Source" ParameterDial
+        "SampleRate", // 来自 "SampleRate" ParameterDial
+        "BitDepth", // 来自 "BitDepth" ParameterDial
+        "Format", // 来自 "Format" ParameterDial
+        "TimeCode", // 来自 "TimeCode" ToggleButton (如果ON)
+        "Tail", // 来自 "Tail" ToggleButton (如果ON)
+        "Tempo", // 来自 "Tempo" ToggleButton (如果ON)
+        "Online", // 来自 "Online" ToggleButton (如果ON)
+        "Folder", // 来自 "Folder" ToggleButton (如果ON)
+        "Auto Channel" // 来自 "Auto Channel" ToggleButton (如果ON)
+      ]
+    }
+  ],
+  "Dials": [
+    // --- ParameterDials ---
+    {
+      "ActionType": "ParameterDial",
+      "GroupName": "Render",
+      "DisplayName": "Source",
+      "Title": "Source", // 如果 ShowParameterInDial = "No" (或未定义)，则显示这个
+      "ShowParameterInDial": "Yes", // 旋钮上显示 Master, Track, 或 Item
+      "Titles": [ "Master", "Track", "Item" ]
+    },
+    {
+      "ActionType": "ParameterDial",
+      "GroupName": "Render",
+      "DisplayName": "Format",
+      "Title": "Format",
+      "ShowParameterInDial": "Yes",
+      "Titles": [ "Wav", "MP3", "ADM" ]
+    },
+    {
+      "ActionType": "ParameterDial",
+      "GroupName": "Render",
+      "DisplayName": "SampleRate",
+      "Title": "Sample Rate",
+      "ShowParameterInDial": "Yes",
+      "Titles": [ "48k", "96k", "192k", "44.1k", "88.2k", "176.4k" ]
+    },
+    {
+      "ActionType": "ParameterDial",
+      "GroupName": "Render",
+      "DisplayName": "BitDepth",
+      "Title": "BitDepth",
+      "ShowParameterInDial": "Yes",
+      "Titles": [ "16I", "24I", "32F", "32I" ]
+    }
+  ]
+}

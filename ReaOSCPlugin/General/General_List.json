@@ -73,9 +73,29 @@
       "Title": "Trim",
       "Text": "Split",
       "TextColor": "#88E2FF"
+    },
+    {
+      "DisplayName": "Nudge Set",
+      "ActionType": "ToggleButton",
+      "Text": "Nudge Set"
+    },
+    {
+      "DisplayName": "Phase Align",
+      "ActionType": "ToggleButton",
+      "Text": "Phase Align"
     }
   ],
   "MIDI": [
+    {
+      "DisplayName": "Quantize",
+      "ActionType": "ToggleButton",
+      "Text": "Quantize"
+    },
+    {
+      "DisplayName": "Humanize",
+      "ActionType": "ToggleButton",
+      "Text": "Humanize"
+    },
     {
       "DisplayName": "Snap",
       "ActionType": "ToggleDial",
@@ -185,6 +205,16 @@
       "Title": "Read",
       "ActiveColor": "#88EBB3",
       "DeactiveTextColor": "#88EBB3"
+    },
+    {
+      "DisplayName": "Show Last Touch",
+      "ActionType": "ToggleButton",
+      "Text": "Last-Touch"
+    },
+    {
+      "DisplayName": "All Env View",
+      "ActionType": "ToggleButton",
+      "Text": "Env View"
     }
   ],
   "FX": [
@@ -338,6 +368,24 @@
       "Title": "Snap",
       "ActiveColor": "#88E2FF",
       "ResetOscAddress": "/Snap/Manager"
+    },
+    {
+      "DisplayName": "Project Setting",
+      "ActionType": "ToggleButton",
+      "ActiveColor": "#FF8F15",
+      "Text": "Project Setting"
+    },
+    {
+      "DisplayName": "New Project",
+      "ActionType": "TriggerButton",
+      "ActiveColor": "#FF8F15",
+      "Text": "New Project"
+    },
+    {
+      "DisplayName": "Beat Tempo",
+      "ActionType": "ToggleButton",
+      "ActiveColor": "#FF8F15",
+      "Text": "Beat Tempo"
     }
   ],
   "Marker": [
@@ -385,6 +433,71 @@
       "IncreaseOSCAddress": "/Marker/Scroll_Right",
       "DecreaseOSCAddress": "/Marker/Scroll_Left",
       "ResetOscAddress": "/Marker/Scroll_Reset"
+    },
+    {
+      "DisplayName": "Mixer",
+      "ActionType": "ToggleButton",
+      "Text": "Mixer"
+    },
+    {
+      "DisplayName": "Mixer",
+      "ActionType": "ToggleButton",
+      "Text": "Mixer"
+    },
+    {
+      "DisplayName": "Mixer",
+      "ActionType": "ToggleButton",
+      "Text": "Mixer"
+    },
+    {
+      "DisplayName": "Big Clock",
+      "ActionType": "ToggleButton",
+      "Text": "Big Clock"
+    },
+    {
+      "DisplayName": "Track Manager",
+      "ActionType": "ToggleButton",
+      "Text": "Track Manager"
+    },
+    {
+      "DisplayName": "Track Wiring",
+      "ActionType": "ToggleButton",
+      "Text": "Track Wiring"
+    },
+    {
+      "DisplayName": "Routing",
+      "ActionType": "ToggleButton",
+      "Text": "Routing"
+    },
+    {
+      "DisplayName": "Video",
+      "ActionType": "ToggleButton",
+      "Text": "Video"
+    },
+    {
+      "DisplayName": "Region Manager",
+      "ActionType": "ToggleButton",
+      "Text": "Region Manager"
+    },
+    {
+      "DisplayName": "Media Explorer",
+      "ActionType": "ToggleButton",
+      "Text": "Media Explorer"
+    },
+    {
+      "DisplayName": "Grouping",
+      "ActionType": "ToggleButton",
+      "Text": "Grouping"
+    },
+    {
+      "DisplayName": "Item Property",
+      "ActionType": "ToggleButton",
+      "Text": "Item Property"
+    },
+    {
+      "DisplayName": "Envelope Manager",
+      "ActionType": "ToggleButton",
+      "Text": "Envelope Manager"
     }
   ],
   "Track": [
