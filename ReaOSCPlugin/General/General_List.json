@@ -438,16 +438,6 @@
       "Text": "Mixer"
     },
     {
-      "DisplayName": "Mixer",
-      "ActionType": "ToggleButton",
-      "Text": "Mixer"
-    },
-    {
-      "DisplayName": "Mixer",
-      "ActionType": "ToggleButton",
-      "Text": "Mixer"
-    },
-    {
       "DisplayName": "Big Clock",
       "ActionType": "ToggleButton",
       "Text": "Big Clock"

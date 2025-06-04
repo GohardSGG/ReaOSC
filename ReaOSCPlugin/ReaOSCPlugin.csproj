@@ -35,9 +35,45 @@
     <None Remove="Dynamic\Render_List.json" />
     <None Remove="Effects\Effects_List.json" />
     <None Remove="General\General_List.json" />
+    <None Remove="metadata\Icon\All Env View.png" />
+    <None Remove="metadata\Icon\All_Env View.png" />
+    <None Remove="metadata\Icon\All_Env_View.png" />
+    <None Remove="metadata\Icon\Beat Tempo.png" />
+    <None Remove="metadata\Icon\Beat_Tempo.png" />
+    <None Remove="metadata\Icon\Big Clock.png" />
+    <None Remove="metadata\Icon\Big_Clock.png" />
+    <None Remove="metadata\Icon\Envelope Manager.png" />
+    <None Remove="metadata\Icon\Envelope_Manager.png" />
+    <None Remove="metadata\Icon\Export.png" />
+    <None Remove="metadata\Icon\Grouping.png" />
+    <None Remove="metadata\Icon\Humanize.png" />
+    <None Remove="metadata\Icon\Item Property.png" />
+    <None Remove="metadata\Icon\Item_Property.png" />
+    <None Remove="metadata\Icon\Media Explorer.png" />
+    <None Remove="metadata\Icon\Media_Explorer.png" />
+    <None Remove="metadata\Icon\Mixer.png" />
+    <None Remove="metadata\Icon\New Project.png" />
+    <None Remove="metadata\Icon\New_Project.png" />
+    <None Remove="metadata\Icon\Nudge Set.png" />
+    <None Remove="metadata\Icon\Nudge_Set.png" />
+    <None Remove="metadata\Icon\Phase Align.png" />
+    <None Remove="metadata\Icon\Phase_Align.png" />
     <None Remove="metadata\Icon\Play.png" />
+    <None Remove="metadata\Icon\Project Setting.png" />
+    <None Remove="metadata\Icon\Project_Setting.png" />
+    <None Remove="metadata\Icon\Quantize.png" />
     <None Remove="metadata\Icon\Record.png" />
+    <None Remove="metadata\Icon\Region Manager.png" />
+    <None Remove="metadata\Icon\Region_Manager.png" />
     <None Remove="metadata\Icon\Repeat.png" />
+    <None Remove="metadata\Icon\Routing.png" />
+    <None Remove="metadata\Icon\Show Last Touch.png" />
+    <None Remove="metadata\Icon\Show_Last Touch.png" />
+    <None Remove="metadata\Icon\Show_Last_Touch.png" />
+    <None Remove="metadata\Icon\Solo.png" />
+    <None Remove="metadata\Icon\Track Wiring.png" />
+    <None Remove="metadata\Icon\Track_Wiring.png" />
+    <None Remove="metadata\Icon\Video.png" />
     <None Remove="metadata\Play.svg" />
     <None Remove="metadata\Record.svg" />
     <None Remove="metadata\Repeat.svg" />
@@ -58,13 +94,76 @@
     <EmbeddedResource Include="Effects\Effects_List.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </EmbeddedResource>
+    <EmbeddedResource Include="metadata\Icon\All_Env_View.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="metadata\Icon\Beat_Tempo.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="metadata\Icon\Big_Clock.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="metadata\Icon\Envelope_Manager.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="metadata\Icon\Export.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="metadata\Icon\Grouping.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="metadata\Icon\Humanize.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="metadata\Icon\Item_Property.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="metadata\Icon\Media_Explorer.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="metadata\Icon\Mixer.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="metadata\Icon\New_Project.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="metadata\Icon\Nudge_Set.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="metadata\Icon\Phase_Align.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
     <EmbeddedResource Include="metadata\Icon\Play.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="metadata\Icon\Project_Setting.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="metadata\Icon\Quantize.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </EmbeddedResource>
     <EmbeddedResource Include="metadata\Icon\Record.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </EmbeddedResource>
+    <EmbeddedResource Include="metadata\Icon\Region_Manager.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
     <EmbeddedResource Include="metadata\Icon\Repeat.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="metadata\Icon\Routing.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="metadata\Icon\Show_Last_Touch.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="metadata\Icon\Solo.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="metadata\Icon\Track_Wiring.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="metadata\Icon\Video.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </EmbeddedResource>
   </ItemGroup>
