@@ -352,15 +352,13 @@
       "DisplayName": "Repeat",
       "ActionType": "ToggleButton",
       "Title": "Repeat",
-      "ActiveColor": "#FF8F15",
-      "ButtonImage": "Toggle_Repeat.png"
+      "ActiveColor": "#FF8F15"
     },
     {
       "DisplayName": "Record",
       "ActionType": "ToggleButton",
       "Title": "Record",
-      "ActiveColor": "#FF0000",
-      "ButtonImage": "Toggle_Record.png"
+      "ActiveColor": "#FF0000"
     },
     {
       "DisplayName": "Snap",

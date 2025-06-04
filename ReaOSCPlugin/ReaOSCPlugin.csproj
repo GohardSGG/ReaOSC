@@ -35,8 +35,13 @@
     <None Remove="Dynamic\Render_List.json" />
     <None Remove="Effects\Effects_List.json" />
     <None Remove="General\General_List.json" />
+    <None Remove="metadata\Icon\Play.png" />
+    <None Remove="metadata\Icon\Record.png" />
+    <None Remove="metadata\Icon\Repeat.png" />
+    <None Remove="metadata\Play.svg" />
+    <None Remove="metadata\Record.svg" />
+    <None Remove="metadata\Repeat.svg" />
     <None Remove="metadata\Toggle_Play.png" />
-    <None Remove="metadata\Toggle_Record.png" />
     <None Remove="metadata\Toggle_Repeat.png" />
   </ItemGroup>
 
@@ -53,9 +58,15 @@
     <EmbeddedResource Include="Effects\Effects_List.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </EmbeddedResource>
-    <EmbeddedResource Include="metadata\Toggle_Play.png" />
-    <EmbeddedResource Include="metadata\Toggle_Record.png" />
-    <EmbeddedResource Include="metadata\Toggle_Repeat.png" />
+    <EmbeddedResource Include="metadata\Icon\Play.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="metadata\Icon\Record.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="metadata\Icon\Repeat.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
   </ItemGroup>
 
   <ItemGroup>
