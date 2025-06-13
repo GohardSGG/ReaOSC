@@ -1,7 +1,7 @@
-// ¡¾×îÖÕÐÞÕý°æ¡¿
-// ÕâÊÇÒ»¸ö¸ü°²È«¡¢¸ü½¡×³µÄ×ÊÔ´¹ÜÀí°ïÖúÀà¡£
-// ºËÐÄ¸Ä¶¯£ºËùÓÐÔÚÕÒ²»µ½ÎÄ¼þÊ±»áÅ×³öÒì³£µÄ·½·¨£¬ÏÖÔÚ¶¼»á°²È«µØ·µ»Ø null£¬ÒÔ·ÀÖ¹²å¼þÒâÍâ±ÀÀ£¡£
-// °æ±¾ÐÞÕý£ºÐÞ¸´ÁË ReadImage ·½·¨ÖÐ BitmapImage.FromResource µÄ²ÎÊýË³Ðò´íÎó¡£
+// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½æ¡¿
+// ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È«ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½×³ï¿½ï¿½ï¿½ï¿½Ô´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½à¡£
+// ï¿½ï¿½ï¿½Ä¸Ä¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò²ï¿½ï¿½ï¿½ï¿½Ä¼ï¿½Ê±ï¿½ï¿½ï¿½×³ï¿½ï¿½ì³£ï¿½Ä·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ú¶ï¿½ï¿½á°²È«ï¿½Ø·ï¿½ï¿½ï¿½ nullï¿½ï¿½ï¿½Ô·ï¿½Ö¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+// ï¿½æ±¾ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Þ¸ï¿½ï¿½ï¿½ ReadImage ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ BitmapImage.FromResource ï¿½Ä²ï¿½ï¿½ï¿½Ë³ï¿½ï¿½ï¿½ï¿½ï¿½
 namespace Loupedeck.ReaOSCPlugin
 {
     using System;
@@ -16,39 +16,44 @@ namespace Loupedeck.ReaOSCPlugin
         private static string[] _allResourceNames;
 
         /// <summary>
-        /// ¡¾±£Áô¡¿³õÊ¼»¯×ÊÔ´¹ÜÀíÆ÷¡£±ØÐëÔÚ²å¼þ¹¹Ôìº¯ÊýÖÐµ÷ÓÃÒ»´Î¡£
+        /// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½Ô´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ú²ï¿½ï¿½ï¿½ï¿½ï¿½ìº¯ï¿½ï¿½ï¿½Ðµï¿½ï¿½ï¿½Ò»ï¿½Î¡ï¿½
         /// </summary>
         public static void Init(Assembly assembly)
         {
             if (_assembly != null)
-                return; // ·ÀÖ¹ÖØ¸´³õÊ¼»¯
+                return; // ï¿½ï¿½Ö¹ï¿½Ø¸ï¿½ï¿½ï¿½Ê¼ï¿½ï¿½
 
             _assembly = assembly ?? throw new ArgumentNullException(nameof(assembly));
             _allResourceNames = _assembly.GetManifestResourceNames();
-            PluginLog.Info($"[PluginResources] ³õÊ¼»¯Íê³É¡£É¨Ãèµ½ {_allResourceNames.Length} ¸öÇ¶Èë×ÊÔ´¡£");
+            PluginLog.Info($"[PluginResources] ï¿½ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½É¡ï¿½É¨ï¿½èµ½ {_allResourceNames.Length} ï¿½ï¿½Ç¶ï¿½ï¿½ï¿½ï¿½Ô´ï¿½ï¿½");
         }
 
         /// <summary>
-        /// ¡¾ÐÞÕý¡¿°²È«µØÔÚËùÓÐÇ¶Èë×ÊÔ´ÖÐ²éÕÒ²¢·µ»ØµÚÒ»¸öÆ¥ÅäÎÄ¼þÃûµÄÍêÕû×ÊÔ´Â·¾¶¡£
+        /// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È«ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç¶ï¿½ï¿½ï¿½ï¿½Ô´ï¿½Ð²ï¿½ï¿½Ò²ï¿½ï¿½ï¿½ï¿½Øµï¿½Ò»ï¿½ï¿½Æ¥ï¿½ï¿½ï¿½Ä¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô´Â·ï¿½ï¿½ï¿½ï¿½
         /// </summary>
-        /// <param name="fileName">Òª²éÕÒµÄÎÄ¼þÃû£¬ÀýÈç "Play.svg"¡£²»Çø·Ö´óÐ¡Ð´¡£</param>
-        /// <returns>Èç¹ûÕÒµ½£¬·µ»Ø×ÊÔ´µÄÍêÕûÃû³Æ£»·ñÔò·µ»Ø null¡£</returns>
+        /// <param name="fileName">Òªï¿½ï¿½ï¿½Òµï¿½ï¿½Ä¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ "Play.svg"ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö´ï¿½Ð¡Ð´ï¿½ï¿½</param>
+        /// <returns>ï¿½ï¿½ï¿½ï¿½Òµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ£ï¿½ï¿½ï¿½ï¿½ò·µ»ï¿½ nullï¿½ï¿½</returns>
         public static String FindFile(String fileName)
         {
             if (string.IsNullOrEmpty(fileName) || _allResourceNames == null)
             {
                 return null;
             }
-            // Ê¹ÓÃ ToLowerInvariant() ½øÐÐ²»Çø·ÖÇøÓòÐÔµÄ¡¢²»Çø·Ö´óÐ¡Ð´µÄÎÈ¶¨±È½Ï
-            var lowerFileName = fileName.ToLowerInvariant();
-            return _allResourceNames.FirstOrDefault(r => r.ToLowerInvariant().EndsWith(lowerFileName));
+
+            // ã€æœ€ç»ˆä¿®å¤ã€‘ä»Ž"æ¨¡ç³Šç»“å°¾åŒ¹é…"å‡çº§ä¸º"ç²¾å‡†æ–‡ä»¶å®šä½"
+            // æ—§çš„é€»è¾‘ r.EndsWith(fileName) ä¼šé”™è¯¯åœ°å°† "Big_Clock.png" åŒ¹é…ç»™ "Lock.png"
+            // æ–°çš„é€»è¾‘é€šè¿‡åŒ¹é… ".fileName" æˆ–å…¨åï¼Œç¡®ä¿æˆ‘ä»¬å®šä½åˆ°çš„æ˜¯ä¸€ä¸ªå®Œæ•´çš„ã€æ­£ç¡®çš„æ–‡ä»¶åã€‚
+            return _allResourceNames.FirstOrDefault(r => 
+                r.Equals(fileName, StringComparison.InvariantCultureIgnoreCase) || 
+                r.EndsWith("." + fileName, StringComparison.InvariantCultureIgnoreCase)
+            );
         }
 
         /// <summary>
-        /// ¡¾±£Áô¡¿¼ìË÷Ö¸¶¨ "ÐéÄâÎÄ¼þ¼Ð" ÄÚËùÓÐÇ¶Èë×ÊÔ´ÎÄ¼þµÄÍêÕûÃû³ÆÁÐ±í¡£
+        /// Ö¸ "Ä¼" Ç¶ï¿½ï¿½ï¿½ï¿½Ô´ï¿½Ä¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð±ï¿½ï¿½ï¿½
         /// </summary>
-        /// <param name="folderName">×ÊÔ´µÄ "ÃüÃû¿Õ¼äÂ·¾¶"£¬ÀýÈç `Loupedeck.ReaOSCPlugin.Assets`</param>
-        /// <returns>°üº¬ËùÓÐÆ¥Åä×ÊÔ´ÍêÕûÃû³ÆµÄ×Ö·û´®Êý×é£»Èç¹ûÕÒ²»µ½ÔòÎª¿ÕÊý×é¡£</returns>
+        /// <param name="folderName">ï¿½ï¿½Ô´ï¿½ï¿½ "ï¿½ï¿½ï¿½ï¿½ï¿½Õ¼ï¿½Â·ï¿½ï¿½"ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ `Loupedeck.ReaOSCPlugin.Assets`</param>
+        /// <returns>ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ¥ï¿½ï¿½ï¿½ï¿½Ô´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æµï¿½ï¿½Ö·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½é£»ï¿½ï¿½ï¿½ï¿½Ò²ï¿½ï¿½ï¿½ï¿½ï¿½Îªï¿½ï¿½ï¿½ï¿½ï¿½é¡£</returns>
         public static String[] GetFilesInFolder(String folderName)
         {
             if (string.IsNullOrEmpty(folderName) || _allResourceNames == null)
@@ -59,10 +64,10 @@ namespace Loupedeck.ReaOSCPlugin
         }
 
         /// <summary>
-        /// ¡¾±£Áô¡¿Ê¹ÓÃÕýÔò±í´ïÊ½²éÕÒËùÓÐÆ¥ÅäµÄ×ÊÔ´ÎÄ¼þ¡£
+        /// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ¥ï¿½ï¿½ï¿½ï¿½ï¿½Ô´ï¿½Ä¼ï¿½ï¿½ï¿½
         /// </summary>
-        /// <param name="regexPattern">ÕýÔò±í´ïÊ½×Ö·û´®¡£</param>
-        /// <returns>°üº¬ËùÓÐÆ¥Åä×ÊÔ´ÍêÕûÃû³ÆµÄ×Ö·û´®Êý×é£»Èç¹ûÕÒ²»µ½ÔòÎª¿ÕÊý×é¡£</returns>
+        /// <param name="regexPattern">ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê½ï¿½Ö·ï¿½ï¿½ï¿½ï¿½ï¿½</param>
+        /// <returns>ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ¥ï¿½ï¿½ï¿½ï¿½Ô´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æµï¿½ï¿½Ö·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½é£»ï¿½ï¿½ï¿½ï¿½Ò²ï¿½ï¿½ï¿½ï¿½ï¿½Îªï¿½ï¿½ï¿½ï¿½ï¿½é¡£</returns>
         public static String[] FindFiles(String regexPattern)
         {
             if (string.IsNullOrEmpty(regexPattern) || _allResourceNames == null)
@@ -74,10 +79,10 @@ namespace Loupedeck.ReaOSCPlugin
         }
 
         /// <summary>
-        /// ¡¾ÐÞÕý¡¿°²È«µØ»ñÈ¡Ö¸¶¨Ç¶Èë×ÊÔ´µÄÔ­Ê¼Êý¾ÝÁ÷¡£
+        /// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È«ï¿½Ø»ï¿½È¡Ö¸ï¿½ï¿½Ç¶ï¿½ï¿½ï¿½ï¿½Ô´ï¿½ï¿½Ô­Ê¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         /// </summary>
-        /// <param name="fileName">Òª²éÕÒµÄ×ÊÔ´ÎÄ¼þÃû¡£</param>
-        /// <returns>Ò»¸ö Stream ¶ÔÏó£»Èç¹ûÕÒ²»µ½ÎÄ¼þÔò·µ»Ø null¡£</returns>
+        /// <param name="fileName">Òªï¿½ï¿½ï¿½Òµï¿½ï¿½ï¿½Ô´ï¿½Ä¼ï¿½ï¿½ï¿½ï¿½ï¿½</param>
+        /// <returns>Ò»ï¿½ï¿½ Stream ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò²ï¿½ï¿½ï¿½ï¿½Ä¼ï¿½ï¿½ò·µ»ï¿½ nullï¿½ï¿½</returns>
         public static Stream GetStream(String fileName)
         {
             var resourcePath = FindFile(fileName);
@@ -85,10 +90,10 @@ namespace Loupedeck.ReaOSCPlugin
         }
 
         /// <summary>
-        /// ¡¾ÐÞÕý¡¿°²È«µØ¶ÁÈ¡Ö¸¶¨µÄÇ¶ÈëÊ½ÎÄ±¾ÎÄ¼þ¡£
+        /// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È«ï¿½Ø¶ï¿½È¡Ö¸ï¿½ï¿½ï¿½ï¿½Ç¶ï¿½ï¿½Ê½ï¿½Ä±ï¿½ï¿½Ä¼ï¿½ï¿½ï¿½
         /// </summary>
-        /// <param name="fileName">Òª¶ÁÈ¡µÄÎÄ±¾ÎÄ¼þÃû¡£</param>
-        /// <returns>°üº¬ÎÄ¼þËùÓÐÎÄ±¾ÄÚÈÝµÄ×Ö·û´®£»Èç¹ûÕÒ²»µ½ÎÄ¼þÔò·µ»Ø null¡£</returns>
+        /// <param name="fileName">Òªï¿½ï¿½È¡ï¿½ï¿½ï¿½Ä±ï¿½ï¿½Ä¼ï¿½ï¿½ï¿½ï¿½ï¿½</param>
+        /// <returns>ï¿½ï¿½ï¿½ï¿½ï¿½Ä¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä±ï¿½ï¿½ï¿½ï¿½Ýµï¿½ï¿½Ö·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò²ï¿½ï¿½ï¿½ï¿½Ä¼ï¿½ï¿½ò·µ»ï¿½ nullï¿½ï¿½</returns>
         public static String ReadTextFile(String fileName)
         {
             using (var stream = GetStream(fileName))
@@ -105,10 +110,10 @@ namespace Loupedeck.ReaOSCPlugin
         }
 
         /// <summary>
-        /// ¡¾ÐÞÕý¡¿°²È«µØ¶ÁÈ¡Ö¸¶¨µÄÇ¶ÈëÊ½¶þ½øÖÆÎÄ¼þ¡£
+        /// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È«ï¿½Ø¶ï¿½È¡Ö¸ï¿½ï¿½ï¿½ï¿½Ç¶ï¿½ï¿½Ê½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¼ï¿½ï¿½ï¿½
         /// </summary>
-        /// <param name="fileName">Òª¶ÁÈ¡µÄ¶þ½øÖÆÎÄ¼þÃû¡£</param>
-        /// <returns>°üº¬ÎÄ¼þËùÓÐ¶þ½øÖÆÊý¾ÝµÄ×Ö½ÚÊý×é£»Èç¹ûÕÒ²»µ½ÎÄ¼þÔò·µ»Ø null¡£</returns>
+        /// <param name="fileName">Òªï¿½ï¿½È¡ï¿½Ä¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¼ï¿½ï¿½ï¿½ï¿½ï¿½</param>
+        /// <returns>ï¿½ï¿½ï¿½ï¿½ï¿½Ä¼ï¿½ï¿½ï¿½ï¿½Ð¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ýµï¿½ï¿½Ö½ï¿½ï¿½ï¿½ï¿½é£»ï¿½ï¿½ï¿½ï¿½Ò²ï¿½ï¿½ï¿½ï¿½Ä¼ï¿½ï¿½ò·µ»ï¿½ nullï¿½ï¿½</returns>
         public static Byte[] ReadBinaryFile(String fileName)
         {
             using (var stream = GetStream(fileName))
@@ -126,10 +131,10 @@ namespace Loupedeck.ReaOSCPlugin
         }
 
         /// <summary>
-        /// ¡¾ÐÞÕý¡¿°²È«µØ¶ÁÈ¡Í¼ÏñÎÄ¼þ£¬²¢×Ô¶¯´¦Àí SVG ºÍ PNG¡£´Ë°æ±¾ÒÑÐÞ¸´²ÎÊýË³ÐòÎÊÌâ¡£
+        /// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È«ï¿½Ø¶ï¿½È¡Í¼ï¿½ï¿½ï¿½Ä¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô¶ï¿½ï¿½ï¿½ï¿½ï¿½ SVG ï¿½ï¿½ PNGï¿½ï¿½ï¿½Ë°æ±¾ï¿½ï¿½ï¿½Þ¸ï¿½ï¿½ï¿½ï¿½ï¿½Ë³ï¿½ï¿½ï¿½ï¿½ï¿½â¡£
         /// </summary>
-        /// <param name="fileName">Òª¶ÁÈ¡µÄÍ¼ÏñÎÄ¼þÃû¡£</param>
-        /// <returns>Ò»¸ö BitmapImage ¶ÔÏó£»Èç¹ûÕÒ²»µ½»ò¼ÓÔØÊ§°Ü£¬Ôò·µ»Ø null¡£</returns>
+        /// <param name="fileName">Òªï¿½ï¿½È¡ï¿½ï¿½Í¼ï¿½ï¿½ï¿½Ä¼ï¿½ï¿½ï¿½ï¿½ï¿½</param>
+        /// <returns>Ò»ï¿½ï¿½ BitmapImage ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò²ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê§ï¿½Ü£ï¿½ï¿½ò·µ»ï¿½ nullï¿½ï¿½</returns>
         public static BitmapImage ReadImage(string fileName)
         {
             try
@@ -137,33 +142,33 @@ namespace Loupedeck.ReaOSCPlugin
                 var resourcePath = FindFile(fileName);
                 if (string.IsNullOrEmpty(resourcePath))
                 {
-                    return null; // ÕÒ²»µ½ÎÄ¼þ£¬°²È«·µ»Ø null
+                    return null; // ï¿½Ò²ï¿½ï¿½ï¿½ï¿½Ä¼ï¿½ï¿½ï¿½ï¿½ï¿½È«ï¿½ï¿½ï¿½ï¿½ null
                 }
 
                 if (Path.GetExtension(resourcePath).ToLowerInvariant() == ".svg")
                 {
-                    // ¡¾ÐÞÕý¡¿ÒÑ½«²ÎÊýË³Ðò¸üÕýÎª (assembly, resourcePath)
+                    // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ñ½ï¿½ï¿½ï¿½ï¿½ï¿½Ë³ï¿½ï¿½ï¿½ï¿½ï¿½Îª (assembly, resourcePath)
                     return BitmapImage.FromResource(_assembly, resourcePath);
                 }
                 else
                 {
-                    // ¶ÔÓÚPNGµÈÎ»Í¼£¬Loupedeck SDK µÄ ReadImage À©Õ¹·½·¨¸üÖ±½Ó
+                    // ï¿½ï¿½ï¿½ï¿½PNGï¿½ï¿½Î»Í¼ï¿½ï¿½Loupedeck SDK ï¿½ï¿½ ReadImage ï¿½ï¿½Õ¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö±ï¿½ï¿½
                     return EmbeddedResources.ReadImage(resourcePath);
                 }
             }
             catch (Exception ex)
             {
-                PluginLog.Error(ex, $"[PluginResources] ´ÓÇ¶Èë×ÊÔ´¼ÓÔØÍ¼Ïñ '{fileName}' Ê±·¢Éú´íÎó¡£");
+                PluginLog.Error(ex, $"[PluginResources] ï¿½ï¿½Ç¶ï¿½ï¿½ï¿½ï¿½Ô´ï¿½ï¿½ï¿½ï¿½Í¼ï¿½ï¿½ '{fileName}' Ê±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½");
                 return null;
             }
         }
 
         /// <summary>
-        /// ¡¾ÐÞÕý¡¿°²È«µØ½«Ò»¸öÇ¶ÈëÊ½×ÊÔ´ÌáÈ¡µ½ÓÃ»§µÄÓ²ÅÌÉÏ¡£
+        /// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È«ï¿½Ø½ï¿½Ò»ï¿½ï¿½Ç¶ï¿½ï¿½Ê½ï¿½ï¿½Ô´ï¿½ï¿½È¡ï¿½ï¿½ï¿½Ã»ï¿½ï¿½ï¿½Ó²ï¿½ï¿½ï¿½Ï¡ï¿½
         /// </summary>
-        /// <param name="fileName">ÒªÌáÈ¡µÄÇ¶Èë×ÊÔ´µÄÎÄ¼þÃû¡£</param>
-        /// <param name="filePathName">Òª±£´æÔÚÓ²ÅÌÉÏµÄÍêÕûÂ·¾¶ºÍÎÄ¼þÃû¡£</param>
-        /// <returns>Èç¹ûÌáÈ¡³É¹¦·µ»Ø true£»Èç¹ûÔ´ÎÄ¼þÕÒ²»µ½»òÐ´ÈëÊ§°ÜÔò·µ»Ø false¡£</returns>
+        /// <param name="fileName">Òªï¿½ï¿½È¡ï¿½ï¿½Ç¶ï¿½ï¿½ï¿½ï¿½Ô´ï¿½ï¿½ï¿½Ä¼ï¿½ï¿½ï¿½ï¿½ï¿½</param>
+        /// <param name="filePathName">Òªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó²ï¿½ï¿½ï¿½Ïµï¿½ï¿½ï¿½ï¿½ï¿½Â·ï¿½ï¿½ï¿½ï¿½ï¿½Ä¼ï¿½ï¿½ï¿½ï¿½ï¿½</param>
+        /// <returns>ï¿½ï¿½ï¿½ï¿½ï¿½È¡ï¿½É¹ï¿½ï¿½ï¿½ï¿½ï¿½ trueï¿½ï¿½ï¿½ï¿½ï¿½Ô´ï¿½Ä¼ï¿½ï¿½Ò²ï¿½ï¿½ï¿½ï¿½ï¿½Ð´ï¿½ï¿½Ê§ï¿½ï¿½ï¿½ò·µ»ï¿½ falseï¿½ï¿½</returns>
         public static bool ExtractFile(String fileName, String filePathName)
         {
             try
@@ -172,7 +177,7 @@ namespace Loupedeck.ReaOSCPlugin
                 {
                     if (stream == null)
                     {
-                        PluginLog.Warning($"[PluginResources] ÎÞ·¨ÌáÈ¡ÎÄ¼þ£¬ÒòÎªÔ´×ÊÔ´ '{fileName}' Î´ÕÒµ½¡£");
+                        PluginLog.Warning($"[PluginResources] ï¿½Þ·ï¿½ï¿½ï¿½È¡ï¿½Ä¼ï¿½ï¿½ï¿½ï¿½ï¿½ÎªÔ´ï¿½ï¿½Ô´ '{fileName}' Î´ï¿½Òµï¿½ï¿½ï¿½");
                         return false;
                     }
                     using (var fileStream = File.Create(filePathName))
@@ -184,7 +189,7 @@ namespace Loupedeck.ReaOSCPlugin
             }
             catch (Exception ex)
             {
-                PluginLog.Error(ex, $"[PluginResources] ÌáÈ¡×ÊÔ´ '{fileName}' µ½ '{filePathName}' Ê±Ê§°Ü¡£");
+                PluginLog.Error(ex, $"[PluginResources] ï¿½ï¿½È¡ï¿½ï¿½Ô´ '{fileName}' ï¿½ï¿½ '{filePathName}' Ê±Ê§ï¿½Ü¡ï¿½");
                 return false;
             }
         }

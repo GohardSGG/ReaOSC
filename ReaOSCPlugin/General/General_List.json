@@ -238,24 +238,23 @@
       "Text": "Add-Fx",
       "TextColor": "#88E2FF"
     },
-    // 这是主管理按钮 (控制器)
     {
       "DisplayName": "FX/Chain Select",
       "ActionType": "SelectModeButton",
       "GroupName": "FX",
       "Description": "切换FX Mode ↔ Chain Mode",
-      "Modes": [ "FX", "Chain" ], // 定义了它拥有的两种模式
-      "ActiveColor": "#FFFFFF", // 对应 Chain 模式的背景色
-      "TitleColor": "#000000", // 对应 Chain 模式的文字颜色
-      "DeactiveTextColor": "#FFFFFF" // 对应 FX 模式的文字颜色
+      "Modes": [ "FX", "Chain" ], 
+      "ActiveColor": "#FFFFFF", 
+      "TitleColor": "#000000", 
+      "DeactiveTextColor": "#FFFFFF" 
     },
-    // 以下是受控按钮
+
     {
       "DisplayName": "Bypass",
       "ActionType": "ToggleButton",
       "GroupName": "FX",
-      "ModeName": "FX/Chain Select", // 声明它受谁控制
-      "OscAddress": "/{mode}/Bypass", // 使用 {mode} 占位符
+      "ModeName": "FX/Chain Select",
+      "OscAddress": "/{mode}/Bypass", 
       "ActiveColor": "#FFFFFF",
       "TitleColor": "#000000",
       "DeactiveTextColor": "#FFFFFF"
@@ -292,8 +291,7 @@
     },
     {
       "DisplayName": "Copy",
-      "ActionType": "TriggerButton", // 这是一个触发按钮，不是开关
-      "GroupName": "FX",
+      "ActionType": "TriggerButton",
       "ModeName": "FX/Chain Select",
       "OscAddress": "/{mode}/Copy",
       "TitleColor": "#FFFFFF"

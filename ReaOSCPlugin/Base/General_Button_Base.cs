@@ -228,149 +228,139 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 return base.GetCommandImage(actionParameter, imageSize);
             }
 
-            // 【基于您上传的文件】确定 baseImageName
-            string baseImageName = !string.IsNullOrEmpty(config.ButtonImage)
-                ? Path.GetFileNameWithoutExtension(config.ButtonImage) // 如果 ButtonImage 是 "Play.png", 这里得到 "Play"
-                : config.DisplayName?.Replace(" ", "_"); // 添加了对 DisplayName 为 null 的检查
-
-            BitmapImage icon = null;
-
-            if (!String.IsNullOrEmpty(baseImageName))
+            try
             {
-                // 【修改】只尝试加载 PNG 文件。文件名是 baseImageName + ".png"
-                // PluginResources.ReadImage 接收的是文件名，它内部会构建完整资源路径
-                string pngFileNameOnly = $"{baseImageName}.png";
-                PluginLog.Info($"[GetCommandImage-PNGOnly] Attempting to load PNG with filename: '{pngFileNameOnly}' for action '{actionParameter}'.");
-                try
+                // 【最终修复方案】 整合"精准匹配"逻辑与完整的UI绘制逻辑
+
+                // 1. 优先使用在JSON中明确指定的 ButtonImage
+                string imagePathToLoad = !string.IsNullOrEmpty(config.ButtonImage) ? config.ButtonImage : null;
+
+                // 2. 如果没有指定，则根据 DisplayName 推断，但必须进行严格匹配检查
+                if (string.IsNullOrEmpty(imagePathToLoad))
                 {
-                    icon = PluginResources.ReadImage(pngFileNameOnly); // 使用您项目中的 PluginResources
-                    if (icon == null)
+                    var actionNameFromParam = actionParameter.Split('/').LastOrDefault()?.Replace("_", " ");
+                    if (!string.IsNullOrEmpty(actionNameFromParam) && actionNameFromParam.Equals(config.DisplayName, StringComparison.OrdinalIgnoreCase))
                     {
-                        PluginLog.Warning($"[GetCommandImage-PNGOnly] PluginResources.ReadImage returned null for PNG '{pngFileNameOnly}'. Resource likely not found or empty.");
-                    }
-                    else
-                    {
-                        PluginLog.Info($"[GetCommandImage-PNGOnly] PNG '{pngFileNameOnly}' loaded successfully via PluginResources.");
+                        imagePathToLoad = $"{config.DisplayName.Replace(" ", "_")}.png";
                     }
                 }
-                catch (Exception ex)
+
+                BitmapImage icon = null;
+                if (!string.IsNullOrEmpty(imagePathToLoad))
                 {
-                    PluginLog.Error(ex, $"[GetCommandImage-PNGOnly] Exception during PluginResources.ReadImage for PNG '{pngFileNameOnly}'.");
-                    icon = null;
+                    try
+                    {
+                        icon = PluginResources.ReadImage(imagePathToLoad);
+                    }
+                    catch (Exception ex)
+                    {
+                        PluginLog.Error(ex, $"[GetCommandImage] 加载图标 '{imagePathToLoad}' 失败 for action '{actionParameter}'.");
+                        icon = null;
+                    }
                 }
-            }
-            else
-            {
-                PluginLog.Warning($"[GetCommandImage-PNGOnly] baseImageName is empty for action '{actionParameter}'. No icon will be loaded.");
-            }
 
-            // 【基于您上传的文件】使用 BitmapBuilder 创建最终图像
-            using (var bitmapBuilder = new BitmapBuilder(imageSize))
-            {
-                // 【基于您上传的文件】颜色和状态逻辑
-                BitmapColor currentBgColor = BitmapColor.Black;
-                BitmapColor finalTitleColor = String.IsNullOrEmpty(config.TitleColor) ? BitmapColor.White : HexToBitmapColor(config.TitleColor);
-                bool iconDrawnForToggleButton = false; // 用于ToggleButton的特殊标记，因为它的icon绘制在颜色判断之后
-
-                if (config.ActionType == "SelectModeButton")
+                // --- 恢复完整的UI绘制逻辑 ---
+                using (var bitmapBuilder = new BitmapBuilder(imageSize))
                 {
-                    var currentModeString = this._logicManager.GetCurrentModeString(config.DisplayName);
-                    bool isModeConsideredActive = config.Modes?.IndexOf(currentModeString) > 0;
+                    // 颜色和状态逻辑
+                    BitmapColor currentBgColor = BitmapColor.Black;
+                    BitmapColor finalTitleColor = String.IsNullOrEmpty(config.TitleColor) ? BitmapColor.White : HexToBitmapColor(config.TitleColor);
+                    bool iconDrawnForToggleButton = false; 
 
-                    currentBgColor = isModeConsideredActive && !String.IsNullOrEmpty(config.ActiveColor) ? HexToBitmapColor(config.ActiveColor) : BitmapColor.Black;
-                    finalTitleColor = isModeConsideredActive && !String.IsNullOrEmpty(config.TitleColor)
-                        ? HexToBitmapColor(config.TitleColor)
-                        : (String.IsNullOrEmpty(config.DeactiveTextColor) ? BitmapColor.White : HexToBitmapColor(config.DeactiveTextColor));
+                    if (config.ActionType == "SelectModeButton")
+                    {
+                        var currentModeString = this._logicManager.GetCurrentModeString(config.DisplayName);
+                        bool isModeConsideredActive = config.Modes?.IndexOf(currentModeString) > 0;
+
+                        currentBgColor = isModeConsideredActive && !String.IsNullOrEmpty(config.ActiveColor) ? HexToBitmapColor(config.ActiveColor) : BitmapColor.Black;
+                        finalTitleColor = isModeConsideredActive && !String.IsNullOrEmpty(config.TitleColor)
+                            ? HexToBitmapColor(config.TitleColor)
+                            : (String.IsNullOrEmpty(config.DeactiveTextColor) ? BitmapColor.White : HexToBitmapColor(config.DeactiveTextColor));
+                        bitmapBuilder.Clear(currentBgColor);
+                        bitmapBuilder.DrawText(currentModeString ?? config.Modes?.FirstOrDefault() ?? config.DisplayName, color: finalTitleColor, fontSize: 23);
+                        return bitmapBuilder.ToImage(); 
+                    }
+                    else if (config.ActionType == "TriggerButton")
+                    {
+                        var isTempActive = this._triggerTemporaryActiveStates.TryGetValue(actionParameter, out var tempState) && tempState;
+                        currentBgColor = isTempActive && !String.IsNullOrEmpty(config.ActiveColor) ? HexToBitmapColor(config.ActiveColor) : BitmapColor.Black;
+                    }
+                    else if (config.ActionType == "ToggleButton")
+                    {
+                        var isActive = this._logicManager.GetToggleState(actionParameter);
+                        currentBgColor = isActive && !String.IsNullOrEmpty(config.ActiveColor) ? HexToBitmapColor(config.ActiveColor) : BitmapColor.Black;
+                        finalTitleColor = isActive
+                            ? (String.IsNullOrEmpty(config.ActiveTextColor) ? BitmapColor.White : HexToBitmapColor(config.ActiveTextColor))
+                            : (String.IsNullOrEmpty(config.DeactiveTextColor) ? BitmapColor.White : HexToBitmapColor(config.DeactiveTextColor));
+                    }
+
                     bitmapBuilder.Clear(currentBgColor);
-                    bitmapBuilder.DrawText(currentModeString ?? config.Modes?.FirstOrDefault() ?? config.DisplayName, color: finalTitleColor, fontSize: 23);
-                    return bitmapBuilder.ToImage(); // SelectModeButton 直接返回
-                }
-                // 其他按钮类型的颜色处理 (TriggerButton, ToggleButton)
-                else if (config.ActionType == "TriggerButton")
-                {
-                    var isTempActive = this._triggerTemporaryActiveStates.TryGetValue(actionParameter, out var tempState) && tempState;
-                    currentBgColor = isTempActive && !String.IsNullOrEmpty(config.ActiveColor) ? HexToBitmapColor(config.ActiveColor) : BitmapColor.Black;
-                    // finalTitleColor 保持 config.TitleColor 或默认白色
-                }
-                else if (config.ActionType == "ToggleButton")
-                {
-                    var isActive = this._logicManager.GetToggleState(actionParameter);
-                    currentBgColor = isActive && !String.IsNullOrEmpty(config.ActiveColor) ? HexToBitmapColor(config.ActiveColor) : BitmapColor.Black;
-                    finalTitleColor = isActive
-                        ? (String.IsNullOrEmpty(config.ActiveTextColor) ? BitmapColor.White : HexToBitmapColor(config.ActiveTextColor))
-                        : (String.IsNullOrEmpty(config.DeactiveTextColor) ? BitmapColor.White : HexToBitmapColor(config.DeactiveTextColor));
-                }
 
-                // 统一绘制背景
-                bitmapBuilder.Clear(currentBgColor);
-
-                if (icon != null)
-                {
-                    // 【修正】增加对 icon.Height 为 0 的保护
-                    int iconHeight = 46;
-                    int iconWidth = (icon.Height > 0) ? (icon.Width * iconHeight / icon.Height) : icon.Width; // 如果高度为0，至少使用原始宽度
-                    iconWidth = Math.Max(1, iconWidth); // 确保宽度至少为1，防止后续计算问题
-                    iconHeight = (icon.Width > 0 && iconWidth == icon.Width) ? icon.Height : iconHeight; // 如果宽度没变（因为高度为0），则高度也用原始的
-
-                    int iconX = (bitmapBuilder.Width - iconWidth) / 2;
-                    int iconY = 8;
-                    bitmapBuilder.DrawImage(icon, iconX, iconY, iconWidth, iconHeight);
-                    // 在图标下方绘制 DisplayName 作为辅助文本
-                    bitmapBuilder.DrawText(text: config.DisplayName, x: 0, y: bitmapBuilder.Height - 23, width: bitmapBuilder.Width, height: 20, fontSize: 12, color: finalTitleColor);
-                    if (config.ActionType == "ToggleButton")
-                        iconDrawnForToggleButton = true; // 标记ToggleButton的图标已绘制
-                }
-
-                // 如果是 ToggleButton 且图标未绘制，或者不是 ToggleButton (意味着总是要尝试绘制标题和次要文本)
-                if ((config.ActionType == "ToggleButton" && !iconDrawnForToggleButton) || config.ActionType != "ToggleButton")
-                {
-                    var titleToDraw = config.Title ?? config.DisplayName;
-
-                    // 处理受模式控制按钮的标题 (仅当图标未绘制时，这段逻辑才有意义，否则会被图标下的 DisplayName 覆盖部分)
-                    // 但 SelectModeButton 已提前返回，所以这里主要影响那些没有图标的、受模式控制的 Toggle/Trigger 按钮
-                    if (!string.IsNullOrEmpty(config.ModeName))
+                    if (icon != null)
                     {
-                        var modeIndex = this._logicManager.GetCurrentModeIndex(config.ModeName);
-                        if (config.Titles?.Count > modeIndex && modeIndex != -1 && !string.IsNullOrEmpty(config.Titles[modeIndex]))
-                        { titleToDraw = config.Titles[modeIndex]; }
+                        int iconHeight = 46;
+                        int iconWidth = (icon.Height > 0) ? (icon.Width * iconHeight / icon.Height) : icon.Width;
+                        iconWidth = Math.Max(1, iconWidth);
+                        iconHeight = (icon.Width > 0 && iconWidth == icon.Width) ? icon.Height : iconHeight;
+
+                        int iconX = (bitmapBuilder.Width - iconWidth) / 2;
+                        int iconY = 8;
+                        bitmapBuilder.DrawImage(icon, iconX, iconY, iconWidth, iconHeight);
+                        
+                        bitmapBuilder.DrawText(text: config.DisplayName, x: 0, y: bitmapBuilder.Height - 23, width: bitmapBuilder.Width, height: 20, fontSize: 12, color: finalTitleColor);
+                        if (config.ActionType == "ToggleButton")
+                            iconDrawnForToggleButton = true; 
                     }
 
-                    if (!String.IsNullOrEmpty(titleToDraw))
+                    if ((config.ActionType == "ToggleButton" && !iconDrawnForToggleButton) || config.ActionType != "ToggleButton")
                     {
-                        // 如果图标已绘制 (只可能是TriggerButton)，文字作为主要标题可能不合适，
-                        // 但按照原文件逻辑，文字绘制总是在尝试。
-                        // 对于有图标的 TriggerButton，config.DisplayName 已在图标下方绘制。
-                        // 这里只对没有图标的情况绘制主标题。
-                        if (icon == null) // 只有在没有图标时才绘制这个主标题
+                        var titleToDraw = config.Title ?? config.DisplayName;
+
+                        if (!string.IsNullOrEmpty(config.ModeName))
+                        {
+                            var modeIndex = this._logicManager.GetCurrentModeIndex(config.ModeName);
+                            if (config.Titles?.Count > modeIndex && modeIndex != -1 && !string.IsNullOrEmpty(config.Titles[modeIndex]))
+                            { titleToDraw = config.Titles[modeIndex]; }
+                        }
+
+                        if (!String.IsNullOrEmpty(titleToDraw) && icon == null)
                         {
                             bitmapBuilder.DrawText(text: titleToDraw, fontSize: this.GetAutomaticTitleFontSize(titleToDraw), color: finalTitleColor);
                         }
+
+                        if (!String.IsNullOrEmpty(config.Text))
+                        {
+                            bitmapBuilder.DrawText(
+                                text: config.Text,
+                                x: config.TextX ?? 50,
+                                y: config.TextY ?? 55,
+                                width: config.TextWidth ?? 14,
+                                height: config.TextHeight ?? 14,
+                                color: String.IsNullOrEmpty(config.TextColor) ? BitmapColor.White : HexToBitmapColor(config.TextColor),
+                                fontSize: config.TextSize ?? 14
+                            );
+                        }
                     }
 
-                    if (!String.IsNullOrEmpty(config.Text))
+                    if (!string.IsNullOrEmpty(config.ModeName) && icon == null)
                     {
-                        bitmapBuilder.DrawText(
-                            text: config.Text,
-                            x: config.TextX ?? 50,
-                            y: config.TextY ?? 55,
-                            width: config.TextWidth ?? 14,
-                            height: config.TextHeight ?? 14,
-                            color: String.IsNullOrEmpty(config.TextColor) ? BitmapColor.White : HexToBitmapColor(config.TextColor),
-                            fontSize: config.TextSize ?? 14
-                        );
+                        var currentModeForDisplay = this._logicManager.GetCurrentModeString(config.ModeName);
+                        if (!string.IsNullOrEmpty(currentModeForDisplay))
+                        { bitmapBuilder.DrawText(currentModeForDisplay, x: 50, y: 55, width: 14, height: 14, fontSize: 14, color: new BitmapColor(136, 226, 255)); }
                     }
-                }
 
-                // 为受模式控制的按钮（且没有图标时）绘制模式指示小字
-                // (这段逻辑在您原文件 GetCommandImage 的较后部分，现在调整到这里，并确保只在没画图标时)
-                if (!string.IsNullOrEmpty(config.ModeName) && icon == null)
+                    return bitmapBuilder.ToImage();
+                }
+            }
+            catch (Exception ex)
+            {
+                PluginLog.Error(ex, $"[GetCommandImage] 未处理的异常 for action '{actionParameter}'.");
+                using (var errorBitmap = new BitmapBuilder(imageSize))
                 {
-                    var currentModeForDisplay = this._logicManager.GetCurrentModeString(config.ModeName);
-                    if (!string.IsNullOrEmpty(currentModeForDisplay))
-                    { bitmapBuilder.DrawText(currentModeForDisplay, x: 50, y: 55, width: 14, height: 14, fontSize: 14, color: new BitmapColor(136, 226, 255)); }
+                    errorBitmap.Clear(BitmapColor.Red);
+                    errorBitmap.DrawText("ERR!");
+                    return errorBitmap.ToImage();
                 }
-
-                return bitmapBuilder.ToImage();
             }
         }
 
