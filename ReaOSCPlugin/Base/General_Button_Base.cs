@@ -265,7 +265,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     // 颜色和状态逻辑
                     BitmapColor currentBgColor = BitmapColor.Black;
                     BitmapColor finalTitleColor = String.IsNullOrEmpty(config.TitleColor) ? BitmapColor.White : HexToBitmapColor(config.TitleColor);
-                    bool iconDrawnForToggleButton = false; 
+                    bool isIconDrawn = false;
 
                     if (config.ActionType == "SelectModeButton")
                     {
@@ -308,11 +308,11 @@ namespace Loupedeck.ReaOSCPlugin.Base
                         bitmapBuilder.DrawImage(icon, iconX, iconY, iconWidth, iconHeight);
                         
                         bitmapBuilder.DrawText(text: config.DisplayName, x: 0, y: bitmapBuilder.Height - 23, width: bitmapBuilder.Width, height: 20, fontSize: 12, color: finalTitleColor);
-                        if (config.ActionType == "ToggleButton")
-                            iconDrawnForToggleButton = true; 
+                        
+                        isIconDrawn = true;
                     }
 
-                    if ((config.ActionType == "ToggleButton" && !iconDrawnForToggleButton) || config.ActionType != "ToggleButton")
+                    if (!isIconDrawn)
                     {
                         var titleToDraw = config.Title ?? config.DisplayName;
 

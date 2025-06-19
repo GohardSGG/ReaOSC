@@ -60,6 +60,7 @@
     <None Remove="metadata\Icon\Phase_Align.png" />
     <None Remove="metadata\Icon\Play.png" />
     <None Remove="metadata\Icon\Project Setting.png" />
+    <None Remove="metadata\Icon\Project_Bay.png" />
     <None Remove="metadata\Icon\Project_Setting.png" />
     <None Remove="metadata\Icon\Quantize.png" />
     <None Remove="metadata\Icon\Record.png" />
@@ -135,6 +136,9 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </EmbeddedResource>
     <EmbeddedResource Include="metadata\Icon\Play.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="metadata\Icon\Project_Bay.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </EmbeddedResource>
     <EmbeddedResource Include="metadata\Icon\Project_Setting.png">

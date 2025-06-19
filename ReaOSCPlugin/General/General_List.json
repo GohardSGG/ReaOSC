@@ -16,7 +16,7 @@
       "DisplayName": "Auto Fade",
       "ActionType": "ToggleButton",
       "Title": "Auto Fade",
-      "OscAddress": "/Crossfade/Auto Fade",
+      "OscAddress": "Crossfade/Auto_Fade",
       "ActiveColor": "#FF0000"
     },
     {
@@ -45,9 +45,9 @@
       "DisplayName": "Cross Fade",
       "ActionType": "TickDial",
       "Title": "Cross Fade",
-      "IncreaseOSCAddress": "/Crossfade/Move/Forward",
-      "DecreaseOSCAddress": "/Crossfade/Move/Backward",
-      "ResetOSCAddress": "/Crossfade/Manager"
+      "IncreaseOSCAddress": "Crossfade/Move/Forward",
+      "DecreaseOSCAddress": "Crossfade/Move/Backward",
+      "ResetOSCAddress": "Crossfade/Manager"
     },
     {
       "DisplayName": "Dynamic Split",
@@ -100,7 +100,7 @@
       "DisplayName": "Snap",
       "ActionType": "ToggleDial",
       "Title": "Snap",
-      "ResetOscAddress": "/Snap/Manager",
+      "ResetOscAddress": "Snap/Manager",
       "ActiveColor": "#88E2FF"
     },
     {
@@ -113,52 +113,60 @@
       "DisplayName": "Scale",
       "ActionType": "ToggleButton",
       "Title": "Scale",
-      "OscAddress": "/Scale/Toggle",
+      "OscAddress": "Scale/Toggle",
       "ActiveColor": "#FF8F15"
     },
     {
       "DisplayName": "Step",
       "ActionType": "ToggleButton",
       "Title": "Step",
-      "OscAddress": "/Step/Toggle",
+      "OscAddress": "Step/Toggle",
       "ActiveColor": "#FF8F15"
     },
     {
       "DisplayName": "Swing",
       "ActionType": "ToggleButton",
       "Title": "Swing",
-      "OscAddress": "/Swing/Toggle",
+      "OscAddress": "Swing/Toggle",
       "ActiveColor": "#FF8F15"
     },
     {
       "DisplayName": "Arpeggio",
-      "ActionType": "TickDial",
+      "ActionType": "2ModeTickDial",
       "Title": "Arpeggio",
-      "IncreaseOSCAddress": "/Note/Arpeggio_Right",
-      "DecreaseOSCAddress": "/Note/Arpeggio_Left",
-      "ResetOSCAddress": "/Note/Arpeggio_Reset"
+      "IncreaseOSCAddress": "Note/Arpeggio_Right",
+      "DecreaseOSCAddress": "Note/Arpeggio_Left",
+      "ResetOSCAddress": "Note/Arpeggio_Reset"
     },
     {
       "DisplayName": "Legato",
-      "ActionType": "TickDial",
-      "Title": "Legato",
-      "IncreaseOSCAddress": "/Note/Legato_Right",
-      "DecreaseOSCAddress": "/Note/Legato_Left",
-      "ResetOSCAddress": "/Note/Legato_Reset"
+      "ActionType": "2ModeTickDial",
+      "Title": "Legato End",
+      "Title_Mode2": "Legato Start",
+      "IncreaseOSCAddress": "Note/Legato/End/Right",
+      "DecreaseOSCAddress": "Note/Legato/End/Left",
+      "IncreaseOSCAddress_Mode2": "Note/Legato/Start/Right",
+      "DecreaseOSCAddress_Mode2": "Note/Legato/Start/Left",
+      "BackgroundColor_Mode2": "#FFFFFF",
+      "TitleColor_Mode2": "#000000"
     },
     {
       "DisplayName": "Move",
       "ActionType": "TickDial",
       "Title": "Move",
-      "IncreaseOSCAddress": "/Note/Move_Right",
-      "DecreaseOSCAddress": "/Note/Move_Left",
-      "ResetOSCAddress": "/Note/Move_Reset"
+      "IncreaseOSCAddress": "Note/Move_Right",
+      "DecreaseOSCAddress": "Note/Move_Left",
+      "ResetOSCAddress": "Note/Move_Reset"
     },
     {
       "DisplayName": "Note Shift",
       "ActionType": "2ModeTickDial",
       "Title": "Shift",
       "Title_Mode2": "Octave",
+      "IncreaseOSCAddress": "Note/Right",
+      "DecreaseOSCAddress": "Note/Left",
+      "IncreaseOSCAddress_Mode2": "Octave/Right",
+      "DecreaseOSCAddress_Mode2": "Octave/Left",
       "BackgroundColor_Mode2": "#FFFFFF",
       "TitleColor_Mode2": "#000000"
     }
@@ -243,18 +251,17 @@
       "ActionType": "SelectModeButton",
       "GroupName": "FX",
       "Description": "切换FX Mode ↔ Chain Mode",
-      "Modes": [ "FX", "Chain" ], 
-      "ActiveColor": "#FFFFFF", 
-      "TitleColor": "#000000", 
-      "DeactiveTextColor": "#FFFFFF" 
+      "Modes": [ "FX", "Chain" ],
+      "ActiveColor": "#FFFFFF",
+      "TitleColor": "#000000",
+      "DeactiveTextColor": "#FFFFFF"
     },
-
     {
       "DisplayName": "Bypass",
       "ActionType": "ToggleButton",
       "GroupName": "FX",
       "ModeName": "FX/Chain Select",
-      "OscAddress": "/{mode}/Bypass", 
+      "OscAddress": "{mode}/Bypass",
       "ActiveColor": "#FFFFFF",
       "TitleColor": "#000000",
       "DeactiveTextColor": "#FFFFFF"
@@ -264,7 +271,7 @@
       "ActionType": "ToggleButton",
       "GroupName": "FX",
       "ModeName": "FX/Chain Select",
-      "OscAddress": "/{mode}/Offline",
+      "OscAddress": "{mode}/Offline",
       "ActiveColor": "#FFFFFF",
       "TitleColor": "#000000",
       "DeactiveTextColor": "#FFFFFF"
@@ -274,7 +281,7 @@
       "ActionType": "ToggleButton",
       "GroupName": "FX",
       "ModeName": "FX/Chain Select",
-      "OscAddress": "/{mode}/Parallel",
+      "OscAddress": "{mode}/Parallel",
       "ActiveColor": "#FFFFFF",
       "TitleColor": "#000000",
       "DeactiveTextColor": "#FFFFFF"
@@ -284,7 +291,7 @@
       "ActionType": "ToggleButton",
       "GroupName": "FX",
       "ModeName": "FX/Chain Select",
-      "OscAddress": "/{mode}/Show",
+      "OscAddress": "{mode}/Show",
       "ActiveColor": "#FFFFFF",
       "TitleColor": "#000000",
       "DeactiveTextColor": "#FFFFFF"
@@ -292,8 +299,9 @@
     {
       "DisplayName": "Copy",
       "ActionType": "TriggerButton",
+      "GroupName": "FX",
       "ModeName": "FX/Chain Select",
-      "OscAddress": "/{mode}/Copy",
+      "OscAddress": "{mode}/Copy",
       "TitleColor": "#FFFFFF"
     }
   ],
@@ -314,7 +322,7 @@
       "GroupName": "Envelope",
       "ModeName": "Envelope Select Mode",
       "Title": "Volume",
-      "OscAddress": "/{mode}/Toggle/Volume"
+      "OscAddress": "{mode}/Toggle/Volume"
     },
     {
       "DisplayName": "Pan Toggle",
@@ -322,7 +330,7 @@
       "GroupName": "Envelope",
       "ModeName": "Envelope Select Mode",
       "Title": "Pan",
-      "OscAddress": "/{mode}/Toggle/Pan",
+      "OscAddress": "{mode}/Toggle/Pan",
       "ActiveColor": "#FFFFFF",
       "TitleColor": "#000000",
       "DeactiveTextColor": "#FFFFFF"
@@ -363,11 +371,11 @@
       "ActionType": "ToggleDial",
       "Title": "Snap",
       "ActiveColor": "#88E2FF",
-      "ResetOscAddress": "/Snap/Manager"
+      "ResetOscAddress": "Snap/Manager"
     },
     {
       "DisplayName": "Project Setting",
-      "ActionType": "ToggleButton",
+      "ActionType": "TriggerButton",
       "ActiveColor": "#FF8F15",
       "Text": "Project Setting"
     },
@@ -389,7 +397,7 @@
       "DisplayName": "Add Marker",
       "ActionType": "TriggerButton",
       "Title": "Marker",
-      "OscAddress": "/Add",
+      "OscAddress": "Add",
       "Text": "Add",
       "TextColor": "#88E2FF"
     }
@@ -399,36 +407,32 @@
       "DisplayName": "Add Region",
       "ActionType": "TriggerButton",
       "Title": "Region",
-      "OscAddress": "/Add",
+      "OscAddress": "Add",
       "Text": "Add",
       "TextColor": "#88E2FF"
     }
   ],
   "View": [
     {
-      "DisplayName": "Region",
-      "ActionType": "TickDial",
-      "Title": "Region",
-      "IncreaseOSCAddress": "/Region/Scroll_Right",
-      "DecreaseOSCAddress": "/Region/Scroll_Left",
-      "ResetOscAddress": "/Region/Scroll_Reset"
-    },
-    {
       "DisplayName": "Scroll",
       "ActionType": "TickDial",
       "Title": "Scroll",
-      "IncreaseOSCAddress": "/Scroll_Right",
-      "DecreaseOSCAddress": "/Scroll_Left",
-      "ResetOscAddress": "/Scroll_Reset",
+      "IncreaseOSCAddress": "Scroll_Right",
+      "DecreaseOSCAddress": "Scroll_Left",
+      "ResetOscAddress": "Scroll_Reset",
       "AccelerationFactor": 1.5
     },
     {
-      "DisplayName": "Marker",
-      "ActionType": "TickDial",
+      "DisplayName": "Marker&Region Scroll",
+      "ActionType": "2ModeTickDial",
       "Title": "Marker",
-      "IncreaseOSCAddress": "/Marker/Scroll_Right",
-      "DecreaseOSCAddress": "/Marker/Scroll_Left",
-      "ResetOscAddress": "/Marker/Scroll_Reset"
+      "Title_Mode2": "Region",
+      "IncreaseOSCAddress": "Marker/Right",
+      "DecreaseOSCAddress": "Marker/Left",
+      "IncreaseOSCAddress_Mode2": "Region/Right",
+      "DecreaseOSCAddress_Mode2": "Region/Left",
+      "BackgroundColor_Mode2": "#FFFFFF",
+      "TitleColor_Mode2": "#000000"
     },
     {
       "DisplayName": "Mixer",
@@ -484,6 +488,11 @@
       "DisplayName": "Envelope Manager",
       "ActionType": "ToggleButton",
       "Text": "Envelope Manager"
+    },
+    {
+      "DisplayName": "Project Bay",
+      "ActionType": "ToggleButton",
+      "Text": "Project Bay"
     }
   ],
   "Track": [
