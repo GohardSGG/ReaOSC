@@ -83,16 +83,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="Dynamic\Add_Track_List.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </EmbeddedResource>
     <EmbeddedResource Include="Dynamic\Dynamic_List.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </EmbeddedResource>
     <EmbeddedResource Include="Dynamic\FX_List.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Dynamic\Render_List.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </EmbeddedResource>
     <EmbeddedResource Include="metadata\Icon\All_Env_View.png">

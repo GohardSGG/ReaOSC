@@ -1,7 +1,21 @@
-﻿// 文件名: DynamicFolders/Render_Dynamic.cs
-namespace Loupedeck.ReaOSCPlugin.DynamicFolders
+// 文件名: Dynamic/Dynamic_List.cs
+// 描述: 此文件包含所有简单的、由JSON配置驱动的动态文件夹类。
+// 它们的存在是为了被Loupedeck SDK的反射机制发现并注册。
+// 这种方式可以减少项目中的空文件数量，使结构更整洁。
+
+namespace Loupedeck.ReaOSCPlugin.Dynamic
 {
-    using Loupedeck.ReaOSCPlugin.Base; // 引用我们创建的基类
+    using Loupedeck.ReaOSCPlugin.Base;
+
+    /// <summary>
+    /// "添加轨道" 动态文件夹。
+    /// 所有功能都由 Dynamic_Folder_Base 基类实现。
+    /// 这个类只需要存在并继承基类即可。
+    /// </summary>
+    public class Add_Track_Dynamic : Dynamic_Folder_Base
+    {
+        // 无需任何代码
+    }
 
     /// <summary>
     /// "Render" 动态文件夹。
@@ -19,4 +33,4 @@ namespace Loupedeck.ReaOSCPlugin.DynamicFolders
             // 通常无需在此添加额外代码，除非有 Render 文件夹特有的初始化逻辑。
         }
     }
-}
+} 

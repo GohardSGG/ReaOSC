@@ -49,41 +49,22 @@ namespace Loupedeck.ReaOSCPlugin.Base
             }
             this.Navigation = PluginDynamicFolderNavigation.ButtonArea;
 
-            var folderContentFileName = $"{folderClassName.Replace("_Dynamic", "")}_List.json";
-            var content = this.LoadFolderContent(folderContentFileName);
-            if (content != null) // 即使入口配置可能缺失，也尝试填充内容
+            // 【重构】不再从独立文件加载，而是从 Logic_Manager 获取预加载的内容
+            var content = Logic_Manager_Base.Instance.GetFolderContent(folderBaseName);
+            if (content != null)
             {
                 this.PopulateLocalIdMappings(content);
             }
             else
             {
-                PluginLog.Warning($"[DynamicFolder] Constructor ('{this.DisplayName}'): 未能加载文件夹内容 '{folderContentFileName}'.");
+                PluginLog.Warning($"[DynamicFolder] Constructor ('{this.DisplayName}'): 未能从 Logic_Manager 加载文件夹内容。");
             }
             // 【注意】我之前的版本有订阅CommandStateNeedsRefresh，您的旧代码示例中没有。如果需要，可以加回来。
             Logic_Manager_Base.Instance.CommandStateNeedsRefresh += this.OnCommandStateNeedsRefresh;
         }
 
         #region 初始化与动作填充
-        private FolderContentConfig LoadFolderContent(string fileName)
-        {
-            try
-            {
-                var resourceName = $"Loupedeck.ReaOSCPlugin.Dynamic.{fileName}";
-                var assembly = Assembly.GetExecutingAssembly();
-                using (var stream = assembly.GetManifestResourceStream(resourceName))
-                {
-                    if (stream == null)
-                    { PluginLog.Error($"[DynamicFolder] LoadFolderContent: 找不到资源: {resourceName}"); return null; }
-                    using (var reader = new StreamReader(stream))
-                    { return JsonConvert.DeserializeObject<FolderContentConfig>(reader.ReadToEnd()); }
-                }
-            }
-            catch (Exception ex)
-            {
-                PluginLog.Error(ex, $"[DynamicFolder] LoadFolderContent: 加载或解析 '{fileName}' 失败。");
-                return null;
-            }
-        }
+        // 【移除】LoadFolderContent 方法，因为现在内容由 Logic_Manager 统一加载
 
         // 【核心修正】采用您旧代码中的 PopulateLocalIdMappings 逻辑
         private void PopulateLocalIdMappings(FolderContentConfig content)

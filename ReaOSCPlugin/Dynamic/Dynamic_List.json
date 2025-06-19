@@ -1,20 +1,164 @@
 [
   {
     "DisplayName": "Add Track",
-    "GroupName": "Dynamic",
     "Title": "Track",
     "Text": "Add",
-    "TextColor": "#88E2FF"
+    "TextColor": "#88E2FF",
+    "Content": {
+      "Buttons": [
+        {
+          "ActionType": "TriggerButton",
+          "GroupName": "Insert",
+          "DisplayName": "Insert Track",
+          "Title": "Track",
+          "OscAddress": "Track",
+          "Text": "Insert",
+          "TextColor": "#88E2FF"
+        },
+        {
+          "ActionType": "TriggerButton",
+          "GroupName": "Insert",
+          "DisplayName": "Insert Aux Track",
+          "Title": "Aux",
+          "OscAddress": "Aux Track",
+          "Text": "Insert",
+          "TextColor": "#88E2FF"
+        },
+        {
+          "ActionType": "TriggerButton",
+          "GroupName": "Insert",
+          "DisplayName": "Insert Bus Track",
+          "Title": "Bus",
+          "OscAddress": "Bus Track",
+          "Text": "Insert",
+          "TextColor": "#88E2FF"
+        },
+        {
+          "ActionType": "TriggerButton",
+          "GroupName": "Insert",
+          "DisplayName": "Insert VCA Track",
+          "Title": "VCA",
+          "OscAddress": "VCA Track",
+          "Text": "Insert",
+          "TextColor": "#88E2FF"
+        }
+      ],
+      "Dials": []
+    }
   },
   {
     "DisplayName": "Render",
-    "GroupName": "Dynamic",
     "Title": "Render",
-    "Description": "Access render settings and export"
+    "Description": "Access render settings and export",
+    "Content": {
+      "Buttons": [
+        {
+          "ActionType": "ParameterButton",
+          "GroupName": "Render",
+          "DisplayName": "Source Display",
+          "Title": "Source",
+          "ParameterSourceDial": "Source"
+        },
+        {
+          "ActionType": "ParameterButton",
+          "GroupName": "Render",
+          "DisplayName": "Format Display",
+          "Title": "Format",
+          "ParameterSourceDial": "Format"
+        },
+        {
+          "ActionType": "ToggleButton",
+          "GroupName": "Render",
+          "DisplayName": "TimeCode",
+          "Title": "TimeCode"
+        },
+        {
+          "ActionType": "ToggleButton",
+          "GroupName": "Render",
+          "DisplayName": "Tail",
+          "Title": "Tail"
+        },
+        {
+          "ActionType": "ToggleButton",
+          "GroupName": "Render",
+          "DisplayName": "Tempo",
+          "Title": "Tempo"
+        },
+        {
+          "ActionType": "ToggleButton",
+          "GroupName": "Render",
+          "DisplayName": "Online",
+          "Title": "Online"
+        },
+        {
+          "ActionType": "ToggleButton",
+          "GroupName": "Render",
+          "DisplayName": "Folder",
+          "Title": "Folder"
+        },
+        {
+          "ActionType": "ToggleButton",
+          "GroupName": "Render",
+          "DisplayName": "Auto Channel",
+          "Title": "Auto CH"
+        },
+        {
+          "ActionType": "CombineButton",
+          "GroupName": "Render",
+          "DisplayName": "Export",
+          "Title": "Export",
+          "ParameterOrder": [
+            "Source",
+            "SampleRate",
+            "BitDepth",
+            "Format",
+            "TimeCode",
+            "Tail",
+            "Tempo",
+            "Online",
+            "Folder",
+            "Auto Channel"
+          ]
+        }
+      ],
+      "Dials": [
+        {
+          "ActionType": "ParameterDial",
+          "GroupName": "Render",
+          "DisplayName": "Source",
+          "Title": "Source",
+          "ShowParameterInDial": "Yes",
+          "Titles": [ "Master", "Track", "Item" ]
+        },
+        {
+          "ActionType": "ParameterDial",
+          "GroupName": "Render",
+          "DisplayName": "Format",
+          "Title": "Format",
+          "ShowParameterInDial": "Yes",
+          "Titles": [ "Wav", "MP3", "ADM" ]
+        },
+        {
+          "ActionType": "ParameterDial",
+          "GroupName": "Render",
+          "DisplayName": "SampleRate",
+          "Title": "Sample Rate",
+          "ShowParameterInDial": "Yes",
+          "Titles": [ "48k", "96k", "192k", "44.1k", "88.2k", "176.4k" ]
+        },
+        {
+          "ActionType": "ParameterDial",
+          "GroupName": "Render",
+          "DisplayName": "BitDepth",
+          "Title": "BitDepth",
+          "ShowParameterInDial": "Yes",
+          "Titles": [ "16I", "24I", "32F", "32I" ]
+        }
+      ]
+    }
   },
   {
     "DisplayName": "FX",
-    "GroupName": "Dynamic",
     "Title": "FX",
     "Text": "Browser",
     "TextColor": "#87CEEB"

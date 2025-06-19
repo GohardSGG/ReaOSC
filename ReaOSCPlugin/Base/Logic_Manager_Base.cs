@@ -76,6 +76,9 @@ namespace Loupedeck.ReaOSCPlugin.Base
 
         // === 【新增】ToggleButton (当参与 CombineButton 时) ===
         // PathSegmentIfOn 也不再需要，ToggleButton ON 时贡献 DisplayName 或 OscAddress (处理后)
+        
+        // === 【新增】动态文件夹内容定义 ===
+        public FolderContentConfig Content { get; set; }
     }
 
     public class FolderContentConfig
@@ -92,6 +95,10 @@ namespace Loupedeck.ReaOSCPlugin.Base
         private readonly Dictionary<string, ButtonConfig> _allConfigs = new Dictionary<string, ButtonConfig>();
         private readonly Dictionary<string, bool> _toggleStates = new Dictionary<string, bool>();
         private readonly Dictionary<string, int> _dialModes = new Dictionary<string, int>();
+        
+        // 【新增】用于存储动态文件夹内容的字典
+        private readonly Dictionary<string, FolderContentConfig> _folderContents = new Dictionary<string, FolderContentConfig>();
+        
         private bool _isInitialized = false;
 
         private readonly Dictionary<string, List<string>> _modeOptions = new Dictionary<string, List<string>>();
@@ -134,26 +141,34 @@ namespace Loupedeck.ReaOSCPlugin.Base
             this.ProcessGroupedConfigs(generalConfigs, isFx: false);
             
             // 【重要】不再加载任何旧的Effects_List.json
-            // var effectsConfigs = this.LoadAndDeserialize<Dictionary<string, List<ButtonConfig>>>(assembly, "Loupedeck.ReaOSCPlugin.Effects.Effects_List.json");
-            // this.ProcessGroupedConfigs(effectsConfigs, isFx: true);
-
-            var resourceNames = assembly.GetManifestResourceNames();
-            // 【重要】确保 FX_List.json 不在这里被加载
-            var dynamicFolderContentResources = resourceNames.Where(r => r.StartsWith("Loupedeck.ReaOSCPlugin.Dynamic.") && r.EndsWith("_List.json") && !r.Contains("Dynamic_List.json") && !r.Contains("FX_List.json"));
-            foreach (var resourceName in dynamicFolderContentResources)
+            
+            // 【重构】加载统一的 Dynamic_List.json，它现在包含了文件夹的入口定义和内容
+            var dynamicFolderDefs = this.LoadAndDeserialize<List<ButtonConfig>>(assembly, "Loupedeck.ReaOSCPlugin.Dynamic.Dynamic_List.json");
+            if (dynamicFolderDefs != null)
             {
-                PluginLog.Info($"[LogicManager] 正在加载动态文件夹内容: {resourceName}");
-                var folderContent = this.LoadAndDeserialize<FolderContentConfig>(assembly, resourceName);
-                this.ProcessFolderContentConfigs(folderContent);
-            }
-            var dynamicFolderEntries = this.LoadAndDeserialize<List<ButtonConfig>>(assembly, "Loupedeck.ReaOSCPlugin.Dynamic.Dynamic_List.json");
-            if (dynamicFolderEntries != null)
-            {
-                foreach (var entry in dynamicFolderEntries)
+                var folderEntriesToRegister = new List<ButtonConfig>();
+                foreach (var folderDef in dynamicFolderDefs)
                 {
-                    entry.GroupName = "Dynamic";
+                    // 为文件夹入口按钮设置固定的GroupName
+                    folderDef.GroupName = "Dynamic";
+
+                    if (folderDef.Content != null)
+                    {
+                        // 1. 将内容（Buttons和Dials）存储起来，供Dynamic_Folder_Base以后按名字查找
+                        this._folderContents[folderDef.DisplayName] = folderDef.Content;
+
+                        // 2. 将文件夹内容中的所有按钮和旋钮都注册到全局配置 _allConfigs 中
+                        //    这样 Dynamic_Folder_Base 在填充时才能通过 DisplayName 和 GroupName 找到它们
+                        this.ProcessFolderContentConfigs(folderDef.Content);
+                    }
+                    
+                    // 3. 将文件夹入口按钮本身（不含Content）添加到待注册列表
+                    var folderEntry = folderDef;
+                    folderEntry.Content = null; // 确保不把内容本身当作一个配置项
+                    folderEntriesToRegister.Add(folderEntry);
                 }
-                this.RegisterConfigs(dynamicFolderEntries, isFx: false, isDynamicFolderEntry: true);
+                // 4. 统一注册所有文件夹的入口按钮
+                this.RegisterConfigs(folderEntriesToRegister, isFx: false, isDynamicFolderEntry: true);
             }
         }
         private T LoadAndDeserialize<T>(Assembly assembly, string resourceName) where T : class { try { using (var stream = assembly.GetManifestResourceStream(resourceName)) { if (stream == null) { PluginLog.Error($"[LogicManager] 无法找到嵌入资源: {resourceName}"); return null; } using (var reader = new StreamReader(stream)) { return JsonConvert.DeserializeObject<T>(reader.ReadToEnd()); } } } catch (Exception ex) { PluginLog.Error(ex, $"[LogicManager] 读取或解析资源 '{resourceName}' 失败。"); return null; } }
@@ -221,6 +236,10 @@ namespace Loupedeck.ReaOSCPlugin.Base
 
         public IReadOnlyDictionary<string, ButtonConfig> GetAllConfigs() => this._allConfigs;
         public ButtonConfig GetConfig(string actionParameter) => this._allConfigs.TryGetValue(actionParameter, out var c) ? c : null;
+        
+        // 【新增】公共方法，用于按文件夹名称获取其内容
+        public FolderContentConfig GetFolderContent(string folderName) => this._folderContents.TryGetValue(folderName, out var c) ? c : null;
+        
         public ButtonConfig GetConfigByDisplayName(string groupName, string displayName)
         {
             if (groupName == "Dynamic")
