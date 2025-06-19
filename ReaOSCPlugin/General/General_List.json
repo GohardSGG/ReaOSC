@@ -254,6 +254,8 @@
       "Modes": [ "FX", "Chain" ],
       "ActiveColor": "#FFFFFF",
       "TitleColor": "#000000",
+      "Text": "Choose",
+      "TextColor": "#88E2FF",
       "DeactiveTextColor": "#FFFFFF"
     },
     {

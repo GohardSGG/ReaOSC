@@ -1,16 +1,17 @@
 {
+  "Favorite": [
+    "ReaTune",
+    "ReaPitch"
+  ],
   "Eventide": [
     {
-      "DisplayName": "Blackhole",
-      "Title": "Blackhole"
+      "DisplayName": "Blackhole"
     },
     {
-      "DisplayName": "DeBoom",
-      "Title": "DeBoom"
+      "DisplayName": "DeBoom"
     },
     {
-      "DisplayName": "Omnipressor",
-      "Title": "Omnipressor"
+      "DisplayName": "Omnipressor"
     },
     {
       "DisplayName": "Physion II",
@@ -20,16 +21,13 @@
       "TextX": 50
     },
     {
-      "DisplayName": "Sheen Machine",
-      "Title": "Sheen Machine"
+      "DisplayName": "Sheen Machine"
     },
     {
-      "DisplayName": "SP2016",
-      "Title": "SP2016"
+      "DisplayName": "SP2016"
     },
     {
-      "DisplayName": "SplitEQ",
-      "Title": "SplitEQ"
+      "DisplayName": "SplitEQ"
     },
     {
       "DisplayName": "Blackhole Immersive",
@@ -50,8 +48,7 @@
       "TextColor": "#FFE200"
     },
     {
-      "DisplayName": "MicroPitch",
-      "Title": "MicroPitch"
+      "DisplayName": "MicroPitch"
     },
     {
       "DisplayName": "MicroPitch Immersive",
@@ -138,10 +135,9 @@
       "TextX": 55
     }
   ],
-  "Kiive Audio": [
+  "Kiive": [
     {
-      "DisplayName": "Distinct Pro",
-      "Title": "Distinct Pro"
+      "DisplayName": "Distinct Pro"
     },
     {
       "DisplayName": "Filkchannel MK2",
@@ -151,12 +147,10 @@
       "TextX": 50
     },
     {
-      "DisplayName": "NFuse",
-      "Title": "NFuse"
+      "DisplayName": "NFuse"
     },
     {
-      "DisplayName": "Tape Face",
-      "Title": "Tape Face"
+      "DisplayName": "Tape Face"
     },
     {
       "DisplayName": "Tube KC-1",
@@ -166,16 +160,13 @@
       "TextX": 50
     },
     {
-      "DisplayName": "Tubetizer",
-      "Title": "Tubetizer"
+      "DisplayName": "Tubetizer"
     },
     {
-      "DisplayName": "XTComp",
-      "Title": "XTComp"
+      "DisplayName": "XTComp"
     },
     {
-      "DisplayName": "Xtressor",
-      "Title": "Xtressor"
+      "DisplayName": "Xtressor"
     }
   ],
   "Sonible": [
@@ -266,8 +257,7 @@
   ],
   "SSL": [
     {
-      "DisplayName": "DeEss",
-      "Title": "DeEss"
+      "DisplayName": "DeEss"
     },
     {
       "DisplayName": "Drum Strip",
@@ -312,12 +302,10 @@
       "TextX": 50
     },
     {
-      "DisplayName": "LMC+",
-      "Title": "LMC+"
+      "DisplayName": "LMC+"
     },
     {
-      "DisplayName": "Meter",
-      "Title": "Meter"
+      "DisplayName": "Meter"
     },
     {
       "DisplayName": "Multi BusComp G3",
@@ -334,8 +322,7 @@
       "TextX": 50
     },
     {
-      "DisplayName": "SubGen",
-      "Title": "SubGen"
+      "DisplayName": "SubGen"
     }
   ],
   "UAD": [
@@ -426,8 +413,7 @@
   ],
   "Waves": [
     {
-      "DisplayName": "ADT",
-      "Title": "ADT"
+      "DisplayName": "ADT"
     },
     {
       "DisplayName": "Bass Rider",
@@ -458,8 +444,7 @@
       "TextX": 55
     },
     {
-      "DisplayName": "Curves Equator",
-      "Title": "Curves Equator"
+      "DisplayName": "Curves Equator"
     },
     {
       "DisplayName": "DeReverb Pro",
@@ -483,16 +468,13 @@
       "TextX": 55
     },
     {
-      "DisplayName": "EV2",
-      "Title": "EV2"
+      "DisplayName": "EV2"
     },
     {
-      "DisplayName": "Harmony",
-      "Title": "Harmony"
+      "DisplayName": "Harmony"
     },
     {
-      "DisplayName": "H-Delay",
-      "Title": "H-Delay"
+      "DisplayName": "H-Delay"
     },
     {
       "DisplayName": "IDX Dynamics",
@@ -502,12 +484,10 @@
       "TextX": 55
     },
     {
-      "DisplayName": "Immersive Wrapper",
-      "Title": "Immersive Wrapper"
+      "DisplayName": "Immersive Wrapper"
     },
     {
-      "DisplayName": "J37",
-      "Title": "J37"
+      "DisplayName": "J37"
     },
     {
       "DisplayName": "Magma Channel",
@@ -524,20 +504,16 @@
       "TextX": 55
     },
     {
-      "DisplayName": "MV2",
-      "Title": "MV2"
+      "DisplayName": "MV2"
     },
     {
-      "DisplayName": "Omni",
-      "Title": "Omni"
+      "DisplayName": "Omni"
     },
     {
-      "DisplayName": "RComp",
-      "Title": "RComp"
+      "DisplayName": "RComp"
     },
     {
-      "DisplayName": "Silk Vocal",
-      "Title": "Silk Vocal"
+      "DisplayName": "Silk Vocal"
     },
     {
       "DisplayName": "Springs",
@@ -561,7 +537,7 @@
       "TextX": 55
     }
   ],
-  "Airwindows": [
+  "AW": [
     {
       "DisplayName": "Airwindows",
       "Title": "Airwindows",
@@ -572,8 +548,7 @@
   ],
   "Cockos": [
     {
-      "DisplayName": "Container",
-      "Title": "Container"
+      "DisplayName": "Container"
     },
     {
       "DisplayName": "ReaPitch",
@@ -597,7 +572,7 @@
       "TextX": 50
     }
   ],
-  "Fiedler Audio": [
+  "Fiedler": [
     {
       "DisplayName": "Dolby Atmos Beam",
       "Title": "Beam",
@@ -613,8 +588,7 @@
       "TextX": 50
     },
     {
-      "DisplayName": "Spacelab",
-      "Title": "Spacelab"
+      "DisplayName": "Spacelab"
     },
     {
       "DisplayName": "Spacelab Beam",
@@ -624,7 +598,7 @@
       "TextX": 50
     }
   ],
-  "Native Instruments": [
+  "NI": [
     {
       "DisplayName": "Kontakt 6",
       "Title": "Kontakt",
