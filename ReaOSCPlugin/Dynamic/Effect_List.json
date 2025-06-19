@@ -599,26 +599,6 @@
     }
   ],
   "NI": [
-    {
-      "DisplayName": "Kontakt 6",
-      "Title": "Kontakt",
-      "Text": "6",
-      "TextColor": "#FFE200",
-      "TextX": 50
-    },
-    {
-      "DisplayName": "Kontakt 7",
-      "Title": "Kontakt",
-      "Text": "7",
-      "TextColor": "#FFE200",
-      "TextX": 50
-    },
-    {
-      "DisplayName": "Kontakt 8",
-      "Title": "Kontakt",
-      "Text": "8",
-      "TextColor": "#FFE200",
-      "TextX": 50
-    }
+  
   ]
 }

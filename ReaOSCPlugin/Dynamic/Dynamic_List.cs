@@ -23,6 +23,8 @@ namespace Loupedeck.ReaOSCPlugin.Dynamic
     /// 实际功能由 Dynamic_Folder_Base 和 Logic_Manager_Base 实现。
     /// </summary>
     public class Render_Dynamic : Dynamic_Folder_Base
+
+
     {
         // 构造函数会自动调用基类的构造函数。
         // 基类构造函数会根据类名 "Render_Dynamic" -> "Render"
@@ -32,5 +34,21 @@ namespace Loupedeck.ReaOSCPlugin.Dynamic
         {
             // 通常无需在此添加额外代码，除非有 Render 文件夹特有的初始化逻辑。
         }
+    }
+
+        public class Effect_Dynamic : FX_Folder_Base
+    {
+        // 所有逻辑均由 FX_Folder_Base 基类处理。
+        // 此类的存在是为了被Loupedeck SDK的反射机制发现。
+        // 基类会根据此类名 "Effect_Dynamic" -> "Effect"
+        // 来加载对应的 "Effect_List.json" 配置文件。
+    }
+
+        public class Instrument_Dynamic : FX_Folder_Base
+    {
+        // 所有逻辑均由 FX_Folder_Base 基类处理。
+        // 此类的存在是为了被Loupedeck SDK的反射机制发现。
+        // 基类会根据此类名 "Instrument_Dynamic" -> "Instrument"
+        // 来加载对应的 "Instrument_List.json" 配置文件。
     }
 } 

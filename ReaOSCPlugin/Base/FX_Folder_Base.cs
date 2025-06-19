@@ -1,5 +1,8 @@
-// 文件名: Dynamic/FX_Dynamic.cs
-namespace Loupedeck.ReaOSCPlugin.Dynamic
+// 文件名: Base/FX_Folder_Base.cs
+// 描述: 这是为效果器浏览器这类具有复杂过滤和分页逻辑的动态文件夹创建的基类。
+// 它封装了品牌/类型过滤、分页、自定义UI绘制等所有通用逻辑。
+
+namespace Loupedeck.ReaOSCPlugin.Base
 {
     using System;
     using System.Collections.Generic;
@@ -9,13 +12,14 @@ namespace Loupedeck.ReaOSCPlugin.Dynamic
     using System.Reflection;
     using System.Text.RegularExpressions;
     using System.Threading.Tasks;
-    using Loupedeck.ReaOSCPlugin.Base;
+
     using Newtonsoft.Json;
     using Newtonsoft.Json.Linq;
 
-    public class FX_Dynamic : PluginDynamicFolder
+    public abstract class FX_Folder_Base : PluginDynamicFolder
     {
         // --- Member Variables ---
+        private readonly ButtonConfig _entryConfig;
         private string _currentBrandFilter = "Favorite";
         private string _currentEffectTypeFilter = "All";
         private int _currentPage = 0;
@@ -27,14 +31,27 @@ namespace Loupedeck.ReaOSCPlugin.Dynamic
         private List<string> _currentFxActionNames = new List<string>();
         private List<string> _favoriteFxNames = new List<string>();
 
-        public FX_Dynamic()
+        public FX_Folder_Base()
         {
-            this.DisplayName = "FX Browser";
-            this.GroupName = "Dynamic";
+            var folderClassName = this.GetType().Name;
+            var folderBaseName = folderClassName.Replace("_Dynamic", "").Replace("_", " ");
 
-            this.LoadFxConfigs();
+            this._entryConfig = Logic_Manager_Base.Instance.GetConfigByDisplayName("Dynamic", folderBaseName);
 
-            // Brand options no longer include "All". "Favorite" is added first if it exists.
+            if (this._entryConfig == null)
+            {
+                PluginLog.Error($"[FX_Folder_Base] Constructor: 未能在 Logic_Manager 中找到文件夹入口 '{folderBaseName}' 的配置项。");
+                this.DisplayName = folderBaseName;
+                this.GroupName = "Dynamic";
+                return;
+            }
+
+            this.DisplayName = this._entryConfig.DisplayName;
+            this.GroupName = this._entryConfig.GroupName ?? "Dynamic";
+
+            var contentFileName = $"{this.DisplayName}_List.json";
+            this.LoadFxConfigs(contentFileName);
+
             this._brandOptions = new List<string>();
             if (this._favoriteFxNames.Any())
             {
@@ -44,71 +61,73 @@ namespace Loupedeck.ReaOSCPlugin.Dynamic
             var brandNames = this._allFxConfigs.Values.Select(c => c.GroupName).Distinct().OrderBy(name => name);
             this._brandOptions.AddRange(brandNames);
 
-            // Default to the first available option (either "Favorite" or the first brand).
             this._currentBrandFilter = this._brandOptions.FirstOrDefault();
 
-            this.UpdateFxList(); // Initial population of the action list
+            this.UpdateFxList();
         }
 
-        private void LoadFxConfigs()
+        private void LoadFxConfigs(string fileName)
         {
             var assembly = Assembly.GetExecutingAssembly();
-            var resourceName = "Loupedeck.ReaOSCPlugin.Dynamic.FX_List.json";
+            var resourceName = $"Loupedeck.ReaOSCPlugin.Dynamic.{fileName}";
 
             try
             {
                 using (var stream = assembly.GetManifestResourceStream(resourceName))
-                using (var reader = new StreamReader(stream))
                 {
-                    string jsonContent = reader.ReadToEnd();
-
-                    // 先解析为 JObject，避免一次性强制转换导致的类型冲突
-                    JObject root = JObject.Parse(jsonContent);
-
-                    // --- 1. 处理收藏列表 "Favorite" ---
-                    if (root.TryGetValue("Favorite", out JToken favToken) && favToken is JArray favArray)
+                    if (stream == null)
                     {
-                        this._favoriteFxNames = favArray.ToObject<List<string>>();
-                        root.Remove("Favorite"); // 删除，防止后续转换冲突
+                        PluginLog.Error($"[FX_Folder_Base] Embedded resource '{resourceName}' not found. Please ensure the file exists and its 'Build Action' property is set to 'Embedded Resource' in Visual Studio.");
+                        // For debugging, let's list all available resources.
+                        var allResources = assembly.GetManifestResourceNames();
+                        PluginLog.Info($"[FX_Folder_Base] Available embedded resources in the assembly:\n{String.Join("\n", allResources)}");
+                        return;
                     }
 
-                    // --- 2. 其余厂商品牌转换为 ButtonConfig 集合 ---
-                    var allData = root.ToObject<Dictionary<string, List<ButtonConfig>>>();
-
-                    foreach (var group in allData)
+                    using (var reader = new StreamReader(stream))
                     {
-                        string brand = group.Key;
-                        foreach (var config in group.Value)
+                        string jsonContent = reader.ReadToEnd();
+                        JObject root = JObject.Parse(jsonContent);
+
+                        if (root.TryGetValue("Favorite", out JToken favToken) && favToken is JArray favArray)
                         {
-                            config.GroupName = brand; // 补充品牌名，后续过滤使用
-                            string actionParameter = CreateActionParameter(config);
-                            this._allFxConfigs[actionParameter] = config;
+                            this._favoriteFxNames = favArray.ToObject<List<string>>();
+                            root.Remove("Favorite");
+                        }
+
+                        var allData = root.ToObject<Dictionary<string, List<ButtonConfig>>>();
+
+                        foreach (var group in allData)
+                        {
+                            string brand = group.Key;
+                            foreach (var config in group.Value)
+                            {
+                                config.GroupName = brand;
+                                string actionParameter = CreateActionParameter(config);
+                                this._allFxConfigs[actionParameter] = config;
+                            }
                         }
                     }
                 }
-
-                PluginLog.Info($"[FX_Dynamic] 成功加载并解析了 {this._allFxConfigs.Count} 个效果器配置和 {this._favoriteFxNames.Count} 个收藏。");
+                PluginLog.Info($"[FX_Folder_Base] 成功加载并解析了 {this._allFxConfigs.Count} 个效果器配置和 {this._favoriteFxNames.Count} 个收藏 (从'{fileName}')。");
             }
             catch (Exception ex)
             {
-                PluginLog.Error(ex, $"[FX_Dynamic] 加载或解析 '{resourceName}' 失败。");
+                PluginLog.Error(ex, $"[FX_Folder_Base] 加载或解析 '{resourceName}' 失败。");
             }
         }
 
-        // This method now recalculates the filtered list of RAW action parameters and page counts.
         private void UpdateFxList()
         {
             IEnumerable<KeyValuePair<string, ButtonConfig>> filteredQuery;
 
             if (_currentBrandFilter == "Favorite")
             {
-                // Favorite filtering. Match against DisplayName, not the full action parameter key.
                 filteredQuery = this._allFxConfigs
                     .Where(kvp => this._favoriteFxNames.Contains(kvp.Value.DisplayName));
             }
             else
             {
-                // Standard brand filtering.
                 filteredQuery = this._allFxConfigs
                     .Where(kvp => kvp.Value.GroupName == this._currentBrandFilter);
             }
@@ -124,21 +143,18 @@ namespace Loupedeck.ReaOSCPlugin.Dynamic
         public override IEnumerable<string> GetButtonPressActionNames()
         {
             this._currentPage = Math.Min(this._currentPage, this._totalPages - 1);
-            // CreateCommandName is now called here, at the last moment, which is safe.
             return this._currentFxActionNames
                 .Skip(this._currentPage * 12)
                 .Take(12)
                 .Select(key => this.CreateCommandName(key));
         }
 
-        // We define the encoder layout here. "Back" is now in the first slot.
         public override IEnumerable<string> GetEncoderRotateActionNames() => new[] 
         { 
             "Back", "Brand", "Page", 
             null, "Type", null 
         }.Select(name => this.CreateAdjustmentName(name));
         
-        // The press action for "Back" is also moved to the first slot.
         public override IEnumerable<string> GetEncoderPressActionNames() => new string[]
         {
             this.CreateCommandName("Back"),
@@ -149,7 +165,6 @@ namespace Loupedeck.ReaOSCPlugin.Dynamic
             null
         };
 
-        // This is the modern, non-obsolete way to disable system-default navigation controls.
         public override PluginDynamicFolderNavigation GetNavigationArea(DeviceType _) => PluginDynamicFolderNavigation.None;
 
         public override void ApplyAdjustment(string actionParameter, int ticks)
@@ -159,14 +174,10 @@ namespace Loupedeck.ReaOSCPlugin.Dynamic
 
             if (actionParameter == "Brand")
             {
-                if (this._brandOptions.Count == 0)
-                {
-                    return;
-                }
+                if (this._brandOptions.Count == 0) return;
                 var currentIndex = this._brandOptions.IndexOf(this._currentBrandFilter);
                 var newIndex = (currentIndex + ticks + this._brandOptions.Count) % this._brandOptions.Count;
                 this._currentBrandFilter = this._brandOptions[newIndex];
-                
                 this._currentPage = 0;
                 this.UpdateFxList();
                 listChanged = true;
@@ -177,7 +188,6 @@ namespace Loupedeck.ReaOSCPlugin.Dynamic
                 var currentIndex = this._effectTypeOptions.IndexOf(this._currentEffectTypeFilter);
                 var newIndex = (currentIndex + ticks + this._effectTypeOptions.Count) % this._effectTypeOptions.Count;
                 this._currentEffectTypeFilter = this._effectTypeOptions[newIndex];
-                
                 this._currentPage = 0;
                 this.UpdateFxList();
                 listChanged = true;
@@ -205,18 +215,16 @@ namespace Loupedeck.ReaOSCPlugin.Dynamic
             }
             if(pageCountChanged)
             {
-                this.AdjustmentValueChanged("Page"); // Explicitly notify that the page display needs a refresh.
+                this.AdjustmentValueChanged("Page");
             }
         }
         
-        // When the "Back" encoder is pressed, this is called.
-        // We "trick" the system by treating the press as a "zero-tick" rotation,
-        // routing it to the single reliable entry point: ApplyAdjustment.
         public override void RunCommand(string actionParameter)
         {
             if (actionParameter == "Back")
             {
                 this.ApplyAdjustment(actionParameter, 0);
+                return;
             }
 
             if (this._allFxConfigs.TryGetValue(actionParameter, out var config))
@@ -229,9 +237,6 @@ namespace Loupedeck.ReaOSCPlugin.Dynamic
             }
         }
 
-        // --- LOW-LEVEL EVENT HANDLERS FOR MAXIMUM RELIABILITY ---
-
-        // This handler will now manage the rotation of the "Back" encoder.
         public override Boolean ProcessEncoderEvent(String actionParameter, DeviceEncoderEvent encoderEvent)
         {
             if (actionParameter == "Back")
@@ -242,7 +247,6 @@ namespace Loupedeck.ReaOSCPlugin.Dynamic
             return false;
         }
 
-        // This handler continues to manage the press of the "Back" encoder.
         public override Boolean ProcessButtonEvent2(String actionParameter, DeviceButtonEvent2 buttonEvent)
         {
             if (actionParameter == "Back" && buttonEvent.EventType == DeviceButtonEventType.Press)
@@ -255,9 +259,15 @@ namespace Loupedeck.ReaOSCPlugin.Dynamic
 
         public override BitmapImage GetCommandImage(string actionParameter, PluginImageSize imageSize)
         {
-            // Note: The system will provide a default image for NavigateUpActionName.
-            // We only need to handle our custom effect buttons.
-            if (!this._allFxConfigs.TryGetValue(actionParameter, out var config)) return null;
+            if (!this._allFxConfigs.TryGetValue(actionParameter, out var config))
+            {
+                using (var bitmapBuilder = new BitmapBuilder(imageSize))
+                {
+                    bitmapBuilder.Clear(BitmapColor.Black);
+                    bitmapBuilder.DrawText("?", color: BitmapColor.White);
+                    return bitmapBuilder.ToImage();
+                }
+            }
 
             using (var bitmapBuilder = new BitmapBuilder(imageSize))
             {
@@ -266,9 +276,7 @@ namespace Loupedeck.ReaOSCPlugin.Dynamic
                     : BitmapColor.Black;
                 bitmapBuilder.Clear(currentBgColor);
 
-                // --- 核心修复：如果 Title 为空，则使用 DisplayName 作为备用 ---
                 var titleToDraw = !String.IsNullOrEmpty(config.Title) ? config.Title : config.DisplayName;
-
                 var titleColor = String.IsNullOrEmpty(config.TitleColor) ? BitmapColor.White : HexToBitmapColor(config.TitleColor);
                 bitmapBuilder.DrawText(text: titleToDraw, fontSize: GetAutomaticButtonTitleFontSize(titleToDraw), color: titleColor);
 
@@ -281,50 +289,34 @@ namespace Loupedeck.ReaOSCPlugin.Dynamic
             }
         }
 
-        // This override now ensures all encoder titles AND values have auto-sizing fonts.
         public override BitmapImage GetAdjustmentImage(string actionParameter, PluginImageSize imageSize)
         {
-            if (String.IsNullOrEmpty(actionParameter))
-            {
-                return null;
-            }
+            if (String.IsNullOrEmpty(actionParameter)) return null;
 
             using (var bitmapBuilder = new BitmapBuilder(imageSize))
             {
                 bitmapBuilder.Clear(BitmapColor.Black);
-
-                // We get the value from our private helper to draw it ourselves.
                 var value = this.GetValueForEncoder(actionParameter);
 
-                // Case 1: No value to display (e.g., "Back"). Draw the title centered.
                 if (String.IsNullOrEmpty(value))
                 {
                     var titleFontSize = GetAutomaticTitleFontSize(actionParameter);
                     bitmapBuilder.DrawText(actionParameter, color: BitmapColor.White, fontSize: titleFontSize);
                 }
-                // Case 2: There is a value. Draw title on top, value on bottom.
                 else
                 {
-                    // Draw title (top) - auto-sized
                     var titleFontSize = GetAutomaticTitleFontSize(actionParameter);
                     bitmapBuilder.DrawText(actionParameter, 0, 5, bitmapBuilder.Width, 30, BitmapColor.White, titleFontSize);
-
-                    // Draw value (bottom) - auto-sized
                     var valueFontSize = GetAutomaticTitleFontSize(value);
                     bitmapBuilder.DrawText(value, 0, 35, bitmapBuilder.Width, bitmapBuilder.Height - 40, BitmapColor.White, valueFontSize);
                 }
-                
                 return bitmapBuilder.ToImage();
             }
         }
 
-        // We return null here to prevent the service from drawing its own default title.
         public override string GetAdjustmentDisplayName(string actionParameter, PluginImageSize imageSize) => null;
-
-        // We return null here to prevent the service from drawing its own default value, avoiding the "double text" issue.
         public override string GetAdjustmentValue(string actionParameter) => null;
         
-        // This is a private helper to get the data for our custom drawing logic.
         private string GetValueForEncoder(string actionParameter)
         {
             switch(actionParameter)
@@ -340,22 +332,16 @@ namespace Loupedeck.ReaOSCPlugin.Dynamic
         
         private string DetermineOscAddress(ButtonConfig config)
         {
-            // 净化厂商名: "FabFilter FX" -> "FabFilter_FX"
             var vendorPart = SanitizeForOsc(config.GroupName);
-
-            // 提取并净化效果器名: "Add Pro-C 2" -> "Pro_C_2"
             var effectPart = config.DisplayName.StartsWith("Add ") 
                 ? SanitizeForOsc(config.DisplayName.Substring(4)) 
                 : SanitizeForOsc(config.DisplayName);
-
             return $"/FX/Add/{vendorPart}/{effectPart}";
         }
 
-        // 一个更强大的净化方法，将所有非字母数字替换为下划线
         private string SanitizeForOsc(string input)
         {
             if (string.IsNullOrEmpty(input)) return "";
-            // 将任何非字母、非数字的字符序列替换为单个下划线
             string sanitized = Regex.Replace(input, @"[^a-zA-Z0-9]+", "_");
             return sanitized.Trim('_');
         }
@@ -363,5 +349,38 @@ namespace Loupedeck.ReaOSCPlugin.Dynamic
         private static int GetAutomaticButtonTitleFontSize(String title) { if (String.IsNullOrEmpty(title)) return 23; var len = title.Length; return len switch { 1 => 38, 2 => 33, 3 => 31, 4 => 26, 5 => 23, 6 => 22, 7 => 20, 8 => 18, _ => 16 }; }
         private int GetAutomaticTitleFontSize(String title) { if (String.IsNullOrEmpty(title)) return 23; var totalLengthWithSpaces = title.Length; int effectiveLength; if (totalLengthWithSpaces <= 8) { effectiveLength = totalLengthWithSpaces; } else { var words = title.Split(' '); effectiveLength = words.Length > 0 ? words.Max(word => word.Length) : 0; if (effectiveLength == 0 && totalLengthWithSpaces > 0) { effectiveLength = totalLengthWithSpaces; } } return effectiveLength switch { 1 => 16, 2 => 16, 3 => 16, 4 => 16, 5 => 15, 6 => 12, 7 => 11, 8 => 12, 9 => 11, 10 => 8, 11 => 7, _ => 6 }; }
         private static BitmapColor HexToBitmapColor(string hex) { if (String.IsNullOrEmpty(hex)) return BitmapColor.White; try { hex = hex.TrimStart('#'); var r = (byte)Int32.Parse(hex.Substring(0, 2), NumberStyles.HexNumber); var g = (byte)Int32.Parse(hex.Substring(2, 2), NumberStyles.HexNumber); var b = (byte)Int32.Parse(hex.Substring(4, 2), NumberStyles.HexNumber); return new BitmapColor(r, g, b); } catch { return BitmapColor.Red; } }
+
+        public override BitmapImage GetButtonImage(PluginImageSize imageSize)
+        {
+            if (this._entryConfig == null)
+            {
+                using (var bb = new BitmapBuilder(imageSize))
+                {
+                    bb.Clear(BitmapColor.Black);
+                    bb.DrawText(this.DisplayName, BitmapColor.White, GetAutomaticButtonTitleFontSize(this.DisplayName));
+                    return bb.ToImage();
+                }
+            }
+            
+            using (var bitmapBuilder = new BitmapBuilder(imageSize))
+            {
+                BitmapColor bgColor = !String.IsNullOrEmpty(this._entryConfig.BackgroundColor) ? HexToBitmapColor(this._entryConfig.BackgroundColor) : BitmapColor.Black;
+                bitmapBuilder.Clear(bgColor);
+
+                BitmapColor titleColor = !String.IsNullOrEmpty(this._entryConfig.TitleColor) ? HexToBitmapColor(this._entryConfig.TitleColor) : BitmapColor.White;
+                string mainTitle = this._entryConfig.Title ?? this._entryConfig.DisplayName;
+
+                if (!String.IsNullOrEmpty(mainTitle))
+                {
+                    bitmapBuilder.DrawText(mainTitle, titleColor, GetAutomaticButtonTitleFontSize(mainTitle));
+                }
+                if (!String.IsNullOrEmpty(this._entryConfig.Text))
+                {
+                    var textColor = String.IsNullOrEmpty(this._entryConfig.TextColor) ? HexToBitmapColor(this._entryConfig.TextColor) : BitmapColor.White;
+                    bitmapBuilder.DrawText(this._entryConfig.Text, this._entryConfig.TextX ?? 50, this._entryConfig.TextY ?? 55, this._entryConfig.TextWidth ?? 14, this._entryConfig.TextHeight ?? 14, textColor, this._entryConfig.TextSize ?? 14);
+                }
+                return bitmapBuilder.ToImage();
+            }
+        }
     }
 } 
