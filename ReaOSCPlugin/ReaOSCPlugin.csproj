@@ -33,7 +33,6 @@
     <None Remove="Dynamic\Add_Track_List.json" />
     <None Remove="Dynamic\Dynamic_List.json" />
     <None Remove="Dynamic\Render_List.json" />
-    <None Remove="Effects\Effects_List.json" />
     <None Remove="General\General_List.json" />
     <None Remove="metadata\Icon\All Env View.png" />
     <None Remove="metadata\Icon\All_Env View.png" />
@@ -90,10 +89,10 @@
     <EmbeddedResource Include="Dynamic\Dynamic_List.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </EmbeddedResource>
-    <EmbeddedResource Include="Dynamic\Render_List.json">
+    <EmbeddedResource Include="Dynamic\FX_List.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </EmbeddedResource>
-    <EmbeddedResource Include="Effects\Effects_List.json">
+    <EmbeddedResource Include="Dynamic\Render_List.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </EmbeddedResource>
     <EmbeddedResource Include="metadata\Icon\All_Env_View.png">
@@ -210,6 +209,10 @@
     <EmbeddedResource Include="General\General_List.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Page Include="Dynamic\FX_List.json" />
   </ItemGroup>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">

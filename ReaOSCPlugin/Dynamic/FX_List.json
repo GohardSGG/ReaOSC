@@ -1,5 +1,5 @@
 {
-  "Eventide FX": [
+  "Eventide": [
     {
       "DisplayName": "Blackhole",
       "Title": "Blackhole"
@@ -60,7 +60,7 @@
       "TextColor": "#FFE200"
     }
   ],
-  "FabFilter FX": [
+  "FabFilter": [
     {
       "DisplayName": "Add Pro-C 2",
       "Title": "C",
@@ -138,7 +138,7 @@
       "TextX": 55
     }
   ],
-  "Kiive Audio FX": [
+  "Kiive Audio": [
     {
       "DisplayName": "Distinct Pro",
       "Title": "Distinct Pro"
@@ -178,7 +178,7 @@
       "Title": "Xtressor"
     }
   ],
-  "Sonible FX": [
+  "Sonible": [
     {
       "DisplayName": "Prime Vocal",
       "Title": "Vocal",
@@ -264,7 +264,7 @@
       "TextX": 50
     }
   ],
-  "SSL FX": [
+  "SSL": [
     {
       "DisplayName": "DeEss",
       "Title": "DeEss"
@@ -338,7 +338,7 @@
       "Title": "SubGen"
     }
   ],
-  "UAD FX": [
+  "UAD": [
     {
       "DisplayName": "1176 FET",
       "Title": "1176",
@@ -424,7 +424,7 @@
       "TextX": 50
     }
   ],
-  "Waves FX": [
+  "Waves": [
     {
       "DisplayName": "ADT",
       "Title": "ADT"
@@ -561,7 +561,7 @@
       "TextX": 55
     }
   ],
-  "Airwindows FX": [
+  "Airwindows": [
     {
       "DisplayName": "Airwindows",
       "Title": "Airwindows",
@@ -570,7 +570,7 @@
       "TextX": 50
     }
   ],
-  "Cockos FX": [
+  "Cockos": [
     {
       "DisplayName": "Container",
       "Title": "Container"
@@ -597,7 +597,7 @@
       "TextX": 50
     }
   ],
-  "Fiedler Audio FX": [
+  "Fiedler Audio": [
     {
       "DisplayName": "Dolby Atmos Beam",
       "Title": "Beam",
@@ -624,7 +624,7 @@
       "TextX": 50
     }
   ],
-  "Native Instruments FX": [
+  "Native Instruments": [
     {
       "DisplayName": "Kontakt 6",
       "Title": "Kontakt",

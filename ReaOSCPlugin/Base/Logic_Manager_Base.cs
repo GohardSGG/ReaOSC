@@ -132,11 +132,14 @@ namespace Loupedeck.ReaOSCPlugin.Base
             var assembly = Assembly.GetExecutingAssembly();
             var generalConfigs = this.LoadAndDeserialize<Dictionary<string, List<ButtonConfig>>>(assembly, "Loupedeck.ReaOSCPlugin.General.General_List.json");
             this.ProcessGroupedConfigs(generalConfigs, isFx: false);
-            var effectsConfigs = this.LoadAndDeserialize<Dictionary<string, List<ButtonConfig>>>(assembly, "Loupedeck.ReaOSCPlugin.Effects.Effects_List.json");
-            this.ProcessGroupedConfigs(effectsConfigs, isFx: true);
+            
+            // 【重要】不再加载任何旧的Effects_List.json
+            // var effectsConfigs = this.LoadAndDeserialize<Dictionary<string, List<ButtonConfig>>>(assembly, "Loupedeck.ReaOSCPlugin.Effects.Effects_List.json");
+            // this.ProcessGroupedConfigs(effectsConfigs, isFx: true);
 
             var resourceNames = assembly.GetManifestResourceNames();
-            var dynamicFolderContentResources = resourceNames.Where(r => r.StartsWith("Loupedeck.ReaOSCPlugin.Dynamic.") && r.EndsWith("_List.json") && !r.EndsWith("Dynamic_List.json"));
+            // 【重要】确保 FX_List.json 不在这里被加载
+            var dynamicFolderContentResources = resourceNames.Where(r => r.StartsWith("Loupedeck.ReaOSCPlugin.Dynamic.") && r.EndsWith("_List.json") && !r.Contains("Dynamic_List.json") && !r.Contains("FX_List.json"));
             foreach (var resourceName in dynamicFolderContentResources)
             {
                 PluginLog.Info($"[LogicManager] 正在加载动态文件夹内容: {resourceName}");

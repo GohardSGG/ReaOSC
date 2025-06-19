@@ -1,19 +1,22 @@
-// 文件路径: Loupedeck.ReaOSCPlugin.Dynamic.Dynamic_List.json
-// 注意：此文件需要设置为“嵌入的资源” (Embedded Resource)
 [
   {
-    "DisplayName": "Add Track", // 已有的动态文件夹入口
-    "GroupName": "Dynamic", // 确保 GroupName 与 Dynamic_Folder_Base 构造函数中查找的匹配
+    "DisplayName": "Add Track",
+    "GroupName": "Dynamic",
     "Title": "Track",
     "Text": "Add",
     "TextColor": "#88E2FF"
   },
-  { // 【新增】Render 动态文件夹的入口
-    "DisplayName": "Render", // 这将用于匹配 Render_Dynamic_Folder.cs 类名 (Render_Dynamic -> "Render")
-    "GroupName": "Dynamic", // 所有动态文件夹的入口都属于这个共同的组
-    "Title": "Render", // 按钮上显示 "Render"
-    "Description": "Access render settings and export" // 文件夹的描述
-    // "Text": "Export",    // 可选的次要文本
-    // "TextColor": "#00FF00" // 可选的次要文本颜色
+  {
+    "DisplayName": "Render",
+    "GroupName": "Dynamic",
+    "Title": "Render",
+    "Description": "Access render settings and export"
+  },
+  {
+    "DisplayName": "FX",
+    "GroupName": "Dynamic",
+    "Title": "FX",
+    "Text": "Browser",
+    "TextColor": "#87CEEB"
   }
 ]
