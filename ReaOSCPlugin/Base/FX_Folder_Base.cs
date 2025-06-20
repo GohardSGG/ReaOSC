@@ -30,6 +30,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
         private readonly Dictionary<string, ButtonConfig> _allFxConfigs = new Dictionary<string, ButtonConfig>();
         private List<string> _currentFxActionNames = new List<string>();
         private List<string> _favoriteFxNames = new List<string>();
+        private List<string> _originalBrandOrder = null; // 用于存储从JSON读取的原始品牌顺序
 
         public FX_Folder_Base()
         {
@@ -43,32 +44,75 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 PluginLog.Error($"[FX_Folder_Base] Constructor: 未能在 Logic_Manager 中找到文件夹入口 '{folderBaseName}' 的配置项。");
                 this.DisplayName = folderBaseName;
                 this.GroupName = "Dynamic";
+                this._brandOptions = new List<string>(); // 初始化 _brandOptions
                 return;
             }
 
             this.DisplayName = this._entryConfig.DisplayName;
             this.GroupName = this._entryConfig.GroupName ?? "Dynamic";
+            this._brandOptions = new List<string>(); // 初始化 _brandOptions
 
             var fxData = Logic_Manager_Base.Instance.GetFxData(this.DisplayName);
             if (fxData == null)
             {
                 PluginLog.Error($"[FX_Folder_Base] Constructor for '{this.DisplayName}' could not retrieve its data from Logic_Manager. The corresponding _List.json file may have failed to load.");
+                if (this._favoriteFxNames.Any()) { this._brandOptions.Add("Favorite"); } // 即使没有其他数据，也要处理Favorite
+                this._currentBrandFilter = this._brandOptions.FirstOrDefault() ?? (this._favoriteFxNames.Any() ? "Favorite" : "All");
                 return;
             }
 
-            this.ParseFxData(fxData);
+            this.ParseFxData(fxData); // ParseFxData 会在需要时填充 _originalBrandOrder
 
-            this._brandOptions = new List<string>();
+            // 构建 _brandOptions 列表
             if (this._favoriteFxNames.Any())
             {
                 this._brandOptions.Add("Favorite");
             }
 
-            var brandNames = this._allFxConfigs.Values.Select(c => c.GroupName).Distinct().OrderBy(name => name);
-            this._brandOptions.AddRange(brandNames);
+            // 如果配置了 PreserveBrandOrderInJson 并且已记录原始顺序
+            if (this._entryConfig.PreserveBrandOrderInJson && this._originalBrandOrder != null && this._originalBrandOrder.Any())
+            {
+                var validOrderedBrands = this._originalBrandOrder
+                    .Where(brandName => brandName != "Favorite" && this._allFxConfigs.Values.Any(c => c.GroupName == brandName));
+                this._brandOptions.AddRange(validOrderedBrands);
 
-            this._currentBrandFilter = this._brandOptions.FirstOrDefault();
+                // 添加任何在 _originalBrandOrder 中未提及但在 _allFxConfigs 中存在的品牌 (按字母顺序)
+                var remainingBrands = this._allFxConfigs.Values
+                    .Select(c => c.GroupName)
+                    .Distinct()
+                    .Where(brandName => brandName != "Favorite" && !this._brandOptions.Contains(brandName))
+                    .OrderBy(name => name);
+                this._brandOptions.AddRange(remainingBrands);
+            }
+            else
+            {
+                // 默认行为：按字母顺序排序
+                var brandNames = this._allFxConfigs.Values
+                    .Select(c => c.GroupName)
+                    .Distinct()
+                    .Where(brandName => brandName != "Favorite")
+                    .OrderBy(name => name);
+                this._brandOptions.AddRange(brandNames);
+            }
 
+            // 设置当前品牌过滤器的默认值
+            if (!String.IsNullOrEmpty(this._currentBrandFilter) && this._brandOptions.Contains(this._currentBrandFilter))
+            {
+                // 保留之前的 _currentBrandFilter (如果它仍然有效)
+            }
+            else if (this._brandOptions.Any())
+            {
+                this._currentBrandFilter = this._brandOptions.First();
+            }
+            else if (this._favoriteFxNames.Any()) // 如果列表为空但有收藏
+            {
+                this._currentBrandFilter = "Favorite";
+            }
+            else // 如果完全没有品牌或收藏
+            {
+                this._currentBrandFilter = "All"; // 或其他合适的默认值
+            }
+            
             this.UpdateFxList();
         }
 
@@ -78,20 +122,50 @@ namespace Loupedeck.ReaOSCPlugin.Base
             {
                 if (root.TryGetValue("Favorite", out JToken favToken) && favToken is JArray favArray)
                 {
-                    this._favoriteFxNames = favArray.ToObject<List<string>>();
-                    root.Remove("Favorite"); 
+                    this._favoriteFxNames = favArray.ToObject<List<string>>() ?? new List<string>();
                 }
 
-                var allData = root.ToObject<Dictionary<string, List<ButtonConfig>>>();
-
-                foreach (var group in allData)
+                // 如果配置了 PreserveBrandOrderInJson，则记录原始的顶层键顺序
+                if (this._entryConfig != null && this._entryConfig.PreserveBrandOrderInJson)
                 {
-                    string brand = group.Key;
-                    foreach (var config in group.Value)
+                    this._originalBrandOrder = new List<string>();
+                    foreach (var property in root.Properties())
                     {
-                        config.GroupName = brand;
-                        string actionParameter = CreateActionParameter(config);
-                        this._allFxConfigs[actionParameter] = config;
+                        // 我们只关心那些作为品牌/类别的键
+                        // Favorite 单独处理，不加入原始顺序列表，它总是在前面(如果存在)
+                        if (property.Name != "Favorite" && (property.Value is JObject || property.Value is JArray))
+                        {
+                            this._originalBrandOrder.Add(property.Name);
+                        }
+                    }
+                    if (this._originalBrandOrder.Any())
+                    {
+                       PluginLog.Info($"[FX_Folder_Base] For '{this.DisplayName}', recorded original brand order: {string.Join(", ", this._originalBrandOrder)}");
+                    }
+                }
+
+                // 从 root 中移除 Favorite，以免被当作普通品牌处理进 _allFxConfigs
+                // 这一步必须在记录 _originalBrandOrder 之后，且在 ToObject<Dictionary...>() 之前
+                if (root.Property("Favorite") != null)
+                {
+                    root.Remove("Favorite");
+                }
+                
+                var allData = root.ToObject<Dictionary<string, List<ButtonConfig>>>();
+                if (allData != null)
+                {
+                    foreach (var group in allData)
+                    {
+                        string brand = group.Key;
+                        if (group.Value != null)
+                        {
+                            foreach (var config in group.Value)
+                            {
+                                config.GroupName = brand; 
+                                string actionParameter = CreateActionParameter(config);
+                                this._allFxConfigs[actionParameter] = config;
+                            }
+                        }
                     }
                 }
                 PluginLog.Info($"[FX_Folder_Base] Successfully parsed {this._allFxConfigs.Count} FX configs and {this._favoriteFxNames.Count} favorites for folder '{this.DisplayName}'.");

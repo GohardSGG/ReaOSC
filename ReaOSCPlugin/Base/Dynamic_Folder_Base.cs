@@ -11,6 +11,8 @@ namespace Loupedeck.ReaOSCPlugin.Base
     using System.Threading.Tasks;
 
     using Newtonsoft.Json;
+    // 确保 Loupedeck SDK 的相关 using 声明存在，尤其是 Utils 命名空间
+    // using Loupedeck.PluginSdk.Utils; // 如果没有，可能需要添加
 
     public abstract class Dynamic_Folder_Base : PluginDynamicFolder, IDisposable // 【我之前的版本添加了IDisposable，如果您的旧版没有，可以移除】
     {
@@ -115,70 +117,101 @@ namespace Loupedeck.ReaOSCPlugin.Base
         #region PluginDynamicFolder 核心重写
 
         public override IEnumerable<string> GetButtonPressActionNames() => this._localButtonIds.Select(id => this.CreateCommandName(id)).ToList();
-        public override IEnumerable<string> GetEncoderRotateActionNames() => this._localAdjustmentIds.Select(id => this.CreateAdjustmentName(id)).ToList();
-        public override IEnumerable<string> GetEncoderPressActionNames() => this._localAdjustmentIds.Select(id => this.CreateAdjustmentName(id)).ToList();
-
-        public override void ApplyAdjustment(string actionParameter, int ticks) // actionParameter 是 localId
+        
+        // 【修改】返回键放置在左上角第1个编码器，其余顺延
+        public override IEnumerable<string> GetEncoderRotateActionNames()
         {
-            if (!this._localIdToGlobalActionParameter.TryGetValue(actionParameter, out var globalActionParameter))
-                return;
-            // 【注意】旧代码中ProcessDialAdjustment的签名与Logic_Manager_Base当前版本可能不同
-            // 当前Logic_Manager_Base.ProcessDialAdjustment(string globalActionParameter, int ticks)
-            Logic_Manager_Base.Instance.ProcessDialAdjustment(globalActionParameter, ticks);
-            // AdjustmentValueChanged 需要的是由CreateAdjustmentName生成的、Loupedeck SDK 可识别的完整参数名
-            this.AdjustmentValueChanged(this.CreateAdjustmentName(actionParameter));
+            var actionNames = new List<string> { this.CreateAdjustmentName("Back") }; // 第一个固定为 "Back" 的旋转动作
+            actionNames.AddRange(this._localAdjustmentIds.Select(id => this.CreateAdjustmentName(id))); // 后续的是从 _localAdjustmentIds 顺延的
+            return actionNames;
         }
 
-        public override void RunCommand(string actionParameter) // actionParameter 是 localId
+        // 【修改】返回键的按下功能也放置在左上角第1个编码器，其余顺延
+        public override IEnumerable<string> GetEncoderPressActionNames()
         {
-            if (actionParameter.Equals(NavigateUpActionName))
+            var pressActionNames = new List<string> { this.CreateCommandName("Back") }; // 第一个固定为 "Back" 的按下动作
+            // 其余编码器的按下功能从 _localAdjustmentIds 顺延
+            pressActionNames.AddRange(this._localAdjustmentIds.Select(id => this.CreateCommandName(id)));
+            return pressActionNames;
+        }
+
+        // 【修改】处理返回键的旋转和按下，以及顺延的旋钮的旋转和按下
+        public override void ApplyAdjustment(string actionParameter, int ticks) // actionParameter 是 localId 或 "Back"
+        {
+            if (actionParameter == "Back")
+            {
+                this.Close(); // 返回上一级
+                return;
+            }
+
+            // 处理顺延的旋钮的旋转
+            if (!this._localIdToGlobalActionParameter.TryGetValue(actionParameter, out var globalActionParameter))
+                return;
+            
+            Logic_Manager_Base.Instance.ProcessDialAdjustment(globalActionParameter, ticks);
+            this.AdjustmentValueChanged(this.CreateAdjustmentName(actionParameter)); // 通知UI更新
+        }
+
+        public override void RunCommand(string actionParameter) // actionParameter 是 localId 或 "Back"
+        {
+            if (actionParameter == "Back")
+            {
+                this.Close(); // 返回上一级 (通过按下编码器触发)
+                return;
+            }
+
+            if (actionParameter.Equals(NavigateUpActionName)) // 基类可能有的向上导航
             {
                 this.Close();
                 return;
             }
+            
             if (!this._localIdToGlobalActionParameter.TryGetValue(actionParameter, out var globalActionParameter))
                 return;
             if (!this._localIdToConfig.TryGetValue(actionParameter, out var config))
                 return;
 
+            // 处理顺延的编码器按下事件 (这些编码器来自于 _localAdjustmentIds)
             if (config.ActionType.Contains("Dial"))
             {
-                // 调用Logic_Manager_Base中处理旋钮按下的方法
                 if (Logic_Manager_Base.Instance.ProcessDialPress(globalActionParameter))
                 {
-                    this.EncoderActionNamesChanged();
+                    // 如果按下操作改变了旋钮状态 (例如切换模式)，需要通知UI更新
+                    this.AdjustmentValueChanged(this.CreateAdjustmentName(actionParameter)); 
                 }
             }
-            else
+            else // 处理普通按钮 (_localButtonIds) 的按下事件
             {
-                // 调用Logic_Manager_Base中处理按钮按下的方法 (ProcessUserAction是较新的统一接口)
                 Logic_Manager_Base.Instance.ProcessUserAction(globalActionParameter, this.DisplayName);
 
                 if (config.ActionType == "TriggerButton")
                 {
                     this._lastTriggerPressTimes[actionParameter] = DateTime.Now;
                     this.ButtonActionNamesChanged();
-                    Task.Delay(200).ContinueWith(_ =>
-                    {
-                        // 确保在回调中访问的字典仍然包含该键，并且插件上下文仍然有效。
-                        // 您的旧代码仅调用 this.ButtonActionNamesChanged()。为保持一致性：
-                        this.ButtonActionNamesChanged();
-                    }); // 【修正】移除了 TaskScheduler.FromCurrentSynchronizationContext() 和 IsLoaded
+                    Task.Delay(200).ContinueWith(_ => { this.ButtonActionNamesChanged(); }); 
                 }
-                else if (config.ActionType == "CombineButton") // CombineButton的UI反馈
+                else if (config.ActionType == "CombineButton") 
                 {
                     this._lastCombineButtonPressTimes[actionParameter] = DateTime.Now;
                     this.ButtonActionNamesChanged();
-                    Task.Delay(200).ContinueWith(_ =>
-                    {
-                        this.ButtonActionNamesChanged();
-                    }); // 【修正】移除了 TaskScheduler.FromCurrentSynchronizationContext() 和 IsLoaded
+                    Task.Delay(200).ContinueWith(_ => { this.ButtonActionNamesChanged(); }); 
                 }
                 else if (config.ActionType == "ToggleButton" || config.ActionType == "ParameterButton")
                 {
                     this.ButtonActionNamesChanged();
                 }
             }
+        }
+        
+        // 【修正】ProcessEncoderEvent 对 "Back" 的处理，移除 EventType 检查
+        public override Boolean ProcessEncoderEvent(String actionParameter, DeviceEncoderEvent encoderEvent)
+        {
+            if (actionParameter == "Back")
+            {
+                this.Close();
+                return true; // 事件已处理
+            }
+            return base.ProcessEncoderEvent(actionParameter, encoderEvent); 
         }
 
         public override string GetCommandDisplayName(string actionParameter, PluginImageSize imageSize)
@@ -259,6 +292,105 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 return bitmapBuilder.ToImage();
             }
         }
+        
+        // 【新增】绘制旋钮图像的方法
+        public override BitmapImage GetAdjustmentImage(string actionParameter, PluginImageSize imageSize)
+        {
+            if (string.IsNullOrEmpty(actionParameter)) return null;
+
+            if (actionParameter == "Back")
+            {
+                using (var bitmapBuilder = new BitmapBuilder(imageSize))
+                {
+                    bitmapBuilder.Clear(BitmapColor.Black);
+                    // 为"返回"旋钮绘制清晰的文本
+                    bitmapBuilder.DrawText("Back", BitmapColor.White, GetAutomaticDialTitleFontSize("Back"));
+                    return bitmapBuilder.ToImage();
+                }
+            }
+
+            // 处理顺延的旋钮图像
+            if (!this._localIdToConfig.TryGetValue(actionParameter, out var config) ||
+                !this._localIdToGlobalActionParameter.TryGetValue(actionParameter, out var globalActionParameter))
+            {
+                // 如果找不到配置，显示错误图像
+                using (var errBB = new BitmapBuilder(imageSize))
+                { 
+                    errBB.Clear(new BitmapColor(100, 0, 0)); // 暗红色背景
+                    errBB.DrawText("Cfg?", BitmapColor.White, GetAutomaticDialTitleFontSize("Cfg?")); 
+                    return errBB.ToImage(); 
+                }
+            }
+
+            // 根据旋钮的配置和状态绘制图像
+            using (var bitmapBuilder = new BitmapBuilder(imageSize))
+            {
+                BitmapColor currentBgColor = !String.IsNullOrEmpty(config.BackgroundColor) ? HexToBitmapColor(config.BackgroundColor) : BitmapColor.Black;
+                BitmapColor currentTitleColor = String.IsNullOrEmpty(config.TitleColor) ? BitmapColor.White : HexToBitmapColor(config.TitleColor);
+                string mainTitleToDraw = config.Title ?? config.DisplayName; // 默认显示标题或名称
+
+                // 根据 ActionType 处理特定的显示逻辑 (例如 ToggleDial, ParameterDial, 2ModeTickDial)
+                if (config.ActionType == "ToggleDial")
+                {
+                    var isActive = Logic_Manager_Base.Instance.GetToggleState(globalActionParameter);
+                    currentBgColor = isActive && !String.IsNullOrEmpty(config.ActiveColor) ? HexToBitmapColor(config.ActiveColor) : currentBgColor;
+                    currentTitleColor = isActive
+                        ? (String.IsNullOrEmpty(config.ActiveTextColor) ? BitmapColor.White : HexToBitmapColor(config.ActiveTextColor))
+                        : (String.IsNullOrEmpty(config.DeactiveTextColor) ? currentTitleColor : HexToBitmapColor(config.DeactiveTextColor));
+                }
+                else if (config.ActionType == "ParameterDial" && config.ShowParameterInDial == "Yes")
+                {
+                     mainTitleToDraw = Logic_Manager_Base.Instance.GetParameterDialSelectedTitle(globalActionParameter) ?? mainTitleToDraw;
+                }
+                else if (config.ActionType == "2ModeTickDial")
+                {
+                    var currentMode = Logic_Manager_Base.Instance.GetDialMode(globalActionParameter);
+                    mainTitleToDraw = currentMode == 0 ? (config.Title ?? config.DisplayName) : (config.Title_Mode2 ?? config.Title ?? config.DisplayName);
+                    currentTitleColor = currentMode == 0 
+                        ? (String.IsNullOrEmpty(config.TitleColor) ? BitmapColor.White : HexToBitmapColor(config.TitleColor)) 
+                        : (String.IsNullOrEmpty(config.TitleColor_Mode2) ? BitmapColor.White : HexToBitmapColor(config.TitleColor_Mode2));
+                    currentBgColor = currentMode == 0 
+                        ? (String.IsNullOrEmpty(config.BackgroundColor) ? BitmapColor.Black : HexToBitmapColor(config.BackgroundColor)) 
+                        : (String.IsNullOrEmpty(config.BackgroundColor_Mode2) ? BitmapColor.Black : HexToBitmapColor(config.BackgroundColor_Mode2));
+                }
+                // 可以为其他 ActionType 添加更多 else if 分支
+
+                bitmapBuilder.Clear(currentBgColor);
+                var titleFontSize = GetAutomaticDialTitleFontSize(mainTitleToDraw); // 使用旋钮的字体大小辅助方法
+                
+                // 参照 FX_Folder_Base，旋钮通常在顶部显示标题，在底部显示值
+                // 这里我们简化处理，如果 Logic_Manager_Base 能提供一个值字符串就显示，否则只显示标题
+                string valueToDisplay = null;
+                if (config.ActionType == "ParameterDial")
+                {
+                    // 假设 Logic_Manager_Base 有一个方法可以获取 ParameterDial 的当前值字符串
+                    // 例如: valueToDisplay = Logic_Manager_Base.Instance.GetParameterDialValueString(globalActionParameter);
+                    // 如果没有这样的方法，或者对于其他类型的旋钮，valueToDisplay 将为 null
+                }
+
+                if (!String.IsNullOrEmpty(valueToDisplay))
+                {
+                    bitmapBuilder.DrawText(mainTitleToDraw, 0, 5, bitmapBuilder.Width, 30, currentTitleColor, titleFontSize); // 标题区域
+                    var valueFontSize = GetAutomaticDialTitleFontSize(valueToDisplay); // 值的字体大小
+                    bitmapBuilder.DrawText(valueToDisplay, 0, 35, bitmapBuilder.Width, bitmapBuilder.Height - 40, currentTitleColor, valueFontSize); // 值区域
+                }
+                else
+                {
+                    // 如果没有特定的值要显示，则将标题居中绘制
+                    bitmapBuilder.DrawText(mainTitleToDraw, currentTitleColor, titleFontSize);
+                }
+                
+                // config.Text 通常用于按钮的次要文本，对于旋钮可能不太常用或需要不同布局
+                // if (!String.IsNullOrEmpty(config.Text)) { ... }
+
+                return bitmapBuilder.ToImage();
+            }
+        }
+
+        // 【新增】与 FX_Folder_Base 保持一致，这些方法返回 null
+        public override string GetAdjustmentDisplayName(string actionParameter, PluginImageSize imageSize) => null;
+        public override string GetAdjustmentValue(string actionParameter) => null;
+
 
         public override BitmapImage GetButtonImage(PluginImageSize imageSize)
         {
@@ -319,16 +451,17 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 return;
             }
 
+            // 【修正】使用 config.ActionType 来决定调用哪个 Changed 方法
             if (config.ActionType.Contains("Dial"))
             {
                 this.EncoderActionNamesChanged();
             }
-            else
+            else // Buttons
             {
                 this.ButtonActionNamesChanged();
             }
 
-            // 特别处理 ParameterDial 更新时，需要刷新关联的 ParameterButton
+
             if (config.ActionType == "ParameterDial")
             {
                 string sourceDialDisplayName = config.DisplayName;
@@ -344,12 +477,8 @@ namespace Loupedeck.ReaOSCPlugin.Base
                         otherLocalConfig.GroupName == sourceDialJsonGroupName)
                     {
                         PluginLog.Info($"[DynamicFolder] OnCommandStateNeedsRefresh: ParameterDial '{sourceDialDisplayName}' (group '{sourceDialJsonGroupName}') changed, triggering UI update for linked ParameterButton '{otherLocalConfig.DisplayName}' (localId '{otherLocalId}').");
-                        // ButtonActionNamesChanged() 已经在前面根据 config 类型调用过了。
-                        // 如果 ParameterDial 的变化也触发了 ButtonActionNamesChanged() (例如如果它不被视为Dial类型，或者逻辑如此)，
-                        // 则这里不需要额外调用。但如果ParameterDial被视为Dial，则上面会调用EncoderActionNamesChanged()。
-                        // 此时，为了更新ParameterButton（它是Button），确实需要调用ButtonActionNamesChanged()。
                         this.ButtonActionNamesChanged();
-                        break; // 假设一次刷新就够了，因为会刷新所有按钮
+                        break; 
                     }
                 }
             }

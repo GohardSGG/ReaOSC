@@ -80,6 +80,9 @@ namespace Loupedeck.ReaOSCPlugin.Base
         
         // === 【新增】动态文件夹内容定义 ===
         public FolderContentConfig Content { get; set; }
+
+        // 【新增】用于 FX_Folder_Base，控制品牌/类别是否按JSON文件中的顺序排序
+        public bool PreserveBrandOrderInJson { get; set; } = false;
     }
 
     public class FolderContentConfig

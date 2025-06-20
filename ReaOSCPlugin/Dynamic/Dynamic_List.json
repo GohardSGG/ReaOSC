@@ -173,6 +173,16 @@
     "DisplayName": "Track Name",
     "Title": "Name",
     "Text": "Add",
-    "Description": "Access track naming functions"
+    "PreserveBrandOrderInJson": true
+  },
+  {
+    "DisplayName": "Track Routing",
+    "Title": "Routing",
+    "Text": "Track"
+  },
+  {
+    "DisplayName": "Input Output",
+    "Title": "Input",
+    "Text": "Output"
   }
 ]

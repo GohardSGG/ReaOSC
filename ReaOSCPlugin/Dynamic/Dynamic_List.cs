@@ -23,8 +23,6 @@ namespace Loupedeck.ReaOSCPlugin.Dynamic
     /// 实际功能由 Dynamic_Folder_Base 和 Logic_Manager_Base 实现。
     /// </summary>
     public class Render_Dynamic : Dynamic_Folder_Base
-
-
     {
         // 构造函数会自动调用基类的构造函数。
         // 基类构造函数会根据类名 "Render_Dynamic" -> "Render"
@@ -36,7 +34,7 @@ namespace Loupedeck.ReaOSCPlugin.Dynamic
         }
     }
 
-        public class Effect_Dynamic : FX_Folder_Base
+    public class Effect_Dynamic : FX_Folder_Base
     {
         // 所有逻辑均由 FX_Folder_Base 基类处理。
         // 此类的存在是为了被Loupedeck SDK的反射机制发现。
@@ -44,7 +42,7 @@ namespace Loupedeck.ReaOSCPlugin.Dynamic
         // 来加载对应的 "Effect_List.json" 配置文件。
     }
 
-        public class Instrument_Dynamic : FX_Folder_Base
+    public class Instrument_Dynamic : FX_Folder_Base
     {
         // 所有逻辑均由 FX_Folder_Base 基类处理。
         // 此类的存在是为了被Loupedeck SDK的反射机制发现。
@@ -52,11 +50,27 @@ namespace Loupedeck.ReaOSCPlugin.Dynamic
         // 来加载对应的 "Instrument_List.json" 配置文件。
     }
 
-        public class Track_Name_Dynamic : FX_Folder_Base
+    public class Track_Name_Dynamic : FX_Folder_Base
     {
         // 所有逻辑均由 FX_Folder_Base 基类处理。
         // 此类的存在是为了被Loupedeck SDK的反射机制发现。
         // 基类会根据此类名 "Track_Name_Dynamic" -> "Track_Name"
         // 来加载对应的 "Track_Name_List.json" 配置文件。
+    }
+
+    public class Track_Routing_Dynamic : FX_Folder_Base
+    {
+        // 所有逻辑均由 FX_Folder_Base 基类处理。
+        // 基类会根据此类名 "Track_Routing_Dynamic" -> "Track Routing"
+        // 来加载对应的 "Track_Routing_List.json" 配置文件。
+        public Track_Routing_Dynamic() : base() { }
+    }
+
+    public class Input_Output_Dynamic : FX_Folder_Base
+    {
+        // 所有逻辑均由 FX_Folder_Base 基类处理。
+        // 基类会根据此类名 "Input_Output_Dynamic" -> "Input Output"
+        // 来加载对应的 "Input_Output_List.json" 配置文件。
+        public Input_Output_Dynamic() : base() { }
     }
 } 
