@@ -230,6 +230,15 @@
       "DisplayName": "All Env View",
       "ActionType": "ToggleButton",
       "Text": "Env View"
+    },
+    {
+      "DisplayName": "Envelope State",
+      "ActionType": "ToggleDial",
+      "Title": "Envelope",
+      "Text": "State",
+      "ResetOscAddress": "Delete",
+      "ActiveColor": "#00C800",
+      "DeactiveTextColor": "#C80000"
     }
   ],
   "FX": [
