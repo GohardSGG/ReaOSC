@@ -49,8 +49,14 @@ namespace Loupedeck.ReaOSCPlugin.Base
             this.DisplayName = this._entryConfig.DisplayName;
             this.GroupName = this._entryConfig.GroupName ?? "Dynamic";
 
-            var contentFileName = $"{this.DisplayName}_List.json";
-            this.LoadFxConfigs(contentFileName);
+            var fxData = Logic_Manager_Base.Instance.GetFxData(this.DisplayName);
+            if (fxData == null)
+            {
+                PluginLog.Error($"[FX_Folder_Base] Constructor for '{this.DisplayName}' could not retrieve its data from Logic_Manager. The corresponding _List.json file may have failed to load.");
+                return;
+            }
+
+            this.ParseFxData(fxData);
 
             this._brandOptions = new List<string>();
             if (this._favoriteFxNames.Any())
@@ -66,54 +72,33 @@ namespace Loupedeck.ReaOSCPlugin.Base
             this.UpdateFxList();
         }
 
-        private void LoadFxConfigs(string fileName)
+        private void ParseFxData(JObject root)
         {
-            var assembly = Assembly.GetExecutingAssembly();
-            var resourceName = $"Loupedeck.ReaOSCPlugin.Dynamic.{fileName}";
-
             try
             {
-                using (var stream = assembly.GetManifestResourceStream(resourceName))
+                if (root.TryGetValue("Favorite", out JToken favToken) && favToken is JArray favArray)
                 {
-                    if (stream == null)
+                    this._favoriteFxNames = favArray.ToObject<List<string>>();
+                    root.Remove("Favorite"); 
+                }
+
+                var allData = root.ToObject<Dictionary<string, List<ButtonConfig>>>();
+
+                foreach (var group in allData)
+                {
+                    string brand = group.Key;
+                    foreach (var config in group.Value)
                     {
-                        PluginLog.Error($"[FX_Folder_Base] Embedded resource '{resourceName}' not found. Please ensure the file exists and its 'Build Action' property is set to 'Embedded Resource' in Visual Studio.");
-                        // For debugging, let's list all available resources.
-                        var allResources = assembly.GetManifestResourceNames();
-                        PluginLog.Info($"[FX_Folder_Base] Available embedded resources in the assembly:\n{String.Join("\n", allResources)}");
-                        return;
-                    }
-
-                    using (var reader = new StreamReader(stream))
-                    {
-                        string jsonContent = reader.ReadToEnd();
-                        JObject root = JObject.Parse(jsonContent);
-
-                        if (root.TryGetValue("Favorite", out JToken favToken) && favToken is JArray favArray)
-                        {
-                            this._favoriteFxNames = favArray.ToObject<List<string>>();
-                            root.Remove("Favorite");
-                        }
-
-                        var allData = root.ToObject<Dictionary<string, List<ButtonConfig>>>();
-
-                        foreach (var group in allData)
-                        {
-                            string brand = group.Key;
-                            foreach (var config in group.Value)
-                            {
-                                config.GroupName = brand;
-                                string actionParameter = CreateActionParameter(config);
-                                this._allFxConfigs[actionParameter] = config;
-                            }
-                        }
+                        config.GroupName = brand;
+                        string actionParameter = CreateActionParameter(config);
+                        this._allFxConfigs[actionParameter] = config;
                     }
                 }
-                PluginLog.Info($"[FX_Folder_Base] 成功加载并解析了 {this._allFxConfigs.Count} 个效果器配置和 {this._favoriteFxNames.Count} 个收藏 (从'{fileName}')。");
+                PluginLog.Info($"[FX_Folder_Base] Successfully parsed {this._allFxConfigs.Count} FX configs and {this._favoriteFxNames.Count} favorites for folder '{this.DisplayName}'.");
             }
             catch (Exception ex)
             {
-                PluginLog.Error(ex, $"[FX_Folder_Base] 加载或解析 '{resourceName}' 失败。");
+                PluginLog.Error(ex, $"[FX_Folder_Base] Failed to parse FX data for folder '{this.DisplayName}'.");
             }
         }
 

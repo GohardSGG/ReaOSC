@@ -98,8 +98,10 @@ namespace Loupedeck.ReaOSCPlugin.Base
         
         // 【新增】用于存储动态文件夹内容的字典
         private readonly Dictionary<string, FolderContentConfig> _folderContents = new Dictionary<string, FolderContentConfig>();
+        private readonly Dictionary<string, Newtonsoft.Json.Linq.JObject> _fxDataCache = new Dictionary<string, Newtonsoft.Json.Linq.JObject>();
         
         private bool _isInitialized = false;
+        private string _customConfigBasePath;
 
         private readonly Dictionary<string, List<string>> _modeOptions = new Dictionary<string, List<string>>();
         private readonly Dictionary<string, int> _currentModes = new Dictionary<string, int>();
@@ -136,42 +138,83 @@ namespace Loupedeck.ReaOSCPlugin.Base
         #region 配置加载
         private void LoadAllConfigs()
         {
-            var assembly = Assembly.GetExecutingAssembly();
-            var generalConfigs = this.LoadAndDeserialize<Dictionary<string, List<ButtonConfig>>>(assembly, "Loupedeck.ReaOSCPlugin.General.General_List.json");
+            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            // 根据您的要求，使用 AppData 下的特定目录作为自定义配置的根目录
+            this._customConfigBasePath = Path.Combine(localAppData, "Loupedeck", "Plugins", "ReaOSC");
+
+            PluginLog.Info($"[LogicManager] 使用自定义配置的基础路径: '{this._customConfigBasePath}'");
+
+            // 为每个配置文件调用新的加载方法，该方法会自动处理外部覆盖和内部回退
+            var generalConfigs = this.LoadConfigFile<Dictionary<string, List<ButtonConfig>>>("General/General_List.json");
             this.ProcessGroupedConfigs(generalConfigs, isFx: false);
             
-            // 【重要】不再加载任何旧的Effects_List.json
-            
-            // 【重构】加载统一的 Dynamic_List.json，它现在包含了文件夹的入口定义和内容
-            var dynamicFolderDefs = this.LoadAndDeserialize<List<ButtonConfig>>(assembly, "Loupedeck.ReaOSCPlugin.Dynamic.Dynamic_List.json");
-            if (dynamicFolderDefs != null)
-            {
-                var folderEntriesToRegister = new List<ButtonConfig>();
-                foreach (var folderDef in dynamicFolderDefs)
-                {
-                    // 为文件夹入口按钮设置固定的GroupName
-                    folderDef.GroupName = "Dynamic";
-
-                    if (folderDef.Content != null)
-                    {
-                        // 1. 将内容（Buttons和Dials）存储起来，供Dynamic_Folder_Base以后按名字查找
-                        this._folderContents[folderDef.DisplayName] = folderDef.Content;
-
-                        // 2. 将文件夹内容中的所有按钮和旋钮都注册到全局配置 _allConfigs 中
-                        //    这样 Dynamic_Folder_Base 在填充时才能通过 DisplayName 和 GroupName 找到它们
-                        this.ProcessFolderContentConfigs(folderDef.Content);
-                    }
-                    
-                    // 3. 将文件夹入口按钮本身（不含Content）添加到待注册列表
-                    var folderEntry = folderDef;
-                    folderEntry.Content = null; // 确保不把内容本身当作一个配置项
-                    folderEntriesToRegister.Add(folderEntry);
-                }
-                // 4. 统一注册所有文件夹的入口按钮
-                this.RegisterConfigs(folderEntriesToRegister, isFx: false, isDynamicFolderEntry: true);
-            }
+            var dynamicFolderDefs = this.LoadConfigFile<List<ButtonConfig>>("Dynamic/Dynamic_List.json");
+            this.ProcessDynamicFolderDefs(dynamicFolderDefs);
         }
-        private T LoadAndDeserialize<T>(Assembly assembly, string resourceName) where T : class { try { using (var stream = assembly.GetManifestResourceStream(resourceName)) { if (stream == null) { PluginLog.Error($"[LogicManager] 无法找到嵌入资源: {resourceName}"); return null; } using (var reader = new StreamReader(stream)) { return JsonConvert.DeserializeObject<T>(reader.ReadToEnd()); } } } catch (Exception ex) { PluginLog.Error(ex, $"[LogicManager] 读取或解析资源 '{resourceName}' 失败。"); return null; } }
+        
+        private T LoadConfigFile<T>(string relativePath) where T : class
+        {
+            // 将路径分隔符统一为当前系统的格式
+            var platformRelativePath = relativePath.Replace('/', Path.DirectorySeparatorChar);
+            var customFilePath = Path.Combine(this._customConfigBasePath, platformRelativePath);
+
+            // 1. 优先尝试从外部自定义路径加载
+            if (File.Exists(customFilePath))
+            {
+                try
+                {
+                    var jsonContent = File.ReadAllText(customFilePath);
+                    PluginLog.Info($"[LogicManager] 正在加载自定义配置文件: '{customFilePath}'");
+                    return JsonConvert.DeserializeObject<T>(jsonContent);
+                }
+                catch (Exception ex)
+                {
+                    PluginLog.Error(ex, $"[LogicManager] 读取或解析自定义配置文件 '{customFilePath}' 失败。将回退到内置版本。");
+                }
+            }
+
+            // 2. 如果外部文件加载失败或不存在，则回退到加载内嵌资源
+            // 将相对路径转换为资源名称, e.g., "General/General_List.json" -> "Loupedeck.ReaOSCPlugin.General.General_List.json"
+            var resourceName = $"Loupedeck.ReaOSCPlugin.{relativePath.Replace('/', '.')}";
+            return this.LoadAndDeserialize<T>(Assembly.GetExecutingAssembly(), resourceName);
+        }
+
+        // 辅助方法，用于处理从 Dynamic_List.json 或自定义文件中加载的文件夹定义
+        private void ProcessDynamicFolderDefs(List<ButtonConfig> dynamicFolderDefs)
+        {
+            if (dynamicFolderDefs == null) return;
+            
+            var folderEntriesToRegister = new List<ButtonConfig>();
+            foreach (var folderDef in dynamicFolderDefs)
+            {
+                folderDef.GroupName = "Dynamic";
+
+                if (folderDef.Content != null)
+                {
+                    // 这是一个 Dynamic_Folder_Base 文件夹，其内容在 Content 字段中定义
+                    this._folderContents[folderDef.DisplayName] = folderDef.Content;
+                    this.ProcessFolderContentConfigs(folderDef.Content);
+                }
+                else
+                {
+                    // 这是一个 FX_Folder_Base 文件夹，没有 "Content" 字段。
+                    // Logic Manager 在这里负责加载其对应的内容文件。
+                    var fxListName = $"Dynamic/{folderDef.DisplayName}_List.json";
+                    var fxData = this.LoadConfigFile<Newtonsoft.Json.Linq.JObject>(fxListName);
+                    if (fxData != null)
+                    {
+                        this._fxDataCache[folderDef.DisplayName] = fxData;
+                    }
+                }
+                
+                var folderEntry = folderDef;
+                folderEntry.Content = null; 
+                folderEntriesToRegister.Add(folderEntry);
+            }
+            this.RegisterConfigs(folderEntriesToRegister, isFx: false, isDynamicFolderEntry: true);
+        }
+
+        private T LoadAndDeserialize<T>(Assembly assembly, string resourceName) where T : class { try { using (var stream = assembly.GetManifestResourceStream(resourceName)) { if (stream == null) { PluginLog.Info($"[LogicManager] 内嵌资源 '{resourceName}' 未找到或加载失败。"); return null; } using (var reader = new StreamReader(stream)) { return JsonConvert.DeserializeObject<T>(reader.ReadToEnd()); } } } catch (Exception ex) { PluginLog.Error(ex, $"[LogicManager] 读取或解析内嵌资源 '{resourceName}' 失败。"); return null; } }
         private void ProcessGroupedConfigs(Dictionary<string, List<ButtonConfig>> groupedConfigs, bool isFx) { if (groupedConfigs == null) return; foreach (var group in groupedConfigs) { var configs = group.Value.Select(config => { config.GroupName = group.Key; return config; }).ToList(); this.RegisterConfigs(configs, isFx); } }
         private void ProcessFolderContentConfigs(FolderContentConfig folderContent) { if (folderContent == null) return; this.RegisterConfigs(folderContent.Buttons, isFx: false); this.RegisterConfigs(folderContent.Dials, isFx: false); }
 
@@ -240,6 +283,8 @@ namespace Loupedeck.ReaOSCPlugin.Base
         // 【新增】公共方法，用于按文件夹名称获取其内容
         public FolderContentConfig GetFolderContent(string folderName) => this._folderContents.TryGetValue(folderName, out var c) ? c : null;
         
+        public Newtonsoft.Json.Linq.JObject GetFxData(string fxFolderName) => this._fxDataCache.TryGetValue(fxFolderName, out var data) ? data : null;
+
         public ButtonConfig GetConfigByDisplayName(string groupName, string displayName)
         {
             if (groupName == "Dynamic")
