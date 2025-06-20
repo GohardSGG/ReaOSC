@@ -126,7 +126,9 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     var currentModeString = this._logicManager.GetCurrentModeString(config.ModeName);
                     if (!string.IsNullOrEmpty(currentModeString))
                     {
-                        expectedAddress = config.OscAddress.Replace("{mode}", currentModeString);
+                        string groupNameForPath = config.GroupName.Replace(" ", "_").Trim('/');
+                        string pathAfterMode = config.OscAddress.Replace("{mode}", currentModeString).TrimStart('/');
+                        expectedAddress = $"/{groupNameForPath}/{pathAfterMode}".Replace("//", "/");
                     }
                 }
             }
@@ -168,7 +170,11 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 {
                     var currentModeString = this._logicManager.GetCurrentModeString(config.ModeName);
                     if (!string.IsNullOrEmpty(currentModeString))
-                    { finalOscAddress = config.OscAddress.Replace("{mode}", currentModeString); }
+                    {
+                        string groupNameForPath = config.GroupName.Replace(" ", "_").Trim('/');
+                        string pathAfterMode = config.OscAddress.Replace("{mode}", currentModeString).TrimStart('/');
+                        finalOscAddress = $"/{groupNameForPath}/{pathAfterMode}".Replace("//", "/");
+                    }
                 }
                 if (string.IsNullOrEmpty(finalOscAddress))
                 {

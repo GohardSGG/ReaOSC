@@ -113,21 +113,28 @@
       "DisplayName": "Scale",
       "ActionType": "ToggleButton",
       "Title": "Scale",
-      "OscAddress": "Scale/Toggle",
+      "OscAddress": "Scale",
       "ActiveColor": "#FF8F15"
     },
     {
       "DisplayName": "Step",
       "ActionType": "ToggleButton",
       "Title": "Step",
-      "OscAddress": "Step/Toggle",
+      "OscAddress": "Step",
+      "ActiveColor": "#FF8F15"
+    },
+    {
+      "DisplayName": "Split",
+      "ActionType": "TriggerButton",
+      "Title": "Split",
+      "OscAddress": "Split",
       "ActiveColor": "#FF8F15"
     },
     {
       "DisplayName": "Swing",
       "ActionType": "ToggleButton",
       "Title": "Swing",
-      "OscAddress": "Swing/Toggle",
+      "OscAddress": "Swing",
       "ActiveColor": "#FF8F15"
     },
     {
