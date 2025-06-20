@@ -37,6 +37,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
         public string ActiveColor { get; set; } // ToggleButton ON 状态背景色, ParameterDial 激活状态背景色 (如果适用)
         public string ActiveTextColor { get; set; } // ToggleButton ON 状态文字颜色
         public string DeactiveTextColor { get; set; } // ToggleButton OFF 状态文字颜色
+        public string DeactiveColor { get; set; } // ToggleButton OFF 状态背景色
 
         public string ButtonImage { get; set; } // (目前主要用于 General_Button_Base, 动态文件夹内按钮较少直接用图片)
 

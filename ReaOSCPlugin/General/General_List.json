@@ -234,11 +234,12 @@
     {
       "DisplayName": "Envelope State",
       "ActionType": "ToggleDial",
+      "OscAddress": "Envelope/State",
       "Title": "Envelope",
       "Text": "State",
-      "ResetOscAddress": "Delete",
+      "ResetOscAddress": "Envelope/Delete",
       "ActiveColor": "#00C800",
-      "DeactiveTextColor": "#C80000"
+      "DeactiveColor": "#C80000"
     }
   ],
   "FX": [

@@ -108,7 +108,9 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     {
                         // 读取的是_toggleStates[actionParameter]，这个状态现在应该能被正确更新了
                         var isActive = this._logicManager.GetToggleState(actionParameter);
-                        currentBgColor = isActive && !String.IsNullOrEmpty(config.ActiveColor) ? HexToBitmapColor(config.ActiveColor) : BitmapColor.Black;
+                        currentBgColor = isActive 
+                            ? (String.IsNullOrEmpty(config.ActiveColor) ? BitmapColor.Black : HexToBitmapColor(config.ActiveColor))
+                            : (String.IsNullOrEmpty(config.DeactiveColor) ? BitmapColor.Black : HexToBitmapColor(config.DeactiveColor));
                         currentTitleColor = isActive
                            ? (String.IsNullOrEmpty(config.ActiveTextColor) ? BitmapColor.White : HexToBitmapColor(config.ActiveTextColor))
                            : (String.IsNullOrEmpty(config.DeactiveTextColor) ? BitmapColor.White : HexToBitmapColor(config.DeactiveTextColor));
