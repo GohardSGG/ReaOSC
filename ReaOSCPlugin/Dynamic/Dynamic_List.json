@@ -168,5 +168,11 @@
     "Title": "Instrument",
     "Text": "Add",
     "TextColor": "#87CEEB"
+  },
+  {
+    "DisplayName": "Track Name",
+    "Title": "Name",
+    "Text": "Add",
+    "Description": "Access track naming functions"
   }
 ]

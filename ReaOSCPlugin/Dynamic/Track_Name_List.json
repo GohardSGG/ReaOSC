@@ -1,0 +1,83 @@
+{
+    "Favorite": [
+      "Distortion Guitar",
+      "Crunch Guitar"
+    ],
+    "Guitar": [
+        {
+            "DisplayName": "Distortion Guitar"
+        },
+        {
+            "DisplayName": "Crunch Guitar"
+        },
+        {
+            "DisplayName": "Clean Guitar"
+        },
+        {
+            "DisplayName": "Acoustic Guitar"
+        },
+        {
+            "DisplayName": "Main Guitar"
+        },
+        {
+            "DisplayName": "Rhythm Guitar"
+        },
+        {
+            "DisplayName": "Lead Guitar"
+        },
+        {
+            "DisplayName": "Sub Guitar"
+        }
+    ],
+    "Bass": [
+        {
+            "DisplayName": "Distortion Bass"
+        },
+        {
+            "DisplayName": "Crunch Bass"
+        },
+        {
+            "DisplayName": "Clean Bass"
+        }
+    ],
+    "Drums": [
+        {
+            "DisplayName": "Drums"
+        }
+    ],
+    "Vocal": [
+        {
+            "DisplayName": "Vocal"
+        } 
+    ],
+    "Synth": [
+        {
+            "DisplayName": "Synth"
+        }
+    ],
+    "Piano": [
+        {
+            "DisplayName": "Piano"
+        }
+    ],
+    "Strings": [
+        {
+            "DisplayName": "Strings"
+        }
+    ],
+    "Brass": [
+        {
+            "DisplayName": "Brass"
+        }
+    ],
+    "Woodwinds": [
+        {
+            "DisplayName": "Woodwinds"
+        }
+    ],
+    "Other": [
+        {
+            "DisplayName": "Other"
+        }
+    ]
+  }

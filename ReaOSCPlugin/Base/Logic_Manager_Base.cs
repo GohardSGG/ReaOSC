@@ -200,11 +200,17 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 {
                     // 这是一个 FX_Folder_Base 文件夹，没有 "Content" 字段。
                     // Logic Manager 在这里负责加载其对应的内容文件。
-                    var fxListName = $"Dynamic/{folderDef.DisplayName}_List.json";
+                    var fileNamePart = folderDef.DisplayName.Replace(" ", "_"); // 将 DisplayName 中的空格替换为下划线
+                    var fxListName = $"Dynamic/{fileNamePart}_List.json"; // 构造正确的文件名
                     var fxData = this.LoadConfigFile<Newtonsoft.Json.Linq.JObject>(fxListName);
                     if (fxData != null)
                     {
-                        this._fxDataCache[folderDef.DisplayName] = fxData;
+                        this._fxDataCache[folderDef.DisplayName] = fxData; // 使用原始 DisplayName ("Track Name") 作为缓存的键
+                    }
+                    else
+                    {
+                        // 【新增日志】明确记录哪个文件加载失败
+                        PluginLog.Warning($"[LogicManager] ProcessDynamicFolderDefs: Failed to load or parse content file '{fxListName}' for folder DisplayName '{folderDef.DisplayName}'.");
                     }
                 }
                 

@@ -51,4 +51,12 @@ namespace Loupedeck.ReaOSCPlugin.Dynamic
         // 基类会根据此类名 "Instrument_Dynamic" -> "Instrument"
         // 来加载对应的 "Instrument_List.json" 配置文件。
     }
+
+        public class Track_Name_Dynamic : FX_Folder_Base
+    {
+        // 所有逻辑均由 FX_Folder_Base 基类处理。
+        // 此类的存在是为了被Loupedeck SDK的反射机制发现。
+        // 基类会根据此类名 "Track_Name_Dynamic" -> "Track_Name"
+        // 来加载对应的 "Track_Name_List.json" 配置文件。
+    }
 } 
