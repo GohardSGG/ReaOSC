@@ -141,7 +141,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     }
 
                     if (this._dataSourceJson.TryGetValue(filterName, out JToken optionsToken) && optionsToken is JArray optionsArray)
-                    {
+                {
                         var options = optionsArray.ToObject<List<string>>() ?? new List<string>();
                         
                         if (!options.Contains("All")) { options.Insert(0, "All"); }
@@ -168,12 +168,12 @@ namespace Loupedeck.ReaOSCPlugin.Base
                         if (isBusFilter)
                         {
                             if (this._busFilterDialDisplayName == null)
-                            {
+                        {
                                 this._busFilterDialDisplayName = filterName;
                                 PluginLog.Info($"[{this.DisplayName}] 过滤器 '{filterName}' 被指定为 BusFilter。");
                             }
                             else
-                            {
+                    {
                                  PluginLog.Warning($"[{this.DisplayName}] 发现多个BusFilter定义 ('{this._busFilterDialDisplayName}' 和 '{filterName}'). 将使用第一个。");
                             }
                         }
@@ -184,9 +184,9 @@ namespace Loupedeck.ReaOSCPlugin.Base
                         this._filterOptions[filterName] = new List<string> { "All" };
                         this._currentFilterValues[filterName] = "All";
                     }
+                    }
                 }
-            }
-            
+
             // --- 第3步: 解析动态列表项 ---
             this._allListItems.Clear();
             var processedTopLevelKeys = new HashSet<string> { "Favorite", "All" }; 
@@ -202,7 +202,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 {
                     continue; 
                 }
-
+                
                 if (property.Value is JArray itemsArray)
                 {
                     foreach (var itemToken in itemsArray)
@@ -213,12 +213,18 @@ namespace Loupedeck.ReaOSCPlugin.Base
                             {
                                 ButtonConfig itemConfig = itemJObject.ToObject<ButtonConfig>();
                                 if (itemConfig == null || string.IsNullOrEmpty(itemConfig.DisplayName))
-                                {
+                {
                                     PluginLog.Warning($"[{this.DisplayName}] 解析列表项失败或DisplayName为空，在主分类 '{topLevelKey}' 下。项: {itemJObject.ToString(Newtonsoft.Json.Formatting.None)}");
                                     continue;
                                 }
 
                                 itemConfig.GroupName = topLevelKey; 
+
+                                // 【新增】如果列表项没有指定ActionType，默认为TriggerButton以用于PluginImage绘制
+                                if (string.IsNullOrEmpty(itemConfig.ActionType))
+                                {
+                                    itemConfig.ActionType = "TriggerButton"; 
+                                }
 
                                 if (itemConfig.FilterableProperties == null) // 确保字典已初始化 (ButtonConfig类应负责此)
                                 {
@@ -231,7 +237,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                                         continue;
 
                                     if (itemJObject.TryGetValue(subFilterName, out JToken propValToken) && propValToken.Type != JTokenType.Null)
-                                    {
+                            {
                                         itemConfig.FilterableProperties[subFilterName] = propValToken.ToString();
                                     }
                                 }
@@ -243,9 +249,9 @@ namespace Loupedeck.ReaOSCPlugin.Base
                                     continue;
                                 }
                                 this._allListItems[actionParameter] = itemConfig;
-                            }
-                            catch (Exception ex)
-                            {
+            }
+            catch (Exception ex)
+            {
                                 PluginLog.Error(ex, $"[{this.DisplayName}] 解析列表项时出错，在主分类 '{topLevelKey}' 下。项: {itemJObject.ToString(Newtonsoft.Json.Formatting.None)}");
                             }
                         }
@@ -258,7 +264,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
             // --- 第4步: 初始列表内容更新 ---
             this.UpdateDisplayedItemsList();
             PluginLog.Info($"[{this.DisplayName}] 完成初始化过滤器和解析列表数据。");
-        }
+            }
 
         /// <summary>
         /// 【新】根据当前过滤器设置，更新当前可显示的动态列表项，并处理分页。
@@ -278,9 +284,9 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     itemsToDisplay = itemsToDisplay.Where(item => this._favoriteItemDisplayNames.Contains(item.DisplayName));
                     favoriteFilterActive = true;
                     PluginLog.Info($"[{this.DisplayName}] 应用Favorite过滤器。");
-                }
-                else
-                {
+            }
+            else
+            {
                     itemsToDisplay = Enumerable.Empty<ButtonConfig>();
                     favoriteFilterActive = true;
                     PluginLog.Info($"[{this.DisplayName}] Favorite过滤器激活，但收藏列表为空。");
@@ -342,7 +348,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
         
         // 辅助方法，用于从 ButtonConfig 创建唯一的动作参数 (通常是 /GroupName/DisplayName)
         private string CreateActionParameter(ButtonConfig config) => $"/{config.GroupName}/{config.DisplayName}".Replace(" ", "_").Replace("//", "/");
-        
+
         public override IEnumerable<string> GetButtonPressActionNames()
         {
             // 已持有ActionParameter列表，无需再CreateCommandName
@@ -351,7 +357,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 .Take(12)
                 .Select(actionParameter => this.CreateCommandName(actionParameter)); // SDK需要完整的命令名
         }
-        
+
         // 【新增】辅助方法，用于生成旋钮的内部localId
         private string GetLocalDialId(ButtonConfig dialConfig)
         {
@@ -467,7 +473,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                         if (dialConfigForSlot.ActionType == "NavigationDial" && dialConfigForSlot.DisplayName == "Back")
                         {                            
                             pressActionNames[i] = base.CreateCommandName(localId); 
-                        }
+        }
                         else
                         {                            
                             pressActionNames[i] = null; 
@@ -514,8 +520,8 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     
                     this._currentPage = 0; // 过滤器改变，重置到第一页
                     this.UpdateDisplayedItemsList(); // 这会更新 _totalPages
-                    listChanged = true;
-                    pageCountChanged = true; 
+                listChanged = true;
+                pageCountChanged = true;
                     PluginLog.Info($"[{this.DisplayName}] FilterDial '{filterName}' 值变为: {this._currentFilterValues[filterName]}");
                 }
             }
@@ -533,7 +539,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
             {
                 PluginLog.Info($"[{this.DisplayName}] NavigationDial 'Back' rotated. Closing folder.");
                 this.Close();
-                return; 
+                return;
             }
             else if (dialConfig.ActionType == "PlaceholderDial")
             {
@@ -542,10 +548,10 @@ namespace Loupedeck.ReaOSCPlugin.Base
 
             if(listChanged)
             {
-                this.ButtonActionNamesChanged(); 
-                this.AdjustmentValueChanged(actionParameter); 
+                this.ButtonActionNamesChanged();
+                this.AdjustmentValueChanged(actionParameter);
             }
-            if(pageCountChanged) 
+            if(pageCountChanged)
             {
                 var pageDialConfig = this._folderDialConfigs.FirstOrDefault(dc => dc.ActionType == "PageDial");
                 if(pageDialConfig != null)
@@ -557,7 +563,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
         }
         
         // 【再修正】处理按钮命令和旋钮按下命令，确保localId匹配逻辑统一
-        public override void RunCommand(string actionParameter) 
+        public override void RunCommand(string actionParameter)
         {
             PluginLog.Info($"[{this.DisplayName}] RunCommand received full actionParameter: '{actionParameter}'"); 
 
@@ -594,7 +600,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 string oscAddress = DetermineOscAddress(itemConfig); 
                 ReaOSCPlugin.SendOSCMessage(oscAddress, 1.0f);
                 this._lastPressTimes[commandLocalIdToLookup] = DateTime.Now;
-                this.ButtonActionNamesChanged(); 
+                this.ButtonActionNamesChanged();
                 Task.Delay(200).ContinueWith(_ => this.ButtonActionNamesChanged());
                 PluginLog.Info($"[{this.DisplayName}] Item '{itemConfig.DisplayName}' (localId: '{commandLocalIdToLookup}') pressed. OSC: {oscAddress}");
             }
@@ -633,7 +639,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     // if (return false) for other dial types if handled here
                 }
             }
-            return base.ProcessButtonEvent2(actionParameter, buttonEvent); 
+            return base.ProcessButtonEvent2(actionParameter, buttonEvent);
         }
 
         // ... (ProcessButtonEvent2, GetCommandImage, GetAdjustmentImage, 辅助方法等) ...
@@ -658,67 +664,33 @@ namespace Loupedeck.ReaOSCPlugin.Base
         }
 
         // 【重构】根据 _allListItems 中的 ButtonConfig 绘制动态列表项的图像
-        public override BitmapImage GetCommandImage(string actionParameter, PluginImageSize imageSize) 
+        // 使用 PluginImage.DrawElement 进行绘制
+        public override BitmapImage GetCommandImage(string actionParameter, PluginImageSize imageSize)
         {
-            // actionParameter 是 _allListItems 中的键 (例如 /Eventide/Blackhole)
-            if (!this._allListItems.TryGetValue(actionParameter, out var config))
+            if (!this._allListItems.TryGetValue(actionParameter, out var itemConfig))
             {
-                PluginLog.Warning($"[{this.DisplayName}] GetCommandImage: 未在 _allListItems 中找到配置 for actionParameter '{actionParameter}'. Drawing '?'");
-                return DrawErrorImage(imageSize); // 使用辅助方法绘制错误图像
+                PluginLog.Warning($"[{this.DisplayName}] GetCommandImage: 未在 _allListItems 中找到配置 for actionParameter '{actionParameter}'.");
+                return DrawErrorImage(imageSize); 
             }
-            
-            using (var bitmapBuilder = new BitmapBuilder(imageSize))
-            {
-                // 1. 背景色处理 (包括按下反馈)
-                var currentBgColor = BitmapColor.Black; // 默认背景色
-                if (this._lastPressTimes.TryGetValue(actionParameter, out var pressTime) && (DateTime.Now - pressTime).TotalMilliseconds < 200)
-                {
-                    currentBgColor = new BitmapColor(0x50, 0x50, 0x50); // 按下时的背景色
-                }
-                else if (!String.IsNullOrEmpty(config.BackgroundColor))
-                {
-                    currentBgColor = HexToBitmapColor(config.BackgroundColor);
-                }
-                bitmapBuilder.Clear(currentBgColor);
 
-                // 2. 主标题绘制
-                var titleToDraw = !String.IsNullOrEmpty(config.Title) ? config.Title : config.DisplayName;
-                var titleColor = String.IsNullOrEmpty(config.TitleColor) ? BitmapColor.White : HexToBitmapColor(config.TitleColor);
-                var titleFontSize = GetAutomaticButtonTitleFontSize(titleToDraw, config.Text); 
-                bitmapBuilder.DrawText(text: titleToDraw, fontSize: titleFontSize, color: titleColor); // SDK DrawText会尝试居中
+            bool isPressed = this._lastPressTimes.TryGetValue(actionParameter, out var pressTime) && 
+                             (DateTime.Now - pressTime).TotalMilliseconds < 200;
 
-                // 3. 副文本 (小字) 绘制
-                if (!String.IsNullOrEmpty(config.Text))
-                {
-                    var subTextColor = String.IsNullOrEmpty(config.TextColor) ? BitmapColor.White : HexToBitmapColor(config.TextColor);
-                    var subTextSize = config.TextSize ?? GetAutomaticSubTextFontSize(config.Text, titleToDraw.Length > 10); 
-                    
-                    // 副文本位置和尺寸的默认逻辑：尝试绘制在主标题下方并居中
-                    var textX = config.TextX ?? 0; // 如果用0, width为总宽，DrawText会尝试居中
-                    var textY = config.TextY ?? (int)(bitmapBuilder.Height * 0.65); // 大约在下方三分之一处开始
-                    var textWidth = config.TextWidth ?? bitmapBuilder.Width;
-                    var textHeight = config.TextHeight ?? (int)(bitmapBuilder.Height * 0.3); // 占据约30%高度
-                    
-                    // 使用 Loupedeck SDK 的 DrawText。它本身可能不直接支持复杂的对齐参数。
-                    // 居中通常是通过计算x坐标或确保width足够大由其内部实现。
-                    // 如果需要更精确的控制，可能需要 MeasureText。
-                    bitmapBuilder.DrawText(
-                        text: config.Text, 
-                        x: textX, 
-                        y: textY, 
-                        width: textWidth, 
-                        height: textHeight, 
-                        color: subTextColor, 
-                        fontSize: subTextSize
-                        // Loupedeck.BitmapTextAlignmentHorizontal.Center, // 移除不支持的参数
-                        // Loupedeck.BitmapTextAlignmentVertical.Top
-                        );
-                }
-                return bitmapBuilder.ToImage();
-            }
+            return Helpers.PluginImage.DrawElement(
+                imageSize,
+                itemConfig,
+                mainTitleOverride: null,  
+                valueText: null,          
+                isActive: isPressed,      
+                currentMode: 0,           
+                customIcon: null,         
+                forceTextOnly: false,
+                actualAuxText: null       
+            );
         }
 
-        // 【再修正】GetAdjustmentImage 以使用正确的localId查找
+        // 【重构】根据新的旋钮逻辑和数据源绘制旋钮图像
+        // 使用 PluginImage.DrawElement 进行绘制
         public override BitmapImage GetAdjustmentImage(string actionParameter, PluginImageSize imageSize) 
         {
             if (String.IsNullOrEmpty(actionParameter)) 
@@ -727,19 +699,18 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 return DrawErrorImage(imageSize); 
             }
 
-            var localDialId = actionParameter; // SDK传入的actionParameter就是localId
+            var localDialId = actionParameter; 
             
             var dialConfig = this._folderDialConfigs.FirstOrDefault(dc => GetLocalDialId(dc) == localDialId);
 
             if (dialConfig == null)
             {
-                PluginLog.Warning($"[{this.DisplayName}] GetAdjustmentImage: 未找到与localId '{localDialId}' 匹配的旋钮配置。ActionParameter: {actionParameter}");
+                PluginLog.Warning($"[{this.DisplayName}] GetAdjustmentImage: 未找到与localId '{localDialId}' 匹配的旋钮配置。");
                 return DrawErrorImage(imageSize);
             }
             
-            string title = dialConfig.Title ?? dialConfig.DisplayName ?? ""; 
+            string titleForLabel = dialConfig.Title ?? dialConfig.DisplayName ?? ""; 
             string valueToDisplay = ""; 
-            bool showValue = true; 
 
             switch (dialConfig.ActionType)
             {
@@ -749,127 +720,63 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 case "PageDial":
                     valueToDisplay = $"{this._currentPage + 1} / {this._totalPages}";
                     break;
-                case "NavigationDial": 
-                    showValue = false;
-                    break;
-                case "PlaceholderDial":
-                    showValue = false; 
-                    break;
-                default:
-                    PluginLog.Warning($"[{this.DisplayName}] GetAdjustmentImage: 未知的旋钮ActionType: '{dialConfig.ActionType}' for '{localDialId}'");
-                    showValue = false;
-                    break;
             }
             
-            using (var bitmapBuilder = new BitmapBuilder(imageSize))
-            {
-                BitmapColor bgColor = !String.IsNullOrEmpty(dialConfig.BackgroundColor) ? HexToBitmapColor(dialConfig.BackgroundColor) : BitmapColor.Black;
-                bitmapBuilder.Clear(bgColor);
-                BitmapColor textColor = !String.IsNullOrEmpty(dialConfig.TitleColor) ? HexToBitmapColor(dialConfig.TitleColor) : BitmapColor.White;
-
-                if (!showValue) 
-                {
-                    var titleFontSize = GetAutomaticDialTitleFontSize(title, isTopTitle: false); 
-                    bitmapBuilder.DrawText(title, textColor, titleFontSize);
-                }
-                else 
-                {
-                    var titleFontSize = GetAutomaticDialTitleFontSize(title, isTopTitle: true); 
-                    bitmapBuilder.DrawText(title, 0, 5, bitmapBuilder.Width, 30, textColor, titleFontSize);
-                    
-                    var valueFontSize = GetAutomaticDialValueFontSize(valueToDisplay);
-                    bitmapBuilder.DrawText(valueToDisplay, 0, 35, bitmapBuilder.Width, bitmapBuilder.Height - 40, textColor, valueFontSize);
-                }
-                return bitmapBuilder.ToImage();
-            }
+            return Helpers.PluginImage.DrawElement(
+                imageSize,
+                dialConfig,
+                mainTitleOverride: titleForLabel, 
+                valueText: valueToDisplay,        
+                isActive: false,                  
+                currentMode: 0,                   
+                customIcon: null,                 
+                forceTextOnly: true,              
+                actualAuxText: null               
+            );
         }
-
-        // 【移植并调整】十六进制颜色转BitmapColor
-        private static BitmapColor HexToBitmapColor(string hex) 
-        {
-            if (String.IsNullOrEmpty(hex)) return BitmapColor.White;
-            try 
-            {
-                hex = hex.TrimStart('#');
-                var r = (byte)Int32.Parse(hex.Substring(0, 2), NumberStyles.HexNumber);
-                var g = (byte)Int32.Parse(hex.Substring(2, 2), NumberStyles.HexNumber);
-                var b = (byte)Int32.Parse(hex.Substring(4, 2), NumberStyles.HexNumber);
-                return new BitmapColor(r, g, b);
-            }
-            catch 
-            {
-                return BitmapColor.Red; // 解析失败返回红色
-            }
-        }
-
-        // 【移植并调整】按钮主标题字体大小 (可用于列表项按钮)
-        private static int GetAutomaticButtonTitleFontSize(String title, String subText = null) 
-        { 
-            if (String.IsNullOrEmpty(title)) return 23; 
-            var len = title.Length; 
-            bool hasSubText = !String.IsNullOrEmpty(subText);
-            if (hasSubText)
-            {
-                return len switch { 1 => 28, 2 => 26, 3 => 24, 4 => 22, 5 => 20, 6 => 18, 7 => 16, 8 => 15, _ => 14 };
-            }
-            return len switch { 1 => 38, 2 => 33, 3 => 31, 4 => 26, 5 => 23, 6 => 22, 7 => 20, 8 => 18, _ => 16 }; 
-        }
-
-        // 【新增】按钮副文本/小字字体大小
-        private static int GetAutomaticSubTextFontSize(String text, bool mainTitleIsLong)
-        {
-            if (String.IsNullOrEmpty(text)) return 10;
-            var len = text.Length;
-            int baseSize = mainTitleIsLong ? 10 : 12;
-            // 根据文本长度稍微调整基础大小
-            if (len <= 5) return baseSize;
-            if (len <= 10) return baseSize - 1;
-            if (len <= 15) return baseSize - 2;
-            return baseSize - 3;
-        }
-
-        // 【新增或调整自旧版】旋钮标题字体大小
-        private int GetAutomaticDialTitleFontSize(String title, bool isTopTitle = false) 
-        { 
-            if (String.IsNullOrEmpty(title)) return isTopTitle ? 12 : 16; 
-            var totalLengthWithSpaces = title.Length;
-            int effectiveLength = totalLengthWithSpaces; // 简化：直接使用总长度
-            
-            // 旧版FX_Folder_Base有一个更复杂的effectiveLength计算，这里简化处理
-            // if (totalLengthWithSpaces <= 8) { effectiveLength = totalLengthWithSpaces; } 
-            // else { var words = title.Split(' '); effectiveLength = words.Length > 0 ? words.Max(word => word.Length) : 0; if (effectiveLength == 0 && totalLengthWithSpaces > 0) { effectiveLength = totalLengthWithSpaces; } }
-            
-            if(isTopTitle) // 用于绘制在值上方的标题，通常较小
-                return effectiveLength switch { <= 3 => 14, <= 5 => 13, <= 7 => 12, <= 9 => 11, _ => 10 };
-            // 用于单行居中显示的旋钮标题 (例如 Back, Placeholder)
-            return effectiveLength switch { <= 3 => 18, <= 5 => 16, <= 7 => 14, <= 9 => 13, _ => 12 };
-        }
-
-        // 【新增】旋钮值字体大小
-        private int GetAutomaticDialValueFontSize(String value) 
-        { 
-            if (String.IsNullOrEmpty(value)) return 18; 
-            var len = value.Length; 
-            // 根据值的长度调整大小
-            return len switch { <= 3 => 22, <= 5 => 20, <= 8 => 18, <= 10 => 16, <= 12 => 14, _ => 12 };
-        }
+        
 
         // 【新增】简单的错误图像绘制方法
         private static BitmapImage DrawErrorImage(PluginImageSize imageSize) 
-        {
-            using (var bb = new BitmapBuilder(imageSize)) 
             {
-                bb.Clear(BitmapColor.Black);
+                using (var bb = new BitmapBuilder(imageSize))
+                {
+                    bb.Clear(BitmapColor.Black);
                 bb.DrawText("?", BitmapColor.Red, (int)(bb.Height * 0.5)); // 使用 bb.Height
-                return bb.ToImage();
+                    return bb.ToImage();
+                }
             }
-        }
-
+            
         // GetAdjustmentDisplayName 和 GetAdjustmentValue 通常对于动态调整的旋钮返回null，由图像直接显示信息
         public override string GetAdjustmentDisplayName(string actionParameter, PluginImageSize imageSize) => null;
         public override string GetAdjustmentValue(string actionParameter) => null;
         
         // GetButtonImage(PluginImageSize) 是文件夹入口按钮的图像
-        // ... (其余代码) ...
+        // 【重构】使用 PluginImage.DrawElement 进行绘制
+        public override BitmapImage GetButtonImage(PluginImageSize imageSize)
+        {
+            string folderDisplayNameForLog = this.DisplayName; 
+            if (this._entryConfig == null) 
+            {
+                if (string.IsNullOrEmpty(folderDisplayNameForLog))
+                {
+                    folderDisplayNameForLog = this.GetType().Name.Replace("_Dynamic", "").Replace("_", " ");
+                }
+                PluginLog.Warning($"[{folderDisplayNameForLog}] GetButtonImage: _entryConfig 为空。绘制默认错误图像。");
+                return DrawErrorImage(imageSize); 
+            }
+            
+            return Helpers.PluginImage.DrawElement(
+                imageSize,
+                this._entryConfig,
+                mainTitleOverride: null,  
+                valueText: null,          
+                isActive: false,          
+                currentMode: 0,           
+                customIcon: null,         
+                forceTextOnly: false,
+                actualAuxText: null       
+            );
+        }
     }
 } 

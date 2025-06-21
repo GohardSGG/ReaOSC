@@ -91,6 +91,9 @@ namespace Loupedeck.ReaOSCPlugin.Base
         // === 【新增】用于 FilterDial，标记是否为主过滤器 ===
         public string BusFilter { get; set; } // JSON中可以是 "Yes" 或其他，代码中判断 "Yes" (忽略大小写)
 
+        // === 【新增】用于旋钮，控制是否显示标题 ===
+        public string ShowTitle { get; set; } // JSON中可以是 "Yes" 或 "No"
+
         // === 【新增】用于捕获JSON中未明确定义的其他属性 ===
         // Newtonsoft.Json.JsonExtensionDataAttribute 标签可以自动捕获额外数据到字典
         // 但更推荐的方式是如果明确知道有哪些额外属性，就定义它们，或者在解析时手动处理。

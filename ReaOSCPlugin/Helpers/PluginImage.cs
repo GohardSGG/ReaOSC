@@ -124,102 +124,112 @@ namespace Loupedeck.ReaOSCPlugin.Helpers
                 if (customIcon != null && !forceTextOnly)
                 {
                     // 图标绘制逻辑 (参考 General_Button_Base)
-                    int iconHeight = 46; // 默认值
+                    int iconHeight = 46; 
                     int iconWidth = (customIcon.Height > 0) ? (customIcon.Width * iconHeight / customIcon.Height) : customIcon.Width;
                     iconWidth = Math.Max(1, iconWidth);
-                     // 如果宽度被调整了，高度也应该按比例调整，或者使用固定高度，这里用固定高度示例
-                    // iconHeight = (customIcon.Width > 0 && iconWidth == customIcon.Width) ? customIcon.Height : iconHeight;
-
                     int iconX = (bitmapBuilder.Width - iconWidth) / 2;
-                    int iconY = 8; // 图标稍靠上
+                    int iconY = 8; 
                     bitmapBuilder.DrawImage(customIcon, iconX, iconY, iconWidth, iconHeight);
                     
-                    // 图标下方绘制主标题 (较小字号)
+                    // 【恢复】图标下方绘制主标题 (较小字号)
                     if (!String.IsNullOrEmpty(titleToDraw))
                     {
-                        // 强制使用小号字体配合图标
-                        var titleFontSizeForIcon = 12; // 或者根据imageSize动态调整
-                        var textYUnderIcon = bitmapBuilder.Height - titleFontSizeForIcon - 10; // 底部留白
-                         if (iconY + iconHeight < textYUnderIcon) // 确保文字在图标下方
+                        var titleFontSizeForIcon = 12; // 或者根据imageSize动态调整，但通常图标下文字较小
+                        var textYUnderIcon = bitmapBuilder.Height - titleFontSizeForIcon - 10; // 尝试放在底部，需要足够空间
+                         if (iconY + iconHeight < textYUnderIcon && textYUnderIcon > iconY + iconHeight - 5) // 确保文字在图标下方且有一定绘制空间
                          {
-                            bitmapBuilder.DrawText(text: titleToDraw, x: 0, y: textYUnderIcon, width: bitmapBuilder.Width, height: titleFontSizeForIcon + 2, fontSize: titleFontSizeForIcon, color: currentTitleColor);
+                            // 使用带有x,y,width,height的DrawText，以便控制绘制区域
+                            bitmapBuilder.DrawText(text: titleToDraw, 
+                                               x: 0, 
+                                               y: textYUnderIcon, 
+                                               width: bitmapBuilder.Width, 
+                                               height: titleFontSizeForIcon + 5, // 给字体留一些垂直空间
+                                               fontSize: titleFontSizeForIcon, 
+                                               color: currentTitleColor);
+                            PluginLog.Verbose($"[PluginImage] Drew title '{titleToDraw}' under icon.");
                          }
-                         else // 如果空间不足，尝试在图标旁边或不画
+                         else
                          {
-                             // Fallback: 简单绘制在中央 (可能会覆盖图标)
-                             // bitmapBuilder.DrawText(text: titleToDraw, fontSize: GetButtonFontSize(titleToDraw) / 2, color: currentTitleColor);
+                            PluginLog.Verbose($"[PluginImage] Not enough space to draw title '{titleToDraw}' under icon, or title is empty.");
                          }
                     }
                     iconDrawn = true;
                 }
-                
-                if (!iconDrawn) // 如果没有图标，或者强制只用文本
+
+                PluginLog.Verbose($"[PluginImage] After icon check: iconDrawn = {iconDrawn}, titleToDraw = '{titleToDraw}' (before main text draw logic for config: {config?.DisplayName})");
+
+                if (!iconDrawn) 
                 {
-                    if (!String.IsNullOrEmpty(titleToDraw))
+                    bool shouldShowConfigTitle = !(config?.ShowTitle?.Equals("No", StringComparison.OrdinalIgnoreCase) == true);
+
+                    if (!String.IsNullOrEmpty(valueText)) 
+                    {
+                        var paramValueFontSize = GetParameterValueFontSize(valueText);
+                        if (shouldShowConfigTitle && !String.IsNullOrEmpty(titleToDraw)) 
+                        {
+                            var labelFontSize = GetDialFontSize(titleToDraw); 
+                            PluginLog.Verbose($"[PluginImage] NoIcon_DrawDial (Mode1): Title='{titleToDraw}' (Size:{labelFontSize}), Value='{valueText}' (Size:{paramValueFontSize}). ConfigShowTitle={shouldShowConfigTitle}");
+                            
+                            bitmapBuilder.DrawText(titleToDraw, 
+                                               x: 0, y: 5, 
+                                               width: bitmapBuilder.Width, height: bitmapBuilder.Height / 2 - 7, 
+                                               color: currentTitleColor, 
+                                               fontSize: labelFontSize 
+                                               );
+                            bitmapBuilder.DrawText(valueText, 
+                                               x: 0, y: bitmapBuilder.Height / 2 - 2, 
+                                               width: bitmapBuilder.Width, height: bitmapBuilder.Height / 2 - 3, 
+                                               color: currentTitleColor, 
+                                               fontSize: paramValueFontSize
+                                               );
+                        }
+                        else 
+                        {
+                            PluginLog.Verbose($"[PluginImage] NoIcon_DrawDial (Mode2): ValueOnly='{valueText}' (Size:{paramValueFontSize}). ConfigShowTitle={shouldShowConfigTitle}");
+                            bitmapBuilder.DrawText(valueText, currentTitleColor, paramValueFontSize);
+                        }
+                    }
+                    else if (!String.IsNullOrEmpty(titleToDraw)) 
                     {
                         int titleFontSize;
-                        if (config.ActionType != null && (config.ActionType.Contains("Dial") || config.ActionType.Contains("Parameter"))) // ParameterDial, ParameterButton
+                        if (config.ActionType != null && (config.ActionType.Contains("Dial"))) 
                         {
                             titleFontSize = GetDialFontSize(titleToDraw);
                         }
-                        else
+                        else 
                         {
                             titleFontSize = GetButtonFontSize(titleToDraw);
                         }
+                        PluginLog.Verbose($"[PluginImage] NoIcon_DrawButton/PlaceholderTitle: Title='{titleToDraw}' (Size:{titleFontSize}). ActionType={config.ActionType}");
                         bitmapBuilder.DrawText(titleToDraw, currentTitleColor, titleFontSize);
                     }
                 }
 
-                // 4. 绘制 valueText (如果提供，且没有图标或有特定布局)
-                // 这个通常用于旋钮显示当前值，或按钮显示次要信息
-                if (!String.IsNullOrEmpty(valueText))
-                {
-                    // 决定 valueText 的位置和大小
-                    // 如果有主标题且没有图标，valueText 可以在主标题下方
-                    // 如果有图标，valueText 的位置需要更小心处理
-                    // 简单示例：绘制在底部
-                    var valueTextColor = currentTitleColor; // 通常与主标题同色或稍暗
-                    
-                    if (!iconDrawn && !String.IsNullOrEmpty(titleToDraw)) // 在主标题下方
-                    {
-                         bitmapBuilder.DrawText(valueText, 0, bitmapBuilder.Height - valueFontSize - 10, bitmapBuilder.Width, valueFontSize +2 ,valueTextColor, valueFontSize);
-                    }
-                    else if (iconDrawn)
-                    {
-                        // 如果有图标，并且主标题已在图标下方，valueText可能没地方放了，或需要更复杂的布局
-                    }
-                    else // 没有主标题，也没有图标，valueText 作为主要显示
-                    {
-                        bitmapBuilder.DrawText(valueText, valueTextColor, GetDialFontSize(valueText));
-                    }
-                }
-
-                // 5. 绘制辅助文本
-                string textToRenderForAux = actualAuxText ?? config.Text; // 优先使用 actualAuxText
-
+                // 5. 绘制辅助文本 (config.Text)
+                // 这部分逻辑保持不变，它使用config中定义的TextX, TextY等绝对定位或默认定位
+                string textToRenderForAux = actualAuxText ?? config.Text;
                 if (!String.IsNullOrEmpty(textToRenderForAux))
                 {
-                    // Restore original simple defaults for config.Text if not specified in config
                     var textX = config.TextX ?? 50;
                     var textY = config.TextY ?? 55;
                     var textWidth = config.TextWidth ?? 14;
                     var textHeight = config.TextHeight ?? 14;
-                    var textSize = config.TextSize ?? 14;
-                    // 辅助文本颜色优先使用 config.TextColor，如果为空，默认为白色
-                    var textColor = HexToBitmapColor(config.TextColor, BitmapColor.White);
+                    var textSize = config.TextSize ?? 14; // 默认辅助文本大小
+                    var auxTextColor = HexToBitmapColor(config.TextColor, BitmapColor.White);
 
-                    // Simple boundary checks to prevent drawing outside the bitmap, if necessary
+                    // 确保绘制在边界内
                     textX = Math.Max(0, Math.Min(textX, bitmapBuilder.Width - textWidth));
                     textY = Math.Max(0, Math.Min(textY, bitmapBuilder.Height - textHeight));
-                    textWidth = Math.Max(1, Math.Min(textWidth, bitmapBuilder.Width - textX));
-                    textHeight = Math.Max(1, Math.Min(textHeight, bitmapBuilder.Height - textY));
+                    // 确保宽度和高度至少为1，防止DrawText错误
+                    textWidth = Math.Max(1, Math.Min(textWidth, bitmapBuilder.Width > textX ? bitmapBuilder.Width - textX : 1));
+                    textHeight = Math.Max(1, Math.Min(textHeight, bitmapBuilder.Height > textY ? bitmapBuilder.Height - textY: 1));
 
                     if (textWidth > 0 && textHeight > 0) 
                     {
-                        bitmapBuilder.DrawText(text: textToRenderForAux, // 使用最终确定的文本 
+                        bitmapBuilder.DrawText(text: textToRenderForAux, 
                                             x: textX, y: textY, 
                                             width: textWidth, height: textHeight, 
-                                            color: textColor, fontSize: textSize);
+                                            color: auxTextColor, fontSize: textSize);
                     }
                 }
 
@@ -334,6 +344,28 @@ namespace Loupedeck.ReaOSCPlugin.Helpers
                 10 => 11,
                 11 => 10, // Added from observation
                 _ => 9 // Matches General_Dial_Base
+            };
+        }
+
+        // 【新增】获取参数值的字体大小
+        private static int GetParameterValueFontSize(string parameterValue)
+        {
+            if (String.IsNullOrEmpty(parameterValue)) return 10; // 默认一个较小值以防空字符串
+            var len = parameterValue.Length;
+            return len switch
+            {
+                1 => 16,
+                2 => 16,
+                3 => 16,
+                4 => 16,
+                5 => 15,
+                6 => 12,
+                7 => 11,
+                8 => 12, // 注意：按用户给定的规则，长度8比7和9大
+                9 => 11,
+                10 => 8,
+                11 => 7,
+                _ => 6
             };
         }
     }
