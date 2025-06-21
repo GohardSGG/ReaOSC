@@ -329,22 +329,6 @@ namespace Loupedeck.ReaOSCPlugin.Base
 
             PluginLog.Info($"[{this.DisplayName}] 列表更新完毕。当前显示 {_currentDisplayedItemActionNames.Count} 项。总页数: {this._totalPages}, 当前页: {this._currentPage + 1}");
         }
-
-        // --- 旧的成员变量 (已被替换或移除) ---
-        // private string _currentBrandFilter = "Favorite"; 
-        // private string _currentEffectTypeFilter = "All"; 
-        // private readonly List<string> _brandOptions; 
-        // private readonly List<string> _effectTypeOptions = new List<string> { "All", "EQ", "Comp", "Reverb", "Delay", "Saturate" };
-        // private readonly Dictionary<string, ButtonConfig> _allFxConfigs = new Dictionary<string, ButtonConfig>(); 
-        // private List<string> _currentFxActionNames = new List<string>(); 
-        // private List<string> _favoriteFxNames = new List<string>(); 
-        // private List<string> _originalBrandOrder = null; 
-
-        // --- 旧的方法 (已被替换或移除) ---
-        // private void ParseFxData(JObject root) { /* ... */ }
-        // private void UpdateFxList() { /* ... */ }
-
-        // ... (其他方法如 GetButtonPressActionNames, ApplyAdjustment 等将需要后续修改) ...
         
         // 辅助方法，用于从 ButtonConfig 创建唯一的动作参数 (通常是 /GroupName/DisplayName)
         private string CreateActionParameter(ButtonConfig config) => $"/{config.GroupName}/{config.DisplayName}".Replace(" ", "_").Replace("//", "/");
@@ -373,114 +357,77 @@ namespace Loupedeck.ReaOSCPlugin.Base
             return $"{groupName}_{displayName}".Replace(" ", "_");
         }
 
-        // 【再重构】以确保localId的正确生成和使用
+        // 【再重构 완료】严格按照JSON顺序映射旋钮，Placeholder对应null
         public override IEnumerable<string> GetEncoderRotateActionNames()
         {
-            var rotateActionNames = new string[6]; 
-            var assignedSlots = new bool[6];
-
-            var backDialConfig = this._folderDialConfigs.FirstOrDefault(dc => dc.ActionType == "NavigationDial" && dc.DisplayName == "Back");
-            if (backDialConfig != null)
-            {
-                var localBackDialId = GetLocalDialId(backDialConfig);
-                if (localBackDialId != null)
-                {
-                    rotateActionNames[5] = this.CreateAdjustmentName(localBackDialId);
-                    assignedSlots[5] = true;
-                }
-            }
-
-            int currentIndex = 0;
-            foreach (var dialConfig in this._folderDialConfigs.Where(dc => dc.ActionType == "FilterDial" || dc.ActionType == "PageDial"))
-            {
-                while (currentIndex < 6 && assignedSlots[currentIndex]) { currentIndex++; }
-                if (currentIndex < 6)
-                {
-                    var localDialId = GetLocalDialId(dialConfig);
-                    if (localDialId != null)
-                    {
-                        rotateActionNames[currentIndex] = this.CreateAdjustmentName(localDialId);
-                        assignedSlots[currentIndex] = true;
-                    }
-                }
-                else { 
-                    // PluginLog.Warning($"[{this.DisplayName}] GetEncoderRotateActionNames: 旋钮槽位不足以分配给Filter/PageDial '{dialConfig?.DisplayName}'");
-                    break; 
-                }
-            }
-
-            currentIndex = 0; 
-            foreach (var dialConfig in this._folderDialConfigs.Where(dc => dc.ActionType == "PlaceholderDial"))
-            {
-                while (currentIndex < 6 && assignedSlots[currentIndex]) { currentIndex++; }
-                if (currentIndex < 6)
-                {
-                    var localDialId = GetLocalDialId(dialConfig);
-                    if (localDialId != null)
-                    {
-                        rotateActionNames[currentIndex] = this.CreateAdjustmentName(localDialId); 
-                        assignedSlots[currentIndex] = true;
-                    }
-                }
-                else { 
-                    // PluginLog.Warning($"[{this.DisplayName}] GetEncoderRotateActionNames: 旋钮槽位不足以分配给PlaceholderDial '{dialConfig?.DisplayName}'");
-                    break; 
-                }
-            }
-            return rotateActionNames;
-        }
-        
-        // 【再重构】以确保localId的正确生成和使用
-        public override IEnumerable<string> GetEncoderPressActionNames(DeviceType deviceType)
-        {
-            var pressActionNames = new string[6];
-            var tempRotateDialConfigsInOrder = new ButtonConfig[6]; 
-            bool[] tempAssignedSlots = new bool[6];
-            var assignableDials = this._folderDialConfigs.ToList(); // 创建副本以进行移除操作
-
-            var backDial = assignableDials.FirstOrDefault(dc => dc.ActionType == "NavigationDial" && dc.DisplayName == "Back");
-            if (backDial != null)
-            {
-                tempRotateDialConfigsInOrder[5] = backDial;
-                tempAssignedSlots[5] = true;
-                assignableDials.Remove(backDial); 
-            }
-
-            int slotIndex = 0;
-            foreach (var dial in assignableDials.Where(dc => dc.ActionType == "FilterDial" || dc.ActionType == "PageDial").ToList()) // ToList() for safe removal if needed, though not removing here
-            {
-                while (slotIndex < 6 && tempAssignedSlots[slotIndex]) { slotIndex++; }
-                if (slotIndex < 6) { tempRotateDialConfigsInOrder[slotIndex] = dial; tempAssignedSlots[slotIndex] = true; }
-                else { break; }
-            }
-
-            slotIndex = 0;
-            foreach (var dial in assignableDials.Where(dc => dc.ActionType == "PlaceholderDial").ToList())
-            {
-                while (slotIndex < 6 && tempAssignedSlots[slotIndex]) { slotIndex++; }
-                if (slotIndex < 6) { tempRotateDialConfigsInOrder[slotIndex] = dial; tempAssignedSlots[slotIndex] = true; }
-                else { break; }
-            }
+            var rotateActionNames = new string[6]; // 初始化为所有槽位都是 null
 
             for (int i = 0; i < 6; i++)
             {
-                var dialConfigForSlot = tempRotateDialConfigsInOrder[i];
-                if (dialConfigForSlot != null)
+                if (i < this._folderDialConfigs.Count)
                 {
-                    var localId = GetLocalDialId(dialConfigForSlot);
-                    if (localId != null)
+                    var dialConfig = this._folderDialConfigs[i];
+                    if (dialConfig.ActionType == "Placeholder") // 使用正确的 ActionType 名称
                     {
-                        if (dialConfigForSlot.ActionType == "NavigationDial" && dialConfigForSlot.DisplayName == "Back")
-                        {                            
-                            pressActionNames[i] = base.CreateCommandName(localId); 
-        }
-                        else
-                        {                            
-                            pressActionNames[i] = null; 
+                        rotateActionNames[i] = null; 
+                    }
+                    else
+                    {
+                        var localId = GetLocalDialId(dialConfig);
+                        if (localId != null) 
+                        {
+                            rotateActionNames[i] = this.CreateAdjustmentName(localId); 
+                        }
+                        else 
+                        { 
+                            rotateActionNames[i] = null; // 如果无法生成有效localId (例如DisplayName为空)，也视为空
                         }
                     }
                 }
+                else
+                {
+                    rotateActionNames[i] = null; // 超出JSON定义数量的槽位也为空
+                }
             }
+            PluginLog.Info($"[{this.DisplayName}] GetEncoderRotateActionNames: [{string.Join(", ", rotateActionNames.Select(s => s ?? "null"))}]");
+            return rotateActionNames;
+        }
+        
+        // 【再重构 완료】严格按照JSON顺序映射旋钮，Placeholder对应null
+        public override IEnumerable<string> GetEncoderPressActionNames(DeviceType deviceType)
+        {
+            var pressActionNames = new string[6]; // 初始化为所有槽位都是 null
+
+            for (int i = 0; i < 6; i++)
+            {
+                if (i < this._folderDialConfigs.Count)
+                {
+                    var dialConfig = this._folderDialConfigs[i];
+                    if (dialConfig.ActionType == "Placeholder") 
+                    {
+                        pressActionNames[i] = null; 
+                    }
+                    else if (dialConfig.ActionType == "NavigationDial" && dialConfig.DisplayName == "Back") 
+                    {
+                        var localId = GetLocalDialId(dialConfig);
+                        if (localId != null) 
+                        {
+                            pressActionNames[i] = base.CreateCommandName(localId); 
+                        }
+                        else { pressActionNames[i] = null; }
+                    }
+                    else 
+                    {
+                        // 其他类型旋钮 (FilterDial, PageDial) 默认按下无主要命令动作
+                        pressActionNames[i] = null; 
+                    }
+                }
+                else
+                {
+                    pressActionNames[i] = null; // 超出JSON定义数量的槽位也为空
+                }
+            }
+            PluginLog.Info($"[{this.DisplayName}] GetEncoderPressActionNames: [{string.Join(", ", pressActionNames.Select(s => s ?? "null"))}]");
             return pressActionNames;
         }
 
@@ -491,15 +438,23 @@ namespace Loupedeck.ReaOSCPlugin.Base
         public override void ApplyAdjustment(string actionParameter, int ticks)
         {
             var localDialId = actionParameter; 
-            PluginLog.Info($"[{this.DisplayName}] ApplyAdjustment received localDialId: '{localDialId}'"); // 【新增日志】
+            // PluginLog.Info($"[{this.DisplayName}] ApplyAdjustment received localDialId: '{localDialId}'"); 
 
-            var dialConfig = this._folderDialConfigs.FirstOrDefault(dc => 
-                $"{dc.GroupName}_{dc.DisplayName}".Replace(" ", "_") == localDialId);
+            // var dialConfig = this._folderDialConfigs.FirstOrDefault(dc => 
+            //     $"{dc.GroupName}_{dc.DisplayName}".Replace(" ", "_") == localDialId);
+            // 【修正】使用 GetLocalDialId 进行匹配
+            var dialConfig = this._folderDialConfigs.FirstOrDefault(dc => GetLocalDialId(dc) == localDialId);
 
             if (dialConfig == null)
             {
-                PluginLog.Warning($"[{this.DisplayName}] ApplyAdjustment: 未找到与localId '{localDialId}' 匹配的旋钮配置。");
-                return;
+                // PluginLog.Warning($"[{this.DisplayName}] ApplyAdjustment: 未找到与localId '{localDialId}' 匹配的旋钮配置。");
+                return; // 如果localId无效或对应占位符（不应发生），则不处理
+            }
+            
+            // 【新增】如果 ActionType 是 Placeholder，则不执行任何操作
+            if (dialConfig.ActionType == "Placeholder")
+            {
+                return; 
             }
 
             bool listChanged = false;
@@ -576,11 +531,15 @@ namespace Loupedeck.ReaOSCPlugin.Base
             PluginLog.Info($"[{this.DisplayName}] RunCommand looking up localId: '{commandLocalIdToLookup}'");
 
             // 统一查找被按下的旋钮配置
-            var dialConfigPressed = this._folderDialConfigs.FirstOrDefault(dc => 
-                $"{dc.GroupName}_{dc.DisplayName}".Replace(" ", "_") == commandLocalIdToLookup);
+            var dialConfigPressed = this._folderDialConfigs.FirstOrDefault(dc => GetLocalDialId(dc) == commandLocalIdToLookup);
 
             if (dialConfigPressed != null)
             {
+                // 【新增】如果 ActionType 是 Placeholder，则不执行任何操作
+                if (dialConfigPressed.ActionType == "Placeholder")
+                {
+                    return;
+                }
                 if (dialConfigPressed.ActionType == "NavigationDial" && dialConfigPressed.DisplayName == "Back")
                 {
                     PluginLog.Info($"[{this.DisplayName}] 'Back' NavigationDial (localId: '{commandLocalIdToLookup}') pressed via RunCommand. Closing folder.");
@@ -624,8 +583,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 // 这里不打印日志，避免与RunCommand重复，除非用于调试
                 // PluginLog.Info($"[{this.DisplayName}] ProcessButtonEvent2 looking up localId: '{commandLocalIdToLookup}'");
 
-                var dialConfigPressed = this._folderDialConfigs.FirstOrDefault(dc => 
-                    $"{dc.GroupName}_{dc.DisplayName}".Replace(" ", "_") == commandLocalIdToLookup);
+                var dialConfigPressed = this._folderDialConfigs.FirstOrDefault(dc => GetLocalDialId(dc) == commandLocalIdToLookup);
 
                 if (dialConfigPressed != null)
                 {
@@ -709,6 +667,14 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 return DrawErrorImage(imageSize);
             }
             
+            // 【新增】如果 ActionType 是 Placeholder，绘制空白或特定占位符图像
+            if (dialConfig.ActionType == "Placeholder")
+            {
+                // 调用 PluginImage.DrawElement 传递一个表示空的config，或者让DrawElement内部处理Placeholder类型
+                // 简单起见，直接返回一个空白图像
+                using (var bb = new BitmapBuilder(imageSize)) { bb.Clear(BitmapColor.Black); return bb.ToImage(); }
+            }
+            
             string titleForLabel = dialConfig.Title ?? dialConfig.DisplayName ?? ""; 
             string valueToDisplay = ""; 
 
@@ -722,6 +688,8 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     break;
             }
             
+            if (dialConfig.ActionType == "Placeholder") titleForLabel = ""; // 确保占位符不显示任何文字
+
             return Helpers.PluginImage.DrawElement(
                 imageSize,
                 dialConfig,

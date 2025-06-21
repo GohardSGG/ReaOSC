@@ -17,19 +17,29 @@ namespace Loupedeck.ReaOSCPlugin.Base
     {
         private ButtonConfig _entryConfig;
 
+        // 【旧的旋钮管理方式 - 将被取代或调整用途】
+        // private readonly List<string> _localAdjustmentIds = new List<string>();
+        // private readonly Dictionary<string, string> _localIdToGlobalActionParameter = new Dictionary<string, string>();
+        // private readonly Dictionary<string, ButtonConfig> _localIdToConfig = new Dictionary<string, ButtonConfig>();
+        
+        // 【新增】与 FX_Folder_Base 类似，直接存储从JSON解析的原始Dial配置列表
+        private readonly List<ButtonConfig> _folderDialConfigs = new List<ButtonConfig>();
+
+        // 【保留】按钮管理方式 (用于 _isButtonListDynamic == false 的情况)
         private readonly List<string> _localButtonIds = new List<string>();
-        private readonly List<string> _localAdjustmentIds = new List<string>();
+        private readonly Dictionary<string, string> _localIdToGlobalActionParameter_Buttons = new Dictionary<string, string>();
+        private readonly Dictionary<string, ButtonConfig> _localIdToConfig_Buttons = new Dictionary<string, ButtonConfig>();
 
-        private readonly Dictionary<string, string> _localIdToGlobalActionParameter = new Dictionary<string, string>();
-        private readonly Dictionary<string, ButtonConfig> _localIdToConfig = new Dictionary<string, ButtonConfig>();
-
+        // 【保留】UI反馈和状态管理 (根据需要调整或与新的旋钮逻辑集成)
         private readonly Dictionary<string, DateTime> _lastTriggerPressTimes = new Dictionary<string, DateTime>();
-        private readonly Dictionary<string, DateTime> _lastCombineButtonPressTimes = new Dictionary<string, DateTime>(); // 用于CombineButton的UI反馈
+        private readonly Dictionary<string, DateTime> _lastCombineButtonPressTimes = new Dictionary<string, DateTime>();
+        // private const string NavigationDialActionType = "NavigationDial"; // 将通过 ActionType 字符串直接比较
+        // private const string PlaceholderDialActionType = "Placeholder"; // 将通过 ActionType 字符串直接比较
 
-        private const string NavigationDialActionType = "NavigationDial";
-        private const string PlaceholderDialActionType = "PlaceholderDial";
+        private readonly bool _isButtonListDynamic; 
 
-        private readonly bool _isButtonListDynamic; // 【新增】标记按钮列表是否为动态加载
+        // 【新增】为 ParameterDial 存储当前选中的索引
+        private readonly Dictionary<string, int> _parameterDialCurrentIndexes = new Dictionary<string, int>();
 
         public Dynamic_Folder_Base()
         {
@@ -38,349 +48,444 @@ namespace Loupedeck.ReaOSCPlugin.Base
             var folderClassName = this.GetType().Name;
             var folderBaseName = folderClassName.Replace("_Dynamic", "").Replace("_", " ");
 
-            // 【注意】根据您提供的 Dynamic_List.json，GroupName 是 "Dynamic"
-            // 如果您的旧代码中 "ReaOSC Dynamic" 是正确的，请确保 Dynamic_List.json 也使用它
             this._entryConfig = Logic_Manager_Base.Instance.GetConfigByDisplayName("Dynamic", folderBaseName);
             if (this._entryConfig == null)
             {
-                PluginLog.Error($"[DynamicFolder] Constructor: 未能在 Logic_Manager 中找到文件夹入口 '{folderBaseName}' (尝试的GroupName: Dynamic) 的配置项。");
-                this.DisplayName = folderBaseName; // Fallback display name
-                this.GroupName = "Dynamic";        // Fallback group name
-                // 不return，尝试加载内容，即使入口配置缺失
+                PluginLog.Error($"[DynamicFolder] Constructor: Missing entry config for '{folderBaseName}'.");
+                this.DisplayName = folderBaseName; 
+                this.GroupName = "Dynamic";        
             }
             else
             {
                 this.DisplayName = this._entryConfig.DisplayName;
-                this.GroupName = this._entryConfig.GroupName; // GroupName 应来自配置，例如 "Dynamic"
+                this.GroupName = this._entryConfig.GroupName ?? "Dynamic";
             }
-            // 移除 this.Navigation = PluginDynamicFolderNavigation.ButtonArea; 
-            // 导航模式将由 GetNavigationArea 控制
 
-            // 【重构】不再从独立文件加载，而是从 Logic_Manager 获取预加载的内容
-            var content = Logic_Manager_Base.Instance.GetFolderContent(folderBaseName);
+            var content = Logic_Manager_Base.Instance.GetFolderContent(this.DisplayName);
             if (content != null)
             {
-                this._isButtonListDynamic = content.IsButtonListDynamic; // 【新增】设置按钮列表是否动态
-                this.PopulateLocalIdMappings(content);
+                this._isButtonListDynamic = content.IsButtonListDynamic;
+                
+                // 【修改】直接存储Dials配置，并为ParameterDial初始化索引
+                if (content.Dials != null)
+                {
+                    foreach (var dialConfig in content.Dials)
+                    {
+                        this._folderDialConfigs.Add(dialConfig); // 存储原始配置，包括Placeholder
+                        if (dialConfig.ActionType == "ParameterDial")
+                        {
+                            var localId = GetLocalDialId(dialConfig); // 使用新的GetLocalDialId
+                            if (localId != null && dialConfig.Parameter != null && dialConfig.Parameter.Any())
+                            {
+                                this._parameterDialCurrentIndexes[localId] = 0; // 默认选中第一个参数
+                            }
+                        }
+                    }
+                }
+                this.PopulateLocalIdMappings_StaticButtons(content); // 修改此方法只处理静态按钮
             }
             else
             {
-                this._isButtonListDynamic = false; // 【新增】如果内容为空，默认为非动态
-                PluginLog.Warning($"[DynamicFolder] Constructor ('{this.DisplayName}'): 未能从 Logic_Manager 加载文件夹内容。");
+                this._isButtonListDynamic = false; 
+                PluginLog.Warning($"[DynamicFolder] Constructor ('{this.DisplayName}'): No folder content loaded.");
             }
-            // 【注意】我之前的版本有订阅CommandStateNeedsRefresh，您的旧代码示例中没有。如果需要，可以加回来。
             Logic_Manager_Base.Instance.CommandStateNeedsRefresh += this.OnCommandStateNeedsRefresh;
         }
 
-        #region 初始化与动作填充
-        // 【移除】LoadFolderContent 方法，因为现在内容由 Logic_Manager 统一加载
-
-        // 【核心修正】采用您旧代码中的 PopulateLocalIdMappings 逻辑
-        private void PopulateLocalIdMappings(FolderContentConfig content)
+        // 【新增】与 FX_Folder_Base 一致的 localId 生成逻辑 (用于旋钮)
+        private string GetLocalDialId(ButtonConfig dialConfig)
         {
-            var actionsToProcess = new List<ButtonConfig>();
-            if (content.Dials != null)
+            if (dialConfig == null) return null;
+            var groupName = dialConfig.GroupName ?? this.DisplayName; // GroupName应由LogicManager在加载时赋予文件夹名
+            var displayName = dialConfig.DisplayName ?? "";
+            if (string.IsNullOrEmpty(displayName) && dialConfig.ActionType != "Placeholder") // Placeholder可以没有DisplayName
             {
-                actionsToProcess.AddRange(content.Dials);
+                 PluginLog.Warning($"[{this.DisplayName}] GetLocalDialId: DialConfig (Type: {dialConfig.ActionType}) has empty DisplayName. GroupName: {groupName}");
+                 return null; 
+            }
+            // 为Placeholder生成一个基于其在列表中的索引的唯一ID，如果它没有DisplayName
+            if (dialConfig.ActionType == "Placeholder" && string.IsNullOrEmpty(displayName))
+            {
+                 int placeholderIndex = this._folderDialConfigs.IndexOf(dialConfig);
+                 return $"{groupName}_Placeholder_{placeholderIndex}".Replace(" ", "_");
+            }
+            return $"{groupName}_{displayName}".Replace(" ", "_");
+        }
+
+        // 【重命名并修改】此方法现在只负责处理静态按钮的映射
+        private void PopulateLocalIdMappings_StaticButtons(FolderContentConfig content)
+        {
+            this._localButtonIds.Clear();
+            this._localIdToGlobalActionParameter_Buttons.Clear();
+            this._localIdToConfig_Buttons.Clear();
+
+            if (this._isButtonListDynamic || content.Buttons == null || !content.Buttons.Any())
+            {
+                // PluginLog.Info($"[DynamicFolder] PopulateLocalIdMappings_StaticButtons ('{this.DisplayName}'): No static buttons to process or dynamic list mode.");
+                return; // 如果是动态列表模式或没有静态按钮，则不处理
             }
 
-            // 仅当按钮列表不是动态加载时，才处理静态按钮
-            if (!this._isButtonListDynamic && content.Buttons != null)
+            foreach (var buttonConfigFromJson in content.Buttons) 
             {
-                actionsToProcess.AddRange(content.Buttons);
-            }
+                // Placeholder按钮类型也应该被跳过 (如果未来按钮也支持Placeholder的话)
+                if (buttonConfigFromJson.ActionType == "Placeholder") { continue; }
 
-            foreach (var configFromJson in actionsToProcess) // configFromJson 是从当前文件夹的 _List.json 读取的配置项
-            {
-                // 使用从JSON读取的DisplayName和GroupName在Logic_Manager_Base的所有配置中查找匹配项
                 var kvp = Logic_Manager_Base.Instance.GetAllConfigs().FirstOrDefault(
-                    x => x.Value.DisplayName == configFromJson.DisplayName && x.Value.GroupName == configFromJson.GroupName
+                    x => x.Value.DisplayName == buttonConfigFromJson.DisplayName && x.Value.GroupName == buttonConfigFromJson.GroupName
                 );
-                var globalActionParameter = kvp.Key;   // 这是Logic_Manager中注册的唯一键
-                var loadedConfig = kvp.Value;          // 这是Logic_Manager中存储的完整ButtonConfig
+                var globalActionParameter = kvp.Key;   
+                var loadedConfig = kvp.Value;          
 
                 if (string.IsNullOrEmpty(globalActionParameter) || loadedConfig == null)
                 {
-                    PluginLog.Warning($"[DynamicFolder] PopulateLocalIdMappings ('{this.DisplayName}'): 未能通过 DisplayName '{configFromJson.DisplayName}' 和 JSON GroupName '{configFromJson.GroupName}' 从 Logic_Manager 找到全局配置。该控件将不可用。");
+                    PluginLog.Warning($"[DynamicFolder] PopulateLocalIdMappings_StaticButtons ('{this.DisplayName}'): Failed to find global config for button DisplayName '{buttonConfigFromJson.DisplayName}', GroupName '{buttonConfigFromJson.GroupName ?? "(null)"}'.");
                     continue;
                 }
 
-                // 本地ID用于在此文件夹实例内部唯一标识一个控件
-                // 使用 loadedConfig (来自 Logic_Manager, 源自 JSON) 的 GroupName 和 DisplayName 来确保一致性
                 var localId = $"{loadedConfig.GroupName}_{loadedConfig.DisplayName}".Replace(" ", "");
 
-                if (this._localIdToConfig.ContainsKey(localId))
+                if (this._localIdToConfig_Buttons.ContainsKey(localId))
                 {
-                    PluginLog.Warning($"[DynamicFolder] PopulateLocalIdMappings ('{this.DisplayName}'): 本地ID '{localId}' (对应全局参数 '{globalActionParameter}') 已存在。请检查 '{this.DisplayName}_List.json' 文件中是否存在重复的 GroupName/DisplayName 组合。将跳过重复项。");
+                    PluginLog.Warning($"[DynamicFolder] PopulateLocalIdMappings_StaticButtons ('{this.DisplayName}'): Duplicate localId '{localId}' for button.");
                     continue;
                 }
-
-                this._localIdToGlobalActionParameter[localId] = globalActionParameter;
-                this._localIdToConfig[localId] = loadedConfig;
-
-                if (loadedConfig.ActionType.Contains("Dial"))
-                {
-                    this._localAdjustmentIds.Add(localId);
-                }
-                else
-                {
-                    this._localButtonIds.Add(localId);
-                }
+                this._localIdToGlobalActionParameter_Buttons[localId] = globalActionParameter;
+                this._localIdToConfig_Buttons[localId] = loadedConfig;
+                this._localButtonIds.Add(localId); // 只添加按钮的localId
             }
-            PluginLog.Info($"[DynamicFolder] PopulateLocalIdMappings ('{this.DisplayName}'): 完成。加载了 {_localButtonIds.Count} 个按钮和 {_localAdjustmentIds.Count} 个旋钮。");
+            PluginLog.Info($"[DynamicFolder] PopulateLocalIdMappings_StaticButtons ('{this.DisplayName}'): Processed {_localButtonIds.Count} static buttons.");
+        }
+        
+        #region PluginDynamicFolder 核心重写 (旋钮部分将参照FX_Folder_Base)
+
+        public override IEnumerable<string> GetButtonPressActionNames()
+        {
+            if (this._isButtonListDynamic) // 【重要】如果是动态列表模式，则此方法应由子类 (如FX_Folder_Base) 实现
+            {
+                PluginLog.Info($"[DynamicFolder] GetButtonPressActionNames for '{this.DisplayName}': Buttons are dynamic, expecting override or empty list.");
+                return Enumerable.Empty<string>(); // 或者抛出NotImplementedException如果确定子类必须覆盖
+            }
+            return this._localButtonIds.Select(id => this.CreateCommandName(id)).ToList();
+        }
+        
+        // 【全盘替换】使用与 FX_Folder_Base 完全相同的逻辑
+        public override IEnumerable<string> GetEncoderRotateActionNames()
+        {
+            var rotateActionNames = new string[6];
+            for (int i = 0; i < 6; i++)
+            {
+                if (i < this._folderDialConfigs.Count)
+                {
+                    var dialConfig = this._folderDialConfigs[i];
+                    if (dialConfig.ActionType == "Placeholder")
+                    {
+                        rotateActionNames[i] = null; 
+                    }
+                    else
+                    {
+                        var localId = GetLocalDialId(dialConfig);
+                        if (localId != null) { rotateActionNames[i] = this.CreateAdjustmentName(localId); }
+                        else { rotateActionNames[i] = null; }
+                    }
+                }
+                else { rotateActionNames[i] = null; }
+            }
+            // PluginLog.Info($"[{this.DisplayName}] Dynamic GetEncoderRotateActionNames: [{string.Join(", ", rotateActionNames.Select(s => s ?? "null"))}]");
+            return rotateActionNames;
+        }
+        
+        // 【全盘替换】使用与 FX_Folder_Base 完全相同的逻辑
+        public override IEnumerable<string> GetEncoderPressActionNames(DeviceType deviceType)
+        {
+            var pressActionNames = new string[6];
+            for (int i = 0; i < 6; i++)
+            {
+                if (i < this._folderDialConfigs.Count)
+                {
+                    var dialConfig = this._folderDialConfigs[i];
+                    if (dialConfig.ActionType == "Placeholder") { pressActionNames[i] = null; }
+                    else if (dialConfig.ActionType == "NavigationDial" && dialConfig.DisplayName == "Back") 
+                    {
+                        var localId = GetLocalDialId(dialConfig);
+                        if (localId != null) { pressActionNames[i] = base.CreateCommandName(localId); }
+                        else { pressActionNames[i] = null; }
+                    }
+                    // 【新增】处理ParameterDial的按下 (可能用于循环参数或特定操作，如果定义了的话)
+                    // else if (dialConfig.ActionType == "ParameterDial" && (dialConfig.Parameter?.Any() ?? false) )
+                    // {
+                    //     var localId = GetLocalDialId(dialConfig);
+                    //     if (localId != null) { pressActionNames[i] = base.CreateCommandName(localId); } // ParameterDial按下也视为命令
+                    // }
+                    // 【新增】处理ToggleDial的按下
+                    else if (dialConfig.ActionType == "ToggleDial")
+                    {
+                        var localId = GetLocalDialId(dialConfig);
+                        if (localId != null) { pressActionNames[i] = base.CreateCommandName(localId); }
+                    }
+                    // 【新增】处理2ModeTickDial的按下 (切换模式)
+                    else if (dialConfig.ActionType == "2ModeTickDial")
+                    {
+                        var localId = GetLocalDialId(dialConfig);
+                        if (localId != null) { pressActionNames[i] = base.CreateCommandName(localId); }
+                    }
+                    else { pressActionNames[i] = null; } // 其他类型旋钮 (如 TickDial, FilterDial, PageDial) 默认按下无独立命令
+                }
+                else { pressActionNames[i] = null; }
+            }
+            // PluginLog.Info($"[{this.DisplayName}] Dynamic GetEncoderPressActionNames: [{string.Join(", ", pressActionNames.Select(s => s ?? "null"))}]");
+            return pressActionNames;
         }
         #endregion
 
         #region PluginDynamicFolder 核心重写
 
-        public override IEnumerable<string> GetButtonPressActionNames()
-        {
-            // 如果按钮列表是动态加载的，则返回空列表（第一阶段不处理动态按钮）
-            if (this._isButtonListDynamic)
-            {
-                PluginLog.Info($"[DynamicFolder] GetButtonPressActionNames for '{this.DisplayName}': Buttons are dynamic, returning empty list for now.");
-                return Enumerable.Empty<string>();
-            }
-            return this._localButtonIds.Select(id => this.CreateCommandName(id)).ToList();
-        }
-        
-        public override IEnumerable<string> GetEncoderRotateActionNames()
-        {
-            var sortedAdjustmentLocalIds = new string[6]; // 6 encoder slots
-            var regularDials = new List<string>();
-            string navigationDialLocalId = null;
-
-            foreach (var localId in this._localAdjustmentIds)
-            {
-                if (this._localIdToConfig.TryGetValue(localId, out var config))
-                {
-                    if (config.ActionType == NavigationDialActionType)
-                    {
-                        navigationDialLocalId = localId;
-                    }
-                    else if (config.ActionType != PlaceholderDialActionType)
-                    {
-                        regularDials.Add(localId);
-                    }
-                    // PlaceholderDials are implicitly handled by not being added to regular
-                    // and not being the navigationDial. If a slot remains null after filling regular
-                    // and navigation dials, it can be considered a placeholder for drawing if needed,
-                    // or SDK handles null action names as empty.
-                }
-            }
-
-            // Fill first 5 slots with regular dials
-            for (int i = 0; i < 5; i++)
-            {
-                if (i < regularDials.Count)
-                {
-                    sortedAdjustmentLocalIds[i] = regularDials[i];
-                }
-                else
-                {
-                    // If fewer than 5 regular dials, these slots will remain null for now
-                    // We could explicitly map placeholder localIds here if _localAdjustmentIds was sorted
-                    // or if JSON guarantees order and includes placeholders.
-                    // For now, relying on null for empty, or PluginImage to draw placeholder config if its localId is passed.
-                    sortedAdjustmentLocalIds[i] = this._localAdjustmentIds
-                        .FirstOrDefault(locId => 
-                            this._localIdToConfig.TryGetValue(locId, out var cfg) && 
-                            cfg.ActionType == PlaceholderDialActionType && 
-                            !sortedAdjustmentLocalIds.Contains(locId) // Ensure placeholder not already used
-                        );
-                }
-            }
-
-            // Place NavigationDial (Back) at index 5
-            if (navigationDialLocalId != null)
-            {
-                sortedAdjustmentLocalIds[5] = navigationDialLocalId;
-            }
-            else
-            {
-                // Fallback or error if NavigationDial is not found in JSON for this folder
-                PluginLog.Warning($"[DynamicFolder] GetEncoderRotateActionNames for '{this.DisplayName}': NavigationDial (Back) not found in JSON config. Slot 5 will be empty.");
-                sortedAdjustmentLocalIds[5] = null; 
-            }
-            
-            return sortedAdjustmentLocalIds.Select(localId => 
-                string.IsNullOrEmpty(localId) ? null : this.CreateAdjustmentName(localId)
-            ).ToList();
-        }
-
-        public override IEnumerable<String> GetEncoderPressActionNames(DeviceType deviceType)
-        {
-            var pressActionLocalIds = new string[6]; // 6 encoder slots
-            var regularDialsForPress = new List<string>();
-            string navigationDialLocalIdForPress = null;
-
-            // Similar logic to GetEncoderRotateActionNames to identify regular and navigation dials
-            foreach (var localId in this._localAdjustmentIds)
-            {
-                if (this._localIdToConfig.TryGetValue(localId, out var config))
-                {
-                    if (config.ActionType == NavigationDialActionType)
-                    {
-                        navigationDialLocalIdForPress = localId;
-                    }
-                    // For press actions, even PlaceholderDials might not have a press action, 
-                    // but regular dials do (even if it's just a mode switch or reset)
-                    else if (config.ActionType != PlaceholderDialActionType) 
-                    {
-                        regularDialsForPress.Add(localId);
-                    }
-                }
-            }
-
-            for (int i = 0; i < 5; i++)
-            {
-                if (i < regularDialsForPress.Count)
-                {
-                    pressActionLocalIds[i] = regularDialsForPress[i]; // Use the dial's localId for its press action
-                }
-                else
-                {
-                    // If no regular dial for this slot, use the old placeholder naming convention for the action parameter
-                    // This ensures SDK compatibility if it expects specific placeholder names for unassigned press actions.
-                    // However, our PluginImage drawing for these would be for a null config.
-                    pressActionLocalIds[i] = $"placeholder_d_encoder_press_{i}"; 
-                }
-            }
-
-            if (navigationDialLocalIdForPress != null)
-            {
-                pressActionLocalIds[5] = navigationDialLocalIdForPress; // NavigationDial's press action (Back)
-            }
-            else
-            {
-                PluginLog.Warning($"[DynamicFolder] GetEncoderPressActionNames for '{this.DisplayName}': NavigationDial (Back) not found for press. Slot 5 press will be unassigned.");
-                pressActionLocalIds[5] = "placeholder_d_encoder_press_5"; // Fallback placeholder
-            }
-
-            return pressActionLocalIds.Select(localId => 
-                string.IsNullOrEmpty(localId) ? null : base.CreateCommandName(localId) // Press actions are commands
-            ).ToList();
-        }
-        
         public override Boolean ProcessButtonEvent2(String actionParameter, DeviceButtonEvent2 buttonEvent)
         {
-            // actionParameter here is the one returned by GetEncoderPressActionNames, which can be a localId or a placeholder string
+            // 【修改】统一通过 RunCommand 处理旋钮按下，这里主要处理静态按钮或SDK内部事件
+            // 保留原始的通过 _localIdToConfig_Buttons 查找的逻辑，如果它是针对按钮的
+            // 但为了安全，我们应该只让它处理非旋钮的按下，或确保 actionParameter 不会是旋钮的 localId
+
             if (buttonEvent.EventType == DeviceButtonEventType.Press)
             {
-                // Check if it's a localId first (for our configured dials, including NavigationDial)
-                if (this._localIdToConfig.TryGetValue(actionParameter, out var config) && config.ActionType == NavigationDialActionType)
+                // 如果 actionParameter 对应一个已注册的按钮 (非旋钮)
+                if (this._localIdToConfig_Buttons.TryGetValue(actionParameter, out var buttonConf) && !buttonConf.ActionType.Contains("Dial"))
                 {
-                    PluginLog.Info($"[{this.DisplayName}] ProcessButtonEvent2 (NavigationDial Press): '{actionParameter}'. Closing folder.");
-                    base.Close();
-                    return false; 
+                    // 特殊处理如文件夹的旧式 "back" command (如果存在且不是通过NavigationDial)
+                    if (actionParameter == "back" || actionParameter == base.CreateCommandName("back"))
+                    {                        
+                        PluginLog.Info($"[{this.DisplayName}] ProcessButtonEvent2 (Legacy 'back' string Press): '{actionParameter}'. Closing folder.");
+                        base.Close();
+                        return false; 
+                    }
+                    // 可以添加其他静态按钮的特殊底层事件处理，但不建议用于主要逻辑
                 }
-                // Fallback for old hardcoded string, though should be covered by localId check if JSON is correct
-                else if (actionParameter == "back" || actionParameter == base.CreateCommandName("back")) 
-                {
-                    PluginLog.Info($"[{this.DisplayName}] ProcessButtonEvent2 (Legacy 'back' string Press): '{actionParameter}'. Closing folder.");
-                    base.Close();
-                    return false; 
-                }
-                // Placeholders like "placeholder_d_encoder_press_i" won't be in _localIdToConfig
-                // and will fall through to base.ProcessButtonEvent2 which should ignore them or handle as needed.
+                // 对于旋钮的按下，我们期望由 RunCommand 处理，这里不再重复检查 _folderDialConfigs
             }
             return base.ProcessButtonEvent2(actionParameter, buttonEvent);
         }
 
         public override PluginDynamicFolderNavigation GetNavigationArea(DeviceType _) =>
             PluginDynamicFolderNavigation.None;
+
+        // 【重构 ApplyAdjustment 以使用 _folderDialConfigs 和本地状态管理】
         public override void ApplyAdjustment(string actionParameter, int ticks) 
         {
-            // actionParameter here is the one returned by GetEncoderRotateActionNames, which should be a localId
-            if (this._localIdToConfig.TryGetValue(actionParameter, out var config) && config.ActionType == NavigationDialActionType)
+            var localDialId = actionParameter; // SDK 传入的已经是 localId
+
+            var dialConfig = this._folderDialConfigs.FirstOrDefault(dc => GetLocalDialId(dc) == localDialId);
+
+            if (dialConfig == null)
             {
-                PluginLog.Info($"[{this.DisplayName}] ApplyAdjustment (NavigationDial Rotate): '{actionParameter}'. Closing folder.");
-                this.Close();
-                return;
+                PluginLog.Warning($"[{this.DisplayName}] ApplyAdjustment: No dial config found for localId '{localDialId}'.");
+                return; 
             }
-            if (this._localIdToConfig.TryGetValue(actionParameter, out var placeholderConfig) && placeholderConfig.ActionType == PlaceholderDialActionType)
+            
+            if (dialConfig.ActionType == "Placeholder") { return; } // Placeholder 无操作
+
+            bool stateChanged = false; // 通用状态改变标记，用于刷新旋钮图像
+
+            switch (dialConfig.ActionType)
             {
-                // Placeholder dial rotated, do nothing
-                return;
+                case "ParameterDial":
+                    if (dialConfig.Parameter != null && dialConfig.Parameter.Any())
+                    {
+                        if (!this._parameterDialCurrentIndexes.TryGetValue(localDialId, out var currentIndex))
+                        {
+                            currentIndex = 0; // 如果没有，则从0开始 (理论上构造函数已初始化)
+                        }
+                        int newIndex = (currentIndex + ticks + dialConfig.Parameter.Count) % dialConfig.Parameter.Count;
+                        if (newIndex < 0) newIndex += dialConfig.Parameter.Count; // 确保正索引
+                        this._parameterDialCurrentIndexes[localDialId] = newIndex;
+                        stateChanged = true;
+                        PluginLog.Info($"[{this.DisplayName}] ParameterDial '{dialConfig.DisplayName}' changed to index {newIndex}: '{dialConfig.Parameter[newIndex]}'.");
+                        // 如果ParameterDial的值改变需要更新关联的ParameterButton，需要通知
+                        // Logic_Manager_Base.Instance.NotifyLinkedParameterButtons(dialConfig.DisplayName, dialConfig.GroupName);
+                        // 或者，如果ParameterButton在同一个文件夹内，可以直接调用 this.ButtonActionNamesChanged();
+                    }
+                    break;
+                
+                case "NavigationDial":
+                    if (dialConfig.DisplayName == "Back")
+                    {
+                        PluginLog.Info($"[{this.DisplayName}] NavigationDial 'Back' rotated. Closing folder.");
+                        this.Close();
+                        return; // 关闭后不应再更新UI
+                    }
+                    break;
+                
+                // TODO: 添加 Dynamic_Folder_Base 特有的其他旋钮类型如 ToggleDial, 2ModeTickDial, TickDial 的本地化处理逻辑
+                // 例如 ToggleDial:
+                // case "ToggleDial":
+                //     var globalParamForToggle = Logic_Manager_Base.Instance.GetAllConfigs().FirstOrDefault(kvp => GetLocalDialId(kvp.Value) == localDialId && kvp.Value.GroupName == this.DisplayName).Key;
+                //     if(globalParamForToggle != null){
+                //         bool newState = ticks > 0; // 简化：右旋ON，左旋OFF
+                //         Logic_Manager_Base.Instance.SetToggleState(globalParamForToggle, newState);
+                //         ReaOSCPlugin.SendOSCMessage(Logic_Manager_Base.DetermineOscAddressForAction(dialConfig, dialConfig.GroupName), newState ? 1f : 0f);
+                //         stateChanged = true;
+                //     }
+                //     break;
+
+                default:
+                    PluginLog.Warning($"[{this.DisplayName}] ApplyAdjustment: Unhandled ActionType '{dialConfig.ActionType}' for dial '{dialConfig.DisplayName}'.");
+                    break;
             }
 
-            if (!this._localIdToGlobalActionParameter.TryGetValue(actionParameter, out var globalActionParameter))
-                return;
-            
-            Logic_Manager_Base.Instance.ProcessDialAdjustment(globalActionParameter, ticks);
-            this.AdjustmentValueChanged(this.CreateAdjustmentName(actionParameter)); 
+            if(stateChanged)
+            {
+                this.AdjustmentValueChanged(actionParameter); 
+                // 如果是FilterDial或PageDial，它们在FX_Folder_Base中会调用ButtonActionNamesChanged
+                // Dynamic_Folder_Base中ParameterDial改变可能也需要，取决于是否有ParameterButton与之关联
+            }
         }
 
+        // 【重构 RunCommand 以使用 _folderDialConfigs】
         public override void RunCommand(string actionParameter) 
         {
-             // actionParameter here can be from a button press (localId) or an encoder press (localId or placeholder string)
-
-            // Handle NavigateUpActionName (SDK's own back button for button area, if enabled)
-            if (actionParameter.Equals(NavigateUpActionName)) 
+            string commandLocalIdToLookup = actionParameter; 
+            const string commandPrefix = "plugin:command:";
+            if (actionParameter.StartsWith(commandPrefix))
             {
-                this.Close();
-                return;
+                commandLocalIdToLookup = actionParameter.Substring(commandPrefix.Length);
             }
+            PluginLog.Info($"[{this.DisplayName}] RunCommand looking up localId: '{commandLocalIdToLookup}'");
 
-            // Check if it's a localId for a configured item (button or dial press)
-            if (this._localIdToConfig.TryGetValue(actionParameter, out var config))
+            var dialConfigPressed = this._folderDialConfigs.FirstOrDefault(dc => GetLocalDialId(dc) == commandLocalIdToLookup);
+
+            if (dialConfigPressed != null)
             {
-                if (config.ActionType == NavigationDialActionType) // Press on our NavigationDial (Back)
+                if (dialConfigPressed.ActionType == "Placeholder") { return; }
+
+                if (dialConfigPressed.ActionType == "NavigationDial" && dialConfigPressed.DisplayName == "Back")
                 {
-                    PluginLog.Info($"[{this.DisplayName}] RunCommand (NavigationDial Press): '{actionParameter}'. Closing folder.");
+                    PluginLog.Info($"[{this.DisplayName}] 'Back' NavigationDial pressed. Closing folder.");
                     this.Close();
                     return;
                 }
-                if (config.ActionType == PlaceholderDialActionType) // Press on a PlaceholderDial
+                // TODO: 添加 Dynamic_Folder_Base 特有的其他旋钮类型按下行为
+                // 例如 ToggleDial (按下发送Reset OSC), 2ModeTickDial (按下切换模式)
+                // case "ToggleDial":
+                // case "2ModeTickDial":
+                //    var globalParam = Logic_Manager_Base.Instance.GetAllConfigs().FirstOrDefault(kvp => GetLocalDialId(kvp.Value) == commandLocalIdToLookup && kvp.Value.GroupName == this.DisplayName).Key;
+                //    if(globalParam != null && Logic_Manager_Base.Instance.ProcessDialPress(globalParam)) {
+                //        this.AdjustmentValueChanged(this.CreateAdjustmentName(commandLocalIdToLookup));
+                //    }
+                //    return;
+                // case "ParameterDial": // ParameterDial 通常按下无行为
+                //    return; 
+                 PluginLog.Info($"[{this.DisplayName}] Dial '{dialConfigPressed.DisplayName}' (ActionType: {dialConfigPressed.ActionType}) pressed. No specific RunCommand action defined in Dynamic_Folder_Base yet.");
+                 // 如果旋钮按下有独立的功能且被RunCommand处理，确保在这里return或者有相应逻辑。
+            }
+            
+            // 处理静态按钮的按下 (使用 _localIdToConfig_Buttons)
+            if (this._localIdToConfig_Buttons.TryGetValue(commandLocalIdToLookup, out var buttonConfig))
+            {
+                if (!this._localIdToGlobalActionParameter_Buttons.TryGetValue(commandLocalIdToLookup, out var globalButtonParam))
                 {
-                    // Placeholder dial pressed, do nothing
+                    PluginLog.Warning($"[DynamicFolder] RunCommand: Missing globalActionParameter for button localId '{commandLocalIdToLookup}'.");
                     return;
                 }
 
-                // Regular button or dial press logic
-                if (!this._localIdToGlobalActionParameter.TryGetValue(actionParameter, out var globalActionParameter))
-                    return;
+                // 调用Logic_Manager_Base处理标准按钮逻辑
+                Logic_Manager_Base.Instance.ProcessUserAction(globalButtonParam, this.DisplayName);
 
-                if (config.ActionType.Contains("Dial")) // Covers ToggleDial, ParameterDial, 2ModeTickDial presses
+                // UI反馈 (可以提取为通用方法如果FX_Folder_Base也用)
+                if (buttonConfig.ActionType == "TriggerButton")
                 {
-                    if (Logic_Manager_Base.Instance.ProcessDialPress(globalActionParameter))
-                    {
-                        this.AdjustmentValueChanged(this.CreateAdjustmentName(actionParameter)); 
-                    }
+                    this._lastTriggerPressTimes[commandLocalIdToLookup] = DateTime.Now;
+                    this.ButtonActionNamesChanged();
+                    Task.Delay(200).ContinueWith(_ => { this.ButtonActionNamesChanged(); }); 
                 }
-                else // Button actions (TriggerButton, ToggleButton, CombineButton, ParameterButton)
+                else if (buttonConfig.ActionType == "CombineButton") 
                 {
-                    Logic_Manager_Base.Instance.ProcessUserAction(globalActionParameter, this.DisplayName);
-
-                    if (config.ActionType == "TriggerButton")
-                    {
-                        this._lastTriggerPressTimes[actionParameter] = DateTime.Now;
-                        this.ButtonActionNamesChanged();
-                        Task.Delay(200).ContinueWith(_ => { this.ButtonActionNamesChanged(); }); 
-                    }
-                    else if (config.ActionType == "CombineButton") 
-                    {
-                        this._lastCombineButtonPressTimes[actionParameter] = DateTime.Now;
-                        this.ButtonActionNamesChanged();
-                        Task.Delay(200).ContinueWith(_ => { this.ButtonActionNamesChanged(); }); 
-                    }
-                    else if (config.ActionType == "ToggleButton" || config.ActionType == "ParameterButton")
-                    {
-                        this.ButtonActionNamesChanged();
-                    }
+                    this._lastCombineButtonPressTimes[commandLocalIdToLookup] = DateTime.Now;
+                    this.ButtonActionNamesChanged();
+                    Task.Delay(200).ContinueWith(_ => { this.ButtonActionNamesChanged(); }); 
+                }
+                else if (buttonConfig.ActionType == "ToggleButton" || buttonConfig.ActionType == "ParameterButton")
+                {
+                    this.ButtonActionNamesChanged(); // Toggle和ParameterButton状态变化由LogicManager触发UI刷新
                 }
             }
-            // If actionParameter was not a localId (e.g., a placeholder string from GetEncoderPressActionNames, or old "Back"/"back")
-            // It might be handled by ProcessButtonEvent2 for specific cases like legacy back, or ignored.
-            // Legacy "Back" or "back" command string from other sources.
-            else if (actionParameter == "Back" || actionParameter == "back") 
+            else if (dialConfigPressed == null) 
             {
-                PluginLog.Info($"[{this.DisplayName}] RunCommand (Legacy 'Back'/'back' string): '{actionParameter}'. Closing folder.");
-                base.Close(); 
-                return;
+                 PluginLog.Warning($"[{this.DisplayName}] RunCommand: No config found for localId '{commandLocalIdToLookup}' in Dials or Buttons.");
             }
         }
         
+        // 【重构 GetAdjustmentImage 以使用 _folderDialConfigs】
+        public override BitmapImage GetAdjustmentImage(string actionParameter, PluginImageSize imageSize)
+        {
+            if (string.IsNullOrEmpty(actionParameter)) 
+            {
+                PluginLog.Verbose($"[{this.DisplayName}] GetAdjustmentImage: actionParameter is null or empty. Drawing blank.");
+                using (var bb = new BitmapBuilder(imageSize)) { bb.Clear(BitmapColor.Black); return bb.ToImage(); }
+            }
+
+            var localDialId = actionParameter; // SDK 传入的就是 localId
+            var dialConfig = this._folderDialConfigs.FirstOrDefault(dc => GetLocalDialId(dc) == localDialId);
+
+            if (dialConfig == null) // 没有找到对应的旋钮配置 (可能是一个无效的actionParameter)
+            {
+                PluginLog.Verbose($"[DynamicFolder|GetAdjustmentImage] No dial config found for localId: '{localDialId}'. Drawing blank.");
+                using (var bb = new BitmapBuilder(imageSize)) { bb.Clear(BitmapColor.Black); return bb.ToImage(); }
+            }
+
+            if (dialConfig.ActionType == "Placeholder")
+            {
+                PluginLog.Verbose($"[DynamicFolder|GetAdjustmentImage] Config for localId: '{localDialId}' is ActionType 'Placeholder'. Drawing blank.");
+                using (var bb = new BitmapBuilder(imageSize)) { bb.Clear(BitmapColor.Black); return bb.ToImage(); }
+            }
+            
+            // 【为 Dynamic_Folder_Base 的旋钮类型准备参数给 PluginImage.DrawElement】
+            string mainTitleOverride = dialConfig.Title ?? dialConfig.DisplayName;
+            string valueTextDisplay = null; 
+            bool isActive = false; // 对于ToggleDial
+            int currentMode = 0;    // 对于2ModeTickDial
+            // string globalParamForState = null; // 用于从LogicManager获取状态
+            
+            // 尝试获取此旋钮在LogicManager中注册的全局参数 (如果它需要从LogicManager获取状态)
+            // 这部分可能需要优化，或者将状态管理完全本地化
+            var globalParamKvp = Logic_Manager_Base.Instance.GetAllConfigs().FirstOrDefault(kvp => GetLocalDialId(kvp.Value) == localDialId && kvp.Value.GroupName == this.DisplayName);
+            var globalParamForState = globalParamKvp.Key; //可能是null
+
+            switch (dialConfig.ActionType)
+            {
+                case "ParameterDial":
+                    // mainTitleOverride (标签) 和 valueTextDisplay (当前参数值) 将由 PluginImage 根据 ShowTitle 处理
+                    // 我们只需要提供原始标题和当前选中的参数值
+                    if (this._parameterDialCurrentIndexes.TryGetValue(localDialId, out var currentIndex) && 
+                        dialConfig.Parameter != null && currentIndex >= 0 && currentIndex < dialConfig.Parameter.Count)
+                    {
+                        valueTextDisplay = dialConfig.Parameter[currentIndex];
+                    }
+                    else
+                    {
+                        valueTextDisplay = dialConfig.Parameter?.FirstOrDefault() ?? "N/A"; // Fallback
+                    }
+                    break;
+                case "ToggleDial":
+                    if(globalParamForState != null) isActive = Logic_Manager_Base.Instance.GetToggleState(globalParamForState);
+                    break;
+                case "2ModeTickDial":
+                    if(globalParamForState != null) currentMode = Logic_Manager_Base.Instance.GetDialMode(globalParamForState);
+                    break;
+                // NavigationDial, TickDial 等类型会使用默认的 mainTitleOverride 和空的 valueTextDisplay
+                // PluginImage.DrawElement 会根据 dialConfig.ShowTitle (如果存在) 和 valueTextDisplay 是否为空来决定如何绘制
+            }
+            
+            return Helpers.PluginImage.DrawElement(
+                imageSize,
+                dialConfig, 
+                mainTitleOverride,
+                valueTextDisplay, 
+                isActive,
+                currentMode,
+                null, // customIcon - Dynamic_Folder_Base 目前不处理旋钮图标
+                forceTextOnly: true, 
+                actualAuxText: null  
+            );
+        }
+
         public override string GetCommandDisplayName(string actionParameter, PluginImageSize imageSize)
         {
             // 为 "back" 按下命令提供显示名称 (如果需要，但通常图像更重要)
@@ -399,7 +504,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 return base.GetCommandDisplayName(this.CreateCommandName(actionParameter), imageSize);
             
             // 这里的 actionParameter 是 localId
-            return this._localIdToConfig.TryGetValue(actionParameter, out var c) ? (c.Title ?? c.DisplayName) : "ErrDisp";
+            return this._localIdToConfig_Buttons.TryGetValue(actionParameter, out var c) ? (c.Title ?? c.DisplayName) : "ErrDisp";
         }
 
         public override BitmapImage GetCommandImage(string actionParameter, PluginImageSize imageSize)
@@ -413,8 +518,8 @@ namespace Loupedeck.ReaOSCPlugin.Base
             }
 
             // 2. 获取配置
-            if (!this._localIdToConfig.TryGetValue(actionParameter, out var config) || 
-                !this._localIdToGlobalActionParameter.TryGetValue(actionParameter, out var globalActionParameter))
+            if (!this._localIdToConfig_Buttons.TryGetValue(actionParameter, out var config) || 
+                !this._localIdToGlobalActionParameter_Buttons.TryGetValue(actionParameter, out var globalActionParameter))
             {
                 // 如果是LoupeDeck SDK自动添加的 NavigateUpActionName (返回上一级文件夹的按钮)
                 // 它可能没有在我们的 _localIdToConfig 中，但基类会处理它的显示名称，这里我们给它一个默认图像
@@ -522,98 +627,6 @@ namespace Loupedeck.ReaOSCPlugin.Base
             }
         }
         
-        public override BitmapImage GetAdjustmentImage(string actionParameter, PluginImageSize imageSize)
-        {
-            // actionParameter 在这里是 localId
-            if (string.IsNullOrEmpty(actionParameter)) return null;
-
-            // 1. 获取配置
-            // 如果是 "Back" 旋钮的特殊处理 (如果它没有自己的ButtonConfig)
-            // 假设 "Back" 旋钮的 localId 就是 "Back" 或者通过 CreateAdjustmentName("Back") 创建
-            if (actionParameter == this.CreateAdjustmentName("Back") || actionParameter == "Back")
-            {
-                // TODO: 如果Back也通过ButtonConfig定义，则下面这块不需要，会走标准路径
-                return PluginImage.DrawElement(imageSize, new ButtonConfig { DisplayName = "Back", Title = "Back", ActionType="Dial" }, mainTitleOverride: "Back");
-            }
-            
-            if (!this._localIdToConfig.TryGetValue(actionParameter, out var config) ||
-                !this._localIdToGlobalActionParameter.TryGetValue(actionParameter, out var globalActionParameter))
-            {
-                PluginLog.Warning($"[DynamicFolder|GetAdjustmentImage] Config not found for localId: {actionParameter}. Returning default error image.");
-                return PluginImage.DrawElement(imageSize, null, "Cfg?", isActive: true); 
-            }
-
-            try
-            {
-                BitmapImage customIcon = null;
-                // 2. 图标加载逻辑
-                string imagePathToLoad = !String.IsNullOrEmpty(config.ButtonImage) ? config.ButtonImage : null;
-                if (string.IsNullOrEmpty(imagePathToLoad))
-                {
-                    imagePathToLoad = $"{Logic_Manager_Base.SanitizeOscPathSegment(config.DisplayName)}.png";
-                }
-
-                if (!string.IsNullOrEmpty(imagePathToLoad))
-                {
-                    try
-                    {
-                        customIcon = PluginResources.ReadImage(imagePathToLoad);
-                    }
-                    catch (Exception ex)
-                    {
-                        PluginLog.Warning(ex, $"[DynamicFolder|GetAdjustmentImage] Failed to load icon '{imagePathToLoad}' for localId '{actionParameter}'. Will draw text only.");
-                        customIcon = null;
-                    }
-                }
-
-                // 3. 确定状态和动态文本
-                bool isActive = false; // For ToggleDial
-                string mainTitleOverride = config.Title ?? config.DisplayName;
-                string valueTextDisplay = null; // For ParameterDial value
-                int currentMode = 0;    // For 2ModeTickDial
-
-                if (config.ActionType == "ToggleDial")
-                {
-                    isActive = Logic_Manager_Base.Instance.GetToggleState(globalActionParameter);
-                }
-                else if (config.ActionType == "ParameterDial" && config.ShowParameterInDial == "Yes")
-                {
-                     mainTitleOverride = Logic_Manager_Base.Instance.GetParameterDialSelectedTitle(globalActionParameter) ?? mainTitleOverride;
-                }
-                else if (config.ActionType == "2ModeTickDial")
-                {
-                    currentMode = Logic_Manager_Base.Instance.GetDialMode(globalActionParameter);
-                    // title/color for mode is handled by PluginImage.DrawElement based on currentMode and config
-                }
-                // 旧的 GetAdjustmentImage 有一个 valueToDisplay 逻辑，目前PluginImage.DrawElement用valueText参数
-                // 如果 ParameterDial (ShowParameterInDial="No") 需要在下方显示值，可以通过 valueText 传递
-                // if (config.ActionType == "ParameterDial" && config.ShowParameterInDial != "Yes")
-                // {
-                //     valueTextDisplay = Logic_Manager_Base.Instance.GetParameterDialSelectedTitle(globalActionParameter);
-                // }
-
-                // 4. 调用 PluginImage.DrawElement
-                return PluginImage.DrawElement(
-                    imageSize,
-                    config,
-                    mainTitleOverride,
-                    valueTextDisplay, 
-                    isActive,
-                    currentMode,
-                    customIcon
-                );
-            }
-            catch (Exception ex)
-            {
-                PluginLog.Error(ex, $"[DynamicFolder|GetAdjustmentImage] Unhandled exception for localId '{actionParameter}'.");
-                return PluginImage.DrawElement(imageSize, config, "ERR!", isActive:true);
-            }
-        }
-
-        public override string GetAdjustmentDisplayName(string actionParameter, PluginImageSize imageSize) => null;
-        public override string GetAdjustmentValue(string actionParameter) => null;
-
-
         public override BitmapImage GetButtonImage(PluginImageSize imageSize)
         {
             if (this._entryConfig == null)
@@ -661,13 +674,13 @@ namespace Loupedeck.ReaOSCPlugin.Base
         // 如果保留，请确保它与您当前的整体设计一致。
         private void OnCommandStateNeedsRefresh(object sender, string globalActionParameterThatChanged)
         {
-            var localIdKvp = this._localIdToGlobalActionParameter.FirstOrDefault(kvp => kvp.Value == globalActionParameterThatChanged);
+            var localIdKvp = this._localIdToGlobalActionParameter_Buttons.FirstOrDefault(kvp => kvp.Value == globalActionParameterThatChanged);
             if (EqualityComparer<KeyValuePair<string, string>>.Default.Equals(localIdKvp, default(KeyValuePair<string, string>)))
                 return; // 这个 globalActionParameter 不由当前文件夹实例管理
 
             var localId = localIdKvp.Key;
 
-            if (!this._localIdToConfig.TryGetValue(localId, out var config))
+            if (!this._localIdToConfig_Buttons.TryGetValue(localId, out var config))
             {
                 PluginLog.Warning($"[DynamicFolder] OnCommandStateNeedsRefresh ('{this.DisplayName}'): localId '{localId}' (global: {globalActionParameterThatChanged}) not found in _localIdToConfig. This might indicate a desync.");
                 return;
@@ -689,7 +702,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 string sourceDialDisplayName = config.DisplayName;
                 string sourceDialJsonGroupName = config.GroupName;
 
-                foreach (var btnEntryKvp in this._localIdToConfig)
+                foreach (var btnEntryKvp in this._localIdToConfig_Buttons)
                 {
                     var otherLocalId = btnEntryKvp.Key;
                     var otherLocalConfig = btnEntryKvp.Value;
@@ -751,9 +764,8 @@ namespace Loupedeck.ReaOSCPlugin.Base
             this._lastTriggerPressTimes.Clear();
             this._lastCombineButtonPressTimes.Clear();
             this._localButtonIds.Clear();
-            this._localAdjustmentIds.Clear();
-            this._localIdToGlobalActionParameter.Clear();
-            this._localIdToConfig.Clear();
+            this._localIdToGlobalActionParameter_Buttons.Clear();
+            this._localIdToConfig_Buttons.Clear();
             PluginLog.Info($"[DynamicFolder] '{this.DisplayName}' Disposed.");
         }
         #endregion

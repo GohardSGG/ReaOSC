@@ -45,19 +45,19 @@
       ],
       "Dials": [
         {
-          "ActionType": "PlaceholderDial"
+          "ActionType": "Placeholder"
         },
         {
-          "ActionType": "PlaceholderDial"
+          "ActionType": "Placeholder"
         },
         {
-          "ActionType": "PlaceholderDial"
+          "ActionType": "Placeholder"
         },
         {
-          "ActionType": "PlaceholderDial"
+          "ActionType": "Placeholder"
         },
         {
-          "ActionType": "PlaceholderDial"
+          "ActionType": "Placeholder"
         },
         {
           "ActionType": "NavigationDial",
@@ -188,7 +188,7 @@
           ]
         },
         {
-          "ActionType": "PlaceholderDial"
+          "ActionType": "Placeholder"
         },
         {
           "ActionType": "NavigationDial",
@@ -207,7 +207,7 @@
       "Buttons": "List",
       "Dials": [
         {
-          "ActionType": "PlaceholderDial"
+          "ActionType": "Placeholder"
         },
         {
           "ActionType": "FilterDial",
@@ -221,7 +221,7 @@
           "ShowTitle": "Yes"
         },
         {
-          "ActionType": "PlaceholderDial"
+          "ActionType": "Placeholder"
         },
         {
           "ActionType": "FilterDial",
@@ -245,7 +245,7 @@
       "Buttons": "List",
       "Dials": [
         {
-          "ActionType": "PlaceholderDial"
+          "ActionType": "Placeholder"
         },
         {
           "ActionType": "FilterDial",
@@ -259,7 +259,7 @@
           "ShowTitle": "Yes"
         },
         {
-          "ActionType": "PlaceholderDial"
+          "ActionType": "Placeholder"
         },
         {
           "ActionType": "FilterDial",
@@ -283,7 +283,7 @@
       "Buttons": "List",
       "Dials": [
         {
-          "ActionType": "PlaceholderDial"
+          "ActionType": "Placeholder"
         },
         {
           "ActionType": "FilterDial",
@@ -297,10 +297,10 @@
           "ShowTitle": "Yes"
         },
         {
-          "ActionType": "PlaceholderDial"
+          "ActionType": "Placeholder"
         },
         {
-          "ActionType": "PlaceholderDial"
+          "ActionType": "Placeholder"
         },
         {
           "ActionType": "NavigationDial",

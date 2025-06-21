@@ -94,6 +94,9 @@ namespace Loupedeck.ReaOSCPlugin.Base
         // === 【新增】用于旋钮，控制是否显示标题 ===
         public string ShowTitle { get; set; } // JSON中可以是 "Yes" 或 "No"
 
+        // === 【新增】ParameterDial 特有的参数列表 ===
+        public List<string> Parameter { get; set; } // 用于存储ParameterDial的参数选项列表
+
         // === 【新增】用于捕获JSON中未明确定义的其他属性 ===
         // Newtonsoft.Json.JsonExtensionDataAttribute 标签可以自动捕获额外数据到字典
         // 但更推荐的方式是如果明确知道有哪些额外属性，就定义它们，或者在解析时手动处理。
