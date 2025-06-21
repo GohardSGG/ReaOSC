@@ -34,6 +34,8 @@ namespace Loupedeck.ReaOSCPlugin.Base
 
         public FX_Folder_Base()
         {
+            // 导航模式由 GetNavigationArea 方法控制，此处赋值已过时故移除。
+
             var folderClassName = this.GetType().Name;
             var folderBaseName = folderClassName.Replace("_Dynamic", "").Replace("_", " ");
 
@@ -208,23 +210,39 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 .Select(key => this.CreateCommandName(key));
         }
 
-        public override IEnumerable<string> GetEncoderRotateActionNames() => new[] 
-        { 
-            "Back", "Brand", "Page", 
-            null, "Type", null 
-        }.Select(name => this.CreateAdjustmentName(name));
-        
-        public override IEnumerable<string> GetEncoderPressActionNames() => new string[]
+        // 添加此方法以恢复编码器旋转功能，并将"Back"旋转定位到索引4
+        public override IEnumerable<string> GetEncoderRotateActionNames()
         {
-            this.CreateCommandName("Back"),
-            null, 
-            null, 
-            null, 
-            null, 
-            null
-        };
+            var rotateActionNames = new List<String>(new String[6]); // 假设6个编码器
+            rotateActionNames[0] = null;    // 索引 0: 无旋转动作
+            rotateActionNames[1] = "Brand"; // 索引 1: Brand
+            rotateActionNames[2] = "Page";  // 索引 2: Page
+            rotateActionNames[3] = null;    // 索引 5: 空
+            rotateActionNames[4] = "Type";  // 索引 3: Type
+            rotateActionNames[5] = "Back";  // 索引 4: "Back" (用于旋转)
 
-        public override PluginDynamicFolderNavigation GetNavigationArea(DeviceType _) => PluginDynamicFolderNavigation.None;
+            return rotateActionNames.Select(s => String.IsNullOrEmpty(s) ? null : this.CreateAdjustmentName(s));
+        }
+        
+        // 修改此方法以将 "back" 按下功能移动到索引5
+        public override IEnumerable<String> GetEncoderPressActionNames(DeviceType deviceType)
+        {
+            // 初始化一个包含6个null的列表，以匹配编码器数量
+            var actionNames = new List<String>(new String[6]); 
+
+            actionNames[0] = "placeholder_encoder_press_0"; // 索引 0: 左上角占位符
+            actionNames[1] = "placeholder_encoder_press_1"; // 索引 1: 占位符
+            actionNames[2] = "placeholder_encoder_press_2"; // 索引 2: 占位符
+            actionNames[3] = "placeholder_encoder_press_3"; // 索引 3: 占位符
+            actionNames[4] = "placeholder_encoder_press_4"; // 索引 4: 原 "back" 位置，现在是占位符
+            actionNames[5] = "back";                        // 索引 5: "back" 按下功能的新位置 (右下角)
+            
+            return actionNames.Select(s => String.IsNullOrEmpty(s) ? null : base.CreateCommandName(s));
+        }
+
+        // 添加此方法以正确设置导航模式为 None
+        public override PluginDynamicFolderNavigation GetNavigationArea(DeviceType _) =>
+            PluginDynamicFolderNavigation.None;
 
         public override void ApplyAdjustment(string actionParameter, int ticks)
         {
@@ -261,8 +279,9 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     listChanged = true;
                 }
             }
-            else if (actionParameter == "Back")
+            else if (actionParameter == "Back") // 旋转返回，保持检查大写 "Back"
             {
+                PluginLog.Info($"[FX_Folder_Base] ApplyAdjustment: Matched 'Back' for rotation. Closing folder.");
                 this.Close();
                 return;
             }
@@ -280,11 +299,6 @@ namespace Loupedeck.ReaOSCPlugin.Base
         
         public override void RunCommand(string actionParameter)
         {
-            if (actionParameter == "Back")
-            {
-                this.ApplyAdjustment(actionParameter, 0);
-                return;
-            }
 
             if (this._allFxConfigs.TryGetValue(actionParameter, out var config))
             {
@@ -296,38 +310,61 @@ namespace Loupedeck.ReaOSCPlugin.Base
             }
         }
 
-        public override Boolean ProcessEncoderEvent(String actionParameter, DeviceEncoderEvent encoderEvent)
-        {
-            if (actionParameter == "Back")
-            {
-                this.Close();
-                return true;
-            }
-            return false;
-        }
+
+
 
         public override Boolean ProcessButtonEvent2(String actionParameter, DeviceButtonEvent2 buttonEvent)
         {
-            if (actionParameter == "Back" && buttonEvent.EventType == DeviceButtonEventType.Press)
+            if (buttonEvent.EventType == DeviceButtonEventType.Press)
             {
-                this.Close();
-                return true;
+                if (actionParameter == "back") // 用户当前的处理方式，保持
+                {
+                    base.Close();
+                    return false;
+                }
             }
-            return false;
+            return base.ProcessButtonEvent2(actionParameter, buttonEvent);
         }
 
         public override BitmapImage GetCommandImage(string actionParameter, PluginImageSize imageSize)
         {
-            if (!this._allFxConfigs.TryGetValue(actionParameter, out var config))
+            // 检查是否是我们为编码器按键定义的 "back" 动作
+            // GetEncoderPressActionNames 为 "back" 生成的 actionParameter 是 base.CreateCommandName("back")
+            if (actionParameter == base.CreateCommandName("back"))
             {
                 using (var bitmapBuilder = new BitmapBuilder(imageSize))
                 {
                     bitmapBuilder.Clear(BitmapColor.Black);
-                    bitmapBuilder.DrawText("?", color: BitmapColor.White);
+                    var fontSize = 12; // 为编码器按钮使用固定的、合适的字体大小
+                    bitmapBuilder.DrawText("Back", color: BitmapColor.White, fontSize: fontSize);
+                    return bitmapBuilder.ToImage();
+                }
+            }
+            // 检查是否是占位符动作
+            else if (actionParameter != null && actionParameter.StartsWith("placeholder_encoder_press_")) 
+            {
+                // 为占位符绘制空白背景
+                using (var bitmapBuilder = new BitmapBuilder(imageSize))
+                {
+                    bitmapBuilder.Clear(BitmapColor.Black);
                     return bitmapBuilder.ToImage();
                 }
             }
 
+            // --- 你现有的 _allFxConfigs 查找和绘制逻辑 ---
+            if (!this._allFxConfigs.TryGetValue(actionParameter, out var config))
+            {
+                // 对于其他未明确处理的动作（非 "back"，非占位符，且不在 _allFxConfigs 中）
+                // 绘制 "?"
+                using (var bitmapBuilder = new BitmapBuilder(imageSize))
+                {
+                    bitmapBuilder.Clear(BitmapColor.Black);
+                    bitmapBuilder.DrawText("?", color: BitmapColor.White, fontSize: 12); 
+                    return bitmapBuilder.ToImage();
+                }
+            }
+
+            // --- 这是你原有的针对 _allFxConfigs 中项目的绘制逻辑 --- 
             using (var bitmapBuilder = new BitmapBuilder(imageSize))
             {
                 var currentBgColor = this._lastPressTimes.TryGetValue(actionParameter, out var pressTime) && (DateTime.Now - pressTime).TotalMilliseconds < 200
@@ -337,7 +374,10 @@ namespace Loupedeck.ReaOSCPlugin.Base
 
                 var titleToDraw = !String.IsNullOrEmpty(config.Title) ? config.Title : config.DisplayName;
                 var titleColor = String.IsNullOrEmpty(config.TitleColor) ? BitmapColor.White : HexToBitmapColor(config.TitleColor);
-                bitmapBuilder.DrawText(text: titleToDraw, fontSize: GetAutomaticButtonTitleFontSize(titleToDraw), color: titleColor);
+                
+                var fxFontSize = GetAutomaticButtonTitleFontSize(titleToDraw); 
+
+                bitmapBuilder.DrawText(text: titleToDraw, fontSize: fxFontSize, color: titleColor);
 
                 if (!String.IsNullOrEmpty(config.Text))
                 {

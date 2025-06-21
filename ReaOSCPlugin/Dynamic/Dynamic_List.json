@@ -178,7 +178,82 @@
   {
     "DisplayName": "Track Routing",
     "Title": "Routing",
-    "Text": "Track"
+    "Text": "Track",
+    "Content": {
+      "Buttons": [
+        {
+          "ActionType": "ParameterButton",
+          "GroupName": "Render",
+          "DisplayName": "Source Display",
+          "Title": "Source",
+          "ParameterSourceDial": "Source"
+        },
+        {
+          "ActionType": "ParameterButton",
+          "GroupName": "Render",
+          "DisplayName": "Format Display",
+          "Title": "Format",
+          "ParameterSourceDial": "Format"
+        },
+        {
+          "ActionType": "ToggleButton",
+          "GroupName": "Render",
+          "DisplayName": "TimeCode",
+          "Title": "TimeCode"
+        },
+        {
+          "ActionType": "ToggleButton",
+          "GroupName": "Render",
+          "DisplayName": "Tail",
+          "Title": "Tail"
+        },
+        {
+          "ActionType": "ToggleButton",
+          "GroupName": "Render",
+          "DisplayName": "Tempo",
+          "Title": "Tempo"
+        },
+        {
+          "ActionType": "ToggleButton",
+          "GroupName": "Render",
+          "DisplayName": "Online",
+          "Title": "Online"
+        },
+        {
+          "ActionType": "ToggleButton",
+          "GroupName": "Render",
+          "DisplayName": "Folder",
+          "Title": "Folder"
+        },
+        {
+          "ActionType": "ToggleButton",
+          "GroupName": "Render",
+          "DisplayName": "Auto Channel",
+          "Title": "Auto CH"
+        },
+        {
+          "ActionType": "CombineButton",
+          "GroupName": "Render",
+          "DisplayName": "Export",
+          "Title": "Export",
+          "ParameterOrder": [
+            "Source",
+            "SampleRate",
+            "BitDepth",
+            "Format",
+            "TimeCode",
+            "Tail",
+            "Tempo",
+            "Online",
+            "Folder",
+            "Auto Channel"
+          ]
+        }
+      ],
+      "Dials": [
+
+      ]
+    }
   },
   {
     "DisplayName": "Input Output",

@@ -58,7 +58,7 @@ namespace Loupedeck.ReaOSCPlugin.Dynamic
         // 来加载对应的 "Track_Name_List.json" 配置文件。
     }
 
-    public class Track_Routing_Dynamic : FX_Folder_Base
+    public class Track_Routing_Dynamic : Dynamic_Folder_Base
     {
         // 所有逻辑均由 FX_Folder_Base 基类处理。
         // 基类会根据此类名 "Track_Routing_Dynamic" -> "Track Routing"
