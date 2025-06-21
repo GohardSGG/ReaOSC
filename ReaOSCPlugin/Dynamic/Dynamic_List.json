@@ -44,12 +44,26 @@
         }
       ],
       "Dials": [
-        { "ActionType": "PlaceholderDial", "GroupName": "Add Track", "DisplayName": "PlaceholderDial_AT_0", "Title": "" },
-        { "ActionType": "PlaceholderDial", "GroupName": "Add Track", "DisplayName": "PlaceholderDial_AT_1", "Title": "" },
-        { "ActionType": "PlaceholderDial", "GroupName": "Add Track", "DisplayName": "PlaceholderDial_AT_2", "Title": "" },
-        { "ActionType": "PlaceholderDial", "GroupName": "Add Track", "DisplayName": "PlaceholderDial_AT_3", "Title": "" },
-        { "ActionType": "PlaceholderDial", "GroupName": "Add Track", "DisplayName": "PlaceholderDial_AT_4", "Title": "" },
-        { "ActionType": "NavigationDial", "GroupName": "Add Track", "DisplayName": "FolderBack_AT", "Title": "Back", "Description": "Go back" }
+        {
+          "ActionType": "PlaceholderDial"
+        },
+        {
+          "ActionType": "PlaceholderDial"
+        },
+        {
+          "ActionType": "PlaceholderDial"
+        },
+        {
+          "ActionType": "PlaceholderDial"
+        },
+        {
+          "ActionType": "PlaceholderDial"
+        },
+        {
+          "ActionType": "NavigationDial",
+          "DisplayName": "Back",
+          "Title": "Back"
+        }
       ]
     }
   },
@@ -129,12 +143,58 @@
         }
       ],
       "Dials": [
-        { "ActionType": "ParameterDial", "GroupName": "Render", "DisplayName": "Source", "Title": "Source", "ShowParameterInDial": "Yes", "Titles": [ "Master", "Track", "Item" ] },
-        { "ActionType": "ParameterDial", "GroupName": "Render", "DisplayName": "Format", "Title": "Format", "ShowParameterInDial": "Yes", "Titles": [ "Wav", "MP3", "ADM" ] },
-        { "ActionType": "ParameterDial", "GroupName": "Render", "DisplayName": "SampleRate", "Title": "Sample Rate", "ShowParameterInDial": "Yes", "Titles": [ "48k", "96k", "192k", "44.1k", "88.2k", "176.4k" ] },
-        { "ActionType": "ParameterDial", "GroupName": "Render", "DisplayName": "BitDepth", "Title": "BitDepth", "ShowParameterInDial": "Yes", "Titles": [ "16I", "24I", "32F", "32I" ] },
-        { "ActionType": "PlaceholderDial", "GroupName": "Render", "DisplayName": "PlaceholderDial_Render_4", "Title": "" },
-        { "ActionType": "NavigationDial", "GroupName": "Render", "DisplayName": "FolderBack_Render", "Title": "Back", "Description": "Go back" }
+        {
+          "ActionType": "ParameterDial",
+          "DisplayName": "Source",
+          "ShowTitle": "No",
+          "Parameter": [
+            "Master",
+            "Track",
+            "Item"
+          ]
+        },
+        {
+          "ActionType": "ParameterDial",
+          "DisplayName": "Format",
+          "ShowTitle": "No",
+          "Parameter": [
+            "Wav",
+            "MP3",
+            "ADM"
+          ]
+        },
+        {
+          "ActionType": "ParameterDial",
+          "DisplayName": "SampleRate",
+          "ShowTitle": "No",
+          "Parameter": [
+            "48k",
+            "96k",
+            "192k",
+            "44.1k",
+            "88.2k",
+            "176.4k"
+          ]
+        },
+        {
+          "ActionType": "ParameterDial",
+          "DisplayName": "BitDepth",
+          "ShowTitle": "No",
+          "Parameter": [
+            "16I",
+            "24I",
+            "32F",
+            "32I"
+          ]
+        },
+        {
+          "ActionType": "PlaceholderDial"
+        },
+        {
+          "ActionType": "NavigationDial",
+          "DisplayName": "Back",
+          "Title": "Back"
+        }
       ]
     }
   },
@@ -142,19 +202,113 @@
     "DisplayName": "Effect",
     "Title": "Effect",
     "Text": "Add",
-    "TextColor": "#87CEEB"
+    "TextColor": "#87CEEB",
+    "Content": {
+      "Buttons": "List",
+      "Dials": [
+        {
+          "ActionType": "PlaceholderDial"
+        },
+        {
+          "ActionType": "FilterDial",
+          "DisplayName": "Brand",
+          "BusFilter": "Yes",
+          "ShowTitle": "Yes"
+        },
+        {
+          "ActionType": "PageDial",
+          "DisplayName": "Page",
+          "ShowTitle": "Yes"
+        },
+        {
+          "ActionType": "PlaceholderDial"
+        },
+        {
+          "ActionType": "FilterDial",
+          "DisplayName": "Type",
+          "ShowTitle": "Yes"
+        },
+        {
+          "ActionType": "NavigationDial",
+          "DisplayName": "Back",
+          "Title": "Back"
+        }
+      ]
+    }
   },
   {
     "DisplayName": "Instrument",
     "Title": "Instrument",
     "Text": "Add",
-    "TextColor": "#87CEEB"
+    "TextColor": "#87CEEB",
+    "Content": {
+      "Buttons": "List",
+      "Dials": [
+        {
+          "ActionType": "PlaceholderDial"
+        },
+        {
+          "ActionType": "FilterDial",
+          "DisplayName": "Brand",
+          "BusFilter": "Yes",
+          "ShowTitle": "Yes"
+        },
+        {
+          "ActionType": "PageDial",
+          "DisplayName": "Page",
+          "ShowTitle": "Yes"
+        },
+        {
+          "ActionType": "PlaceholderDial"
+        },
+        {
+          "ActionType": "FilterDial",
+          "DisplayName": "Type",
+          "ShowTitle": "Yes"
+        },
+        {
+          "ActionType": "NavigationDial",
+          "DisplayName": "Back",
+          "Title": "Back"
+        }
+      ]
+    }
   },
   {
     "DisplayName": "Track Name",
     "Title": "Name",
     "Text": "Add",
-    "PreserveBrandOrderInJson": true
+    "PreserveBrandOrderInJson": true,
+    "Content": {
+      "Buttons": "List",
+      "Dials": [
+        {
+          "ActionType": "PlaceholderDial"
+        },
+        {
+          "ActionType": "FilterDial",
+          "DisplayName": "Type",
+          "BusFilter": "Yes",
+          "ShowTitle": "Yes"
+        },
+        {
+          "ActionType": "PageDial",
+          "DisplayName": "Page",
+          "ShowTitle": "Yes"
+        },
+        {
+          "ActionType": "PlaceholderDial"
+        },
+        {
+          "ActionType": "PlaceholderDial"
+        },
+        {
+          "ActionType": "NavigationDial",
+          "DisplayName": "Back",
+          "Title": "Back"
+        }
+      ]
+    }
   },
   {
     "DisplayName": "Track Routing",
@@ -162,34 +316,22 @@
     "Text": "Track",
     "Content": {
       "Buttons": [
-        {
-          "ActionType": "ParameterButton",
-          "GroupName": "Render",
-          "DisplayName": "Source Display",
-          "Title": "Source",
-          "ParameterSourceDial": "Source"
-        },
-        {
-          "ActionType": "ParameterButton",
-          "GroupName": "Render",
-          "DisplayName": "Format Display",
-          "Title": "Format",
-          "ParameterSourceDial": "Format"
-        }
+      
       ],
       "Dials": [
-        { "ActionType": "PlaceholderDial", "GroupName": "Track Routing", "DisplayName": "PlaceholderDial_TR_0", "Title": "" },
-        { "ActionType": "PlaceholderDial", "GroupName": "Track Routing", "DisplayName": "PlaceholderDial_TR_1", "Title": "" },
-        { "ActionType": "PlaceholderDial", "GroupName": "Track Routing", "DisplayName": "PlaceholderDial_TR_2", "Title": "" },
-        { "ActionType": "PlaceholderDial", "GroupName": "Track Routing", "DisplayName": "PlaceholderDial_TR_3", "Title": "" },
-        { "ActionType": "PlaceholderDial", "GroupName": "Track Routing", "DisplayName": "PlaceholderDial_TR_4", "Title": "" },
-        { "ActionType": "NavigationDial", "GroupName": "Track Routing", "DisplayName": "FolderBack_TR", "Title": "Back", "Description": "Go back" }
       ]
     }
   },
   {
     "DisplayName": "Input Output",
     "Title": "Input",
-    "Text": "Output"
+    "Text": "Output",
+    "Content": {
+      "Buttons": [
+      
+      ],
+      "Dials": [
+      ]
+    }
   }
 ]

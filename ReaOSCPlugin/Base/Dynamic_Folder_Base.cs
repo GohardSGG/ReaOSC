@@ -29,6 +29,8 @@ namespace Loupedeck.ReaOSCPlugin.Base
         private const string NavigationDialActionType = "NavigationDial";
         private const string PlaceholderDialActionType = "PlaceholderDial";
 
+        private readonly bool _isButtonListDynamic; // 【新增】标记按钮列表是否为动态加载
+
         public Dynamic_Folder_Base()
         {
             Logic_Manager_Base.Instance.Initialize();
@@ -58,10 +60,12 @@ namespace Loupedeck.ReaOSCPlugin.Base
             var content = Logic_Manager_Base.Instance.GetFolderContent(folderBaseName);
             if (content != null)
             {
+                this._isButtonListDynamic = content.IsButtonListDynamic; // 【新增】设置按钮列表是否动态
                 this.PopulateLocalIdMappings(content);
             }
             else
             {
+                this._isButtonListDynamic = false; // 【新增】如果内容为空，默认为非动态
                 PluginLog.Warning($"[DynamicFolder] Constructor ('{this.DisplayName}'): 未能从 Logic_Manager 加载文件夹内容。");
             }
             // 【注意】我之前的版本有订阅CommandStateNeedsRefresh，您的旧代码示例中没有。如果需要，可以加回来。
@@ -74,9 +78,19 @@ namespace Loupedeck.ReaOSCPlugin.Base
         // 【核心修正】采用您旧代码中的 PopulateLocalIdMappings 逻辑
         private void PopulateLocalIdMappings(FolderContentConfig content)
         {
-            var allActions = content.Buttons.Concat(content.Dials);
+            var actionsToProcess = new List<ButtonConfig>();
+            if (content.Dials != null)
+            {
+                actionsToProcess.AddRange(content.Dials);
+            }
 
-            foreach (var configFromJson in allActions) // configFromJson 是从当前文件夹的 _List.json 读取的配置项
+            // 仅当按钮列表不是动态加载时，才处理静态按钮
+            if (!this._isButtonListDynamic && content.Buttons != null)
+            {
+                actionsToProcess.AddRange(content.Buttons);
+            }
+
+            foreach (var configFromJson in actionsToProcess) // configFromJson 是从当前文件夹的 _List.json 读取的配置项
             {
                 // 使用从JSON读取的DisplayName和GroupName在Logic_Manager_Base的所有配置中查找匹配项
                 var kvp = Logic_Manager_Base.Instance.GetAllConfigs().FirstOrDefault(
@@ -119,7 +133,16 @@ namespace Loupedeck.ReaOSCPlugin.Base
 
         #region PluginDynamicFolder 核心重写
 
-        public override IEnumerable<string> GetButtonPressActionNames() => this._localButtonIds.Select(id => this.CreateCommandName(id)).ToList();
+        public override IEnumerable<string> GetButtonPressActionNames()
+        {
+            // 如果按钮列表是动态加载的，则返回空列表（第一阶段不处理动态按钮）
+            if (this._isButtonListDynamic)
+            {
+                PluginLog.Info($"[DynamicFolder] GetButtonPressActionNames for '{this.DisplayName}': Buttons are dynamic, returning empty list for now.");
+                return Enumerable.Empty<string>();
+            }
+            return this._localButtonIds.Select(id => this.CreateCommandName(id)).ToList();
+        }
         
         public override IEnumerable<string> GetEncoderRotateActionNames()
         {

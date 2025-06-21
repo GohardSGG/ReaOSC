@@ -1,4 +1,19 @@
 {
+  "Brand": [
+    "NI"
+  ],
+  "Type": [
+    "Sampler",
+    "Synth",
+    "Drum Machine",
+    "Sequencer",
+    "Drum Kit",
+    "Piano",
+    "Guitar",
+    "Bass",
+    "Strings",
+    "Brass"
+  ],
   "Favorite": [
     "Kontakt 8"
   ],

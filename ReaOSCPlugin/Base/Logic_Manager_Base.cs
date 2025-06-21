@@ -10,6 +10,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
     using System.Text.RegularExpressions;
 
     using Newtonsoft.Json;
+    using Newtonsoft.Json.Linq; //确保JToken的引用
 
     public class ButtonConfig
     {
@@ -20,7 +21,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
         public string GroupName { get; set; }
         public string ActionType { get; set; }
         // 可能的值: "TriggerButton", "ToggleButton", "TickDial", "ToggleDial", "2ModeTickDial", "SelectModeButton",
-        // 【新增】 "ParameterDial", "ParameterButton", "CombineButton"
+        // 【新增】 "ParameterDial", "ParameterButton", "CombineButton", "FilterDial", "PageDial", "PlaceholderDial", "NavigationDial"
         public string Description { get; set; }
 
         // --- OSC 相关 ---
@@ -78,17 +79,32 @@ namespace Loupedeck.ReaOSCPlugin.Base
         // === 【新增】ToggleButton (当参与 CombineButton 时) ===
         // PathSegmentIfOn 也不再需要，ToggleButton ON 时贡献 DisplayName 或 OscAddress (处理后)
         
-        // === 【新增】动态文件夹内容定义 ===
-        public FolderContentConfig Content { get; set; }
+        // === 【修改】动态文件夹内容定义 ===
+        public JObject Content { get; set; } // 改为 JObject 以便灵活解析
 
         // 【新增】用于 FX_Folder_Base，控制品牌/类别是否按JSON文件中的顺序排序
         public bool PreserveBrandOrderInJson { get; set; } = false;
+
+        // === 【新增】用于动态列表项的过滤属性 ===
+        public Dictionary<string, string> FilterableProperties { get; set; } = new Dictionary<string, string>();
+
+        // === 【新增】用于 FilterDial，标记是否为主过滤器 ===
+        public string BusFilter { get; set; } // JSON中可以是 "Yes" 或其他，代码中判断 "Yes" (忽略大小写)
+
+        // === 【新增】用于捕获JSON中未明确定义的其他属性 ===
+        // Newtonsoft.Json.JsonExtensionDataAttribute 标签可以自动捕获额外数据到字典
+        // 但更推荐的方式是如果明确知道有哪些额外属性，就定义它们，或者在解析时手动处理。
+        // 为简单起见，如果BusFilter是唯一关心的，上面的BusFilter字段就够了。
+        // 如果需要更通用的，可以取消注释下面的代码，并确保 Logic_Manager_Base 中使用适当的 JsonSerializerSettings
+        // [Newtonsoft.Json.JsonExtensionData]
+        // public Dictionary<string, JToken> AdditionalProperties { get; set; } = new Dictionary<string, JToken>();
     }
 
     public class FolderContentConfig
     {
         public List<ButtonConfig> Buttons { get; set; } = new List<ButtonConfig>();
         public List<ButtonConfig> Dials { get; set; } = new List<ButtonConfig>();
+        public bool IsButtonListDynamic { get; set; } // 【新增】标记按钮列表是否为动态加载
     }
 
     public class Logic_Manager_Base : IDisposable
@@ -189,53 +205,148 @@ namespace Loupedeck.ReaOSCPlugin.Base
             if (dynamicFolderDefs == null) return;
             
             var folderEntriesToRegister = new List<ButtonConfig>();
-            foreach (var folderDef in dynamicFolderDefs)
+            foreach (var folderDef in dynamicFolderDefs) // folderDef is a ButtonConfig for the folder entry itself
             {
-                folderDef.GroupName = "Dynamic";
-
-                if (folderDef.Content != null)
+                // Ensure the folder entry itself has a GroupName, typically "Dynamic"
+                if (string.IsNullOrEmpty(folderDef.GroupName))
                 {
-                    // 这是一个 Dynamic_Folder_Base 文件夹，其内容在 Content 字段中定义
-                    this._folderContents[folderDef.DisplayName] = folderDef.Content;
-                    this.ProcessFolderContentConfigs(folderDef.Content);
+                    folderDef.GroupName = "Dynamic"; 
                 }
-                else
+
+                if (folderDef.Content != null) // Content 是 JObject
                 {
-                    // 这是一个 FX_Folder_Base 文件夹，没有 "Content" 字段。
-                    // Logic Manager 在这里负责加载其对应的内容文件。
-                    var fileNamePart = folderDef.DisplayName.Replace(" ", "_"); // 将 DisplayName 中的空格替换为下划线
-                    var fxListName = $"Dynamic/{fileNamePart}_List.json"; // 构造正确的文件名
+                    FolderContentConfig actualFolderContent = new FolderContentConfig();
+                    var contentJObject = folderDef.Content; 
+
+                    var buttonsToken = contentJObject["Buttons"];
+                    if (buttonsToken != null)
+                    {
+                        if (buttonsToken.Type == Newtonsoft.Json.Linq.JTokenType.Array)
+                        {
+                            actualFolderContent.Buttons = buttonsToken.ToObject<List<ButtonConfig>>() ?? new List<ButtonConfig>();
+                            actualFolderContent.IsButtonListDynamic = false;
+                        }
+                        else if (buttonsToken.Type == Newtonsoft.Json.Linq.JTokenType.String && buttonsToken.ToString() == "List")
+                        {
+                            actualFolderContent.IsButtonListDynamic = true;
+                            // 【新增】如果Buttons是"List"，则加载对应的外部数据源到_fxDataCache
+                            var fileNamePartList = folderDef.DisplayName.Replace(" ", "_");
+                            var fxListNameFromContent = $"Dynamic/{fileNamePartList}_List.json";
+                            var fxDataFromContent = this.LoadConfigFile<Newtonsoft.Json.Linq.JObject>(fxListNameFromContent);
+                            if (fxDataFromContent != null)
+                            {
+                                this._fxDataCache[folderDef.DisplayName] = fxDataFromContent;
+                                PluginLog.Info($"[LogicManager] For folder '{folderDef.DisplayName}' (Buttons: \"List\"), successfully loaded data source '{fxListNameFromContent}' into _fxDataCache.");
+                            }
+                            else
+                            {
+                                PluginLog.Warning($"[LogicManager] For folder '{folderDef.DisplayName}' (Buttons: \"List\"), FAILED to load data source '{fxListNameFromContent}'. FX_Folder_Base instances may be empty if they rely on this.");
+                            }
+                        }
+                        else
+                        {
+                            PluginLog.Warning($"[LogicManager] ProcessDynamicFolderDefs for folder '{folderDef.DisplayName}': 'Content.Buttons' is of an unexpected type: {buttonsToken.Type}. Assuming no static buttons and not a dynamic list from external file for FX_Folder_Base.");
+                            actualFolderContent.IsButtonListDynamic = false; 
+                        }
+                    }
+                    else
+                    { // Buttons property missing in Content
+                        PluginLog.Info($"[LogicManager] ProcessDynamicFolderDefs for folder '{folderDef.DisplayName}': 'Content.Buttons' is missing. Assuming no static buttons.");
+                        actualFolderContent.IsButtonListDynamic = false; 
+                    }
+
+                    var dialsToken = contentJObject["Dials"];
+                    if (dialsToken != null && dialsToken.Type == Newtonsoft.Json.Linq.JTokenType.Array)
+                    {
+                        actualFolderContent.Dials = dialsToken.ToObject<List<ButtonConfig>>() ?? new List<ButtonConfig>();
+                    }
+                    
+                    this._folderContents[folderDef.DisplayName] = actualFolderContent;
+                    this.ProcessFolderContentConfigs(actualFolderContent, folderDef.DisplayName); 
+                }
+                else // folderDef.Content == null (或者在JSON中完全不存在此字段)
+                {
+                    // 这种情况下，我们假设它是一个纯粹由外部 *_List.json 文件驱动的文件夹 (类似旧的FX_Folder_Base行为)
+                    var fileNamePart = folderDef.DisplayName.Replace(" ", "_");
+                    var fxListName = $"Dynamic/{fileNamePart}_List.json";
                     var fxData = this.LoadConfigFile<Newtonsoft.Json.Linq.JObject>(fxListName);
                     if (fxData != null)
                     {
-                        this._fxDataCache[folderDef.DisplayName] = fxData; // 使用原始 DisplayName ("Track Name") 作为缓存的键
+                        this._fxDataCache[folderDef.DisplayName] = fxData;
+                        PluginLog.Info($"[LogicManager] For folder '{folderDef.DisplayName}' (No Content field), successfully loaded data source '{fxListName}' into _fxDataCache.");
+
+                        // 【重要】即使没有Content字段，如果这是一个FX_Folder_Base类型的文件夹，它也可能有在Dynamic_List.json中定义的旋钮。
+                        // 我们需要一种方法来让FX_Folder_Base获取这些旋钮。 
+                        // 一个选择是，如果folderDef.Content为null，我们也创建一个空的FolderContentConfig，
+                        // 并尝试从folderDef本身（它是一个ButtonConfig）提取可能的Dials定义。
+                        // 然而，Dynamic_List.json的当前结构是Dials在Content内部。 
+                        // 所以，如果一个FX类型文件夹想要在Dynamic_List.json中定义旋钮，它必须有一个Content对象，即使Buttons是"List"。
+                        // 因此，这个else块主要适用于那些完全没有在Dynamic_List.json中定义任何按钮或旋钮，纯粹依赖外部文件的旧式文件夹。
+                        // 对于我们的目标（Effect, Instrument等），它们有Content.Dials，所以会走上面的if分支。
                     }
                     else
                     {
-                        // 【新增日志】明确记录哪个文件加载失败
-                        PluginLog.Warning($"[LogicManager] ProcessDynamicFolderDefs: Failed to load or parse content file '{fxListName}' for folder DisplayName '{folderDef.DisplayName}'.");
+                        PluginLog.Warning($"[LogicManager] For folder '{folderDef.DisplayName}' (No Content field), FAILED to load data source '{fxListName}'.");
                     }
                 }
                 
-                var folderEntry = folderDef;
-                folderEntry.Content = null; 
-                folderEntriesToRegister.Add(folderEntry);
+                // Prepare the folder entry itself for registration (without its JObject Content)
+                var folderEntryForRegistration = new ButtonConfig {
+                    DisplayName = folderDef.DisplayName,
+                    Title = folderDef.Title,
+                    TitleColor = folderDef.TitleColor,
+                    GroupName = folderDef.GroupName, // Should be "Dynamic"
+                    ActionType = folderDef.ActionType,
+                    Description = folderDef.Description,
+                    Text = folderDef.Text,
+                    TextColor = folderDef.TextColor,
+                    TextSize = folderDef.TextSize,
+                    TextX = folderDef.TextX,
+                    TextY = folderDef.TextY,
+                    TextWidth = folderDef.TextWidth,
+                    TextHeight = folderDef.TextHeight,
+                    BackgroundColor = folderDef.BackgroundColor,
+                    ButtonImage = folderDef.ButtonImage,
+                    PreserveBrandOrderInJson = folderDef.PreserveBrandOrderInJson
+                    // Do NOT copy Content (JObject) here
+                };
+                folderEntriesToRegister.Add(folderEntryForRegistration);
             }
-            this.RegisterConfigs(folderEntriesToRegister, isFx: false, isDynamicFolderEntry: true);
+            // Register the folder entries themselves (not their internal content)
+            this.RegisterConfigs(folderEntriesToRegister, isFx: false, isDynamicFolderEntry: true, defaultGroupName: "Dynamic");
         }
 
         private T LoadAndDeserialize<T>(Assembly assembly, string resourceName) where T : class { try { using (var stream = assembly.GetManifestResourceStream(resourceName)) { if (stream == null) { PluginLog.Info($"[LogicManager] 内嵌资源 '{resourceName}' 未找到或加载失败。"); return null; } using (var reader = new StreamReader(stream)) { return JsonConvert.DeserializeObject<T>(reader.ReadToEnd()); } } } catch (Exception ex) { PluginLog.Error(ex, $"[LogicManager] 读取或解析内嵌资源 '{resourceName}' 失败。"); return null; } }
         private void ProcessGroupedConfigs(Dictionary<string, List<ButtonConfig>> groupedConfigs, bool isFx) { if (groupedConfigs == null) return; foreach (var group in groupedConfigs) { var configs = group.Value.Select(config => { config.GroupName = group.Key; return config; }).ToList(); this.RegisterConfigs(configs, isFx); } }
-        private void ProcessFolderContentConfigs(FolderContentConfig folderContent) { if (folderContent == null) return; this.RegisterConfigs(folderContent.Buttons, isFx: false); this.RegisterConfigs(folderContent.Dials, isFx: false); }
+        private void ProcessFolderContentConfigs(FolderContentConfig folderContent, string folderDisplayNameAsDefaultGroupName) 
+        { 
+            if (folderContent == null) return; 
+            // Pass the folder's DisplayName as the default GroupName for its buttons and dials
+            this.RegisterConfigs(folderContent.Buttons, isFx: false, isDynamicFolderEntry: false, defaultGroupName: folderDisplayNameAsDefaultGroupName); 
+            this.RegisterConfigs(folderContent.Dials, isFx: false, isDynamicFolderEntry: false, defaultGroupName: folderDisplayNameAsDefaultGroupName); 
+        }
 
-        private void RegisterConfigs(List<ButtonConfig> configs, bool isFx, bool isDynamicFolderEntry = false)
+        private void RegisterConfigs(List<ButtonConfig> configs, bool isFx, bool isDynamicFolderEntry = false, string defaultGroupName = null)
         {
             if (configs == null)
                 return;
             foreach (var config in configs)
             {
+                // 【新增】Assign default GroupName if current one is empty and a default is provided
+                if (string.IsNullOrEmpty(config.GroupName) && !string.IsNullOrEmpty(defaultGroupName))
+                {
+                    config.GroupName = defaultGroupName;
+                }
+
                 if (string.IsNullOrEmpty(config.GroupName))
-                { PluginLog.Warning($"[LogicManager] 配置 '{config.DisplayName}' 缺少 GroupName，已跳过。"); continue; }
+                { 
+                    // If still no GroupName, log and skip (unless it's a folder entry that uses DisplayName as key)
+                    if (!isDynamicFolderEntry) // Dynamic folder entries use DisplayName as key, GroupName "Dynamic" is set earlier
+                    {
+                        PluginLog.Warning($"[LogicManager] RegisterConfigs: 配置 '{config.DisplayName}' 缺少 GroupName，已跳过。"); 
+                        continue; 
+                    }
+                }
                 string actionParameter;
                 if (isDynamicFolderEntry)
                 { actionParameter = config.DisplayName; }

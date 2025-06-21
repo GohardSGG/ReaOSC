@@ -1,4 +1,16 @@
 {
+    "Type": [
+        "Guitar",
+        "Bass",
+        "Drums",
+        "Vocal",
+        "Synth",
+        "Piano",
+        "Strings",
+        "Brass",
+        "Woodwinds",
+        "Other"
+    ],
     "Favorite": [
       "Distortion Guitar",
       "Crunch Guitar"

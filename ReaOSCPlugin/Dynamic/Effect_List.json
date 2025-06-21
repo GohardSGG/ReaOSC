@@ -1,11 +1,39 @@
 {
+  "Brand": [
+    "Eventide",
+    "FabFilter",
+    "Kiive",
+    "Sonible",
+    "SSL",
+    "UAD",
+    "Waves",
+    "AW",
+    "Cockos",
+    "Fiedler"
+  ],
+  "Type": [
+    "Comp",
+    "EQ",
+    "Reverb",
+    "Delay",
+    "Pitch",
+    "Gate",
+    "Deess",
+    "Limiter",
+    "Verb",
+    "Level",
+    "Dynamics",
+    "Image",
+    "Strip"
+  ],
   "Favorite": [
     "ReaTune",
     "ReaPitch"
   ],
   "Eventide": [
     {
-      "DisplayName": "Blackhole"
+      "DisplayName": "Blackhole",
+      "Type": "Verb"
     },
     {
       "DisplayName": "DeBoom"
@@ -599,6 +627,5 @@
     }
   ],
   "NI": [
-  
   ]
 }
