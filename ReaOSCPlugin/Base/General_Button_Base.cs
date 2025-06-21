@@ -1,5 +1,8 @@
 ﻿// 文件名: Base/General_Button_Base.cs
 // 【基于您上传的文件进行修改，仅移除SVG加载，保留PNG加载和原有绘制逻辑】
+// 【重构】: GetCommandImage 方法现在使用 PluginImage.DrawElement 进行绘制
+// 【修正】: 使用 Logic_Manager_Base.SanitizeOscPathSegment 替换 SanitizeHelper
+// 【新增】: 为受模式控制且 config.Text == "{mode}" 的按钮解析并传递实际模式名给 PluginImage.DrawElement
 namespace Loupedeck.ReaOSCPlugin.Base
 {
     using System;
@@ -9,6 +12,8 @@ namespace Loupedeck.ReaOSCPlugin.Base
     using System.Linq;
     using System.Timers;
     // System.Drawing 相关 using 不是必需的，因为 BitmapBuilder 使用 Loupedeck.BitmapColor
+
+    using Loupedeck.ReaOSCPlugin.Helpers; // 【新增】引用新的绘图类
 
     public class General_Button_Base : PluginDynamicCommand, IDisposable
     {
@@ -227,146 +232,119 @@ namespace Loupedeck.ReaOSCPlugin.Base
 
         protected override BitmapImage GetCommandImage(string actionParameter, PluginImageSize imageSize)
         {
-            if (this._logicManager.GetConfig(actionParameter) is not { } config)
+            var config = this._logicManager.GetConfig(actionParameter);
+            if (config == null)
             {
-                // 【基于您上传的文件】返回基类图像或一个更明确的错误图像
-                PluginLog.Warning($"[GetCommandImage-PNGOnly] Config not found for actionParameter: {actionParameter}. Returning base.GetCommandImage.");
-                return base.GetCommandImage(actionParameter, imageSize);
+                PluginLog.Warning($"[GeneralButtonBase|GetCommandImage] Config not found for actionParameter: {actionParameter}. Returning default image.");
+                // 返回一个由 PluginImage 生成的默认错误图像，而不是 base.GetCommandImage
+                return PluginImage.DrawElement(imageSize, null); // PluginImage 会处理 config 为 null 的情况
             }
 
             try
             {
-                // 【最终修复方案】 整合"精准匹配"逻辑与完整的UI绘制逻辑
-
-                // 1. 优先使用在JSON中明确指定的 ButtonImage
-                string imagePathToLoad = !string.IsNullOrEmpty(config.ButtonImage) ? config.ButtonImage : null;
-
-                // 2. 如果没有指定，则根据 DisplayName 推断，但必须进行严格匹配检查
+                BitmapImage customIcon = null;
+                // 1. 图标加载逻辑 (统一)
+                string imagePathToLoad = !String.IsNullOrEmpty(config.ButtonImage) ? config.ButtonImage : null;
                 if (string.IsNullOrEmpty(imagePathToLoad))
                 {
-                    var actionNameFromParam = actionParameter.Split('/').LastOrDefault()?.Replace("_", " ");
-                    if (!string.IsNullOrEmpty(actionNameFromParam) && actionNameFromParam.Equals(config.DisplayName, StringComparison.OrdinalIgnoreCase))
+                    // 尝试根据 DisplayName 推断: xxx.png (严格匹配)
+                    // 注意: actionParameter 是 /GroupName/DisplayName 格式，需要提取DisplayName部分
+                    var displayNameFromActionParam = actionParameter.Split('/').LastOrDefault();
+                    if (!string.IsNullOrEmpty(displayNameFromActionParam) && 
+                        Logic_Manager_Base.SanitizeOscPathSegment(displayNameFromActionParam) == Logic_Manager_Base.SanitizeOscPathSegment(config.DisplayName)) //确保比较的是处理过的名字
                     {
-                        imagePathToLoad = $"{config.DisplayName.Replace(" ", "_")}.png";
+                        imagePathToLoad = $"{Logic_Manager_Base.SanitizeOscPathSegment(config.DisplayName)}.png";
                     }
                 }
 
-                BitmapImage icon = null;
                 if (!string.IsNullOrEmpty(imagePathToLoad))
                 {
                     try
                     {
-                        icon = PluginResources.ReadImage(imagePathToLoad);
+                        customIcon = PluginResources.ReadImage(imagePathToLoad);
                     }
                     catch (Exception ex)
                     {
-                        PluginLog.Error(ex, $"[GetCommandImage] 加载图标 '{imagePathToLoad}' 失败 for action '{actionParameter}'.");
-                        icon = null;
+                        PluginLog.Error(ex, $"[GeneralButtonBase|GetCommandImage] Failed to load icon '{imagePathToLoad}' for action '{actionParameter}'. Will draw text only.");
+                        customIcon = null;
                     }
                 }
 
-                // --- 恢复完整的UI绘制逻辑 ---
-                using (var bitmapBuilder = new BitmapBuilder(imageSize))
+                // 2. 确定状态和动态文本
+                bool isActive = false;
+                string mainTitleOverride = null;
+                string valueText = null; // 用于可能的次要文本，如模式显示
+                int currentModeForDrawing = 0; // 对于按钮，模式主要影响 isActive 或 mainTitle
+                string actualAuxTextToDraw = config.Text; // Default to config.Text
+
+                // 1. Determine mainTitleOverride based on ModeName and Titles array first
+                if (!String.IsNullOrEmpty(config.ModeName) && config.Titles != null && config.Titles.Any())
                 {
-                    // 颜色和状态逻辑
-                    BitmapColor currentBgColor = BitmapColor.Black;
-                    BitmapColor finalTitleColor = String.IsNullOrEmpty(config.TitleColor) ? BitmapColor.White : HexToBitmapColor(config.TitleColor);
-                    bool isIconDrawn = false;
-
-                    if (config.ActionType == "SelectModeButton")
+                    var modeIndex = this._logicManager.GetCurrentModeIndex(config.ModeName);
+                    if (modeIndex != -1 && config.Titles.Count > modeIndex && !String.IsNullOrEmpty(config.Titles[modeIndex]))
                     {
-                        var currentModeString = this._logicManager.GetCurrentModeString(config.DisplayName);
-                        bool isModeConsideredActive = config.Modes?.IndexOf(currentModeString) > 0;
-
-                        currentBgColor = isModeConsideredActive && !String.IsNullOrEmpty(config.ActiveColor) ? HexToBitmapColor(config.ActiveColor) : BitmapColor.Black;
-                        finalTitleColor = isModeConsideredActive && !String.IsNullOrEmpty(config.TitleColor)
-                            ? HexToBitmapColor(config.TitleColor)
-                            : (String.IsNullOrEmpty(config.DeactiveTextColor) ? BitmapColor.White : HexToBitmapColor(config.DeactiveTextColor));
-                        bitmapBuilder.Clear(currentBgColor);
-                        bitmapBuilder.DrawText(currentModeString ?? config.Modes?.FirstOrDefault() ?? config.DisplayName, color: finalTitleColor, fontSize: 23);
-                        return bitmapBuilder.ToImage(); 
+                        mainTitleOverride = config.Titles[modeIndex];
                     }
-                    else if (config.ActionType == "TriggerButton")
+                    else 
                     {
-                        var isTempActive = this._triggerTemporaryActiveStates.TryGetValue(actionParameter, out var tempState) && tempState;
-                        currentBgColor = isTempActive && !String.IsNullOrEmpty(config.ActiveColor) ? HexToBitmapColor(config.ActiveColor) : BitmapColor.Black;
+                        mainTitleOverride = config.Title ?? config.DisplayName; // Fallback to default title
                     }
-                    else if (config.ActionType == "ToggleButton")
-                    {
-                        var isActive = this._logicManager.GetToggleState(actionParameter);
-                        currentBgColor = isActive && !String.IsNullOrEmpty(config.ActiveColor) ? HexToBitmapColor(config.ActiveColor) : BitmapColor.Black;
-                        finalTitleColor = isActive
-                            ? (String.IsNullOrEmpty(config.ActiveTextColor) ? BitmapColor.White : HexToBitmapColor(config.ActiveTextColor))
-                            : (String.IsNullOrEmpty(config.DeactiveTextColor) ? BitmapColor.White : HexToBitmapColor(config.DeactiveTextColor));
-                    }
-
-                    bitmapBuilder.Clear(currentBgColor);
-
-                    if (icon != null)
-                    {
-                        int iconHeight = 46;
-                        int iconWidth = (icon.Height > 0) ? (icon.Width * iconHeight / icon.Height) : icon.Width;
-                        iconWidth = Math.Max(1, iconWidth);
-                        iconHeight = (icon.Width > 0 && iconWidth == icon.Width) ? icon.Height : iconHeight;
-
-                        int iconX = (bitmapBuilder.Width - iconWidth) / 2;
-                        int iconY = 8;
-                        bitmapBuilder.DrawImage(icon, iconX, iconY, iconWidth, iconHeight);
-                        
-                        bitmapBuilder.DrawText(text: config.DisplayName, x: 0, y: bitmapBuilder.Height - 23, width: bitmapBuilder.Width, height: 20, fontSize: 12, color: finalTitleColor);
-                        
-                        isIconDrawn = true;
-                    }
-
-                    if (!isIconDrawn)
-                    {
-                        var titleToDraw = config.Title ?? config.DisplayName;
-
-                        if (!string.IsNullOrEmpty(config.ModeName))
-                        {
-                            var modeIndex = this._logicManager.GetCurrentModeIndex(config.ModeName);
-                            if (config.Titles?.Count > modeIndex && modeIndex != -1 && !string.IsNullOrEmpty(config.Titles[modeIndex]))
-                            { titleToDraw = config.Titles[modeIndex]; }
-                        }
-
-                        if (!String.IsNullOrEmpty(titleToDraw) && icon == null)
-                        {
-                            bitmapBuilder.DrawText(text: titleToDraw, fontSize: this.GetAutomaticTitleFontSize(titleToDraw), color: finalTitleColor);
-                        }
-
-                        if (!String.IsNullOrEmpty(config.Text))
-                        {
-                            bitmapBuilder.DrawText(
-                                text: config.Text,
-                                x: config.TextX ?? 50,
-                                y: config.TextY ?? 55,
-                                width: config.TextWidth ?? 14,
-                                height: config.TextHeight ?? 14,
-                                color: String.IsNullOrEmpty(config.TextColor) ? BitmapColor.White : HexToBitmapColor(config.TextColor),
-                                fontSize: config.TextSize ?? 14
-                            );
-                        }
-                    }
-
-                    if (!string.IsNullOrEmpty(config.ModeName) && icon == null)
-                    {
-                        var currentModeForDisplay = this._logicManager.GetCurrentModeString(config.ModeName);
-                        if (!string.IsNullOrEmpty(currentModeForDisplay))
-                        { bitmapBuilder.DrawText(currentModeForDisplay, x: 50, y: 55, width: 14, height: 14, fontSize: 14, color: new BitmapColor(136, 226, 255)); }
-                    }
-
-                    return bitmapBuilder.ToImage();
                 }
+                else
+                {
+                    mainTitleOverride = config.Title ?? config.DisplayName; // Not mode-controlled title or no Titles array
+                }
+
+                // 2. Determine isActive and potentially update actualAuxTextToDraw based on ActionType and ModeName
+                if (config.ActionType == "SelectModeButton")
+                {
+                    // For SelectModeButton, mainTitleOverride is always the current mode string.
+                    mainTitleOverride = this._logicManager.GetCurrentModeString(config.DisplayName) ?? config.Modes?.FirstOrDefault() ?? config.DisplayName;
+                    isActive = (config.Modes?.IndexOf(this._logicManager.GetCurrentModeString(config.DisplayName) ?? "") ?? 0) > 0;
+                    if (config.Text == "{mode}")
+                    {
+                        actualAuxTextToDraw = mainTitleOverride; 
+                    }
+                }
+                else if (config.ActionType == "TriggerButton")
+                {
+                    isActive = this._triggerTemporaryActiveStates.TryGetValue(actionParameter, out var tempState) && tempState;
+                    // mainTitleOverride is already set based on mode/titles or default
+                    if (!String.IsNullOrEmpty(config.ModeName) && config.Text == "{mode}")
+                    {
+                        actualAuxTextToDraw = this._logicManager.GetCurrentModeString(config.ModeName) ?? "";
+                    }
+                }
+                else if (config.ActionType == "ToggleButton")
+                {
+                    isActive = this._logicManager.GetToggleState(actionParameter);
+                    // mainTitleOverride is already set based on mode/titles or default
+                    if (!String.IsNullOrEmpty(config.ModeName) && config.Text == "{mode}")
+                    {
+                        actualAuxTextToDraw = this._logicManager.GetCurrentModeString(config.ModeName) ?? "";
+                    }
+                }
+                // else: For other action types, mainTitleOverride and actualAuxTextToDraw are already set correctly
+                // based on the initial mode/titles check and default config.Text handling.
+                
+                // 调用 PluginImage.DrawElement
+                return PluginImage.DrawElement(
+                    imageSize,
+                    config,
+                    mainTitleOverride,
+                    valueText, // 传递 valueText, PluginImage 会处理其绘制
+                    isActive,
+                    currentModeForDrawing, // 对于按钮，模式通常不直接改变背景/前景，而是通过isActive或title
+                    customIcon,
+                    false, // forceTextOnly, 默认不强制
+                    actualAuxTextToDraw // Pass the resolved text
+                );
             }
             catch (Exception ex)
             {
-                PluginLog.Error(ex, $"[GetCommandImage] 未处理的异常 for action '{actionParameter}'.");
-                using (var errorBitmap = new BitmapBuilder(imageSize))
-                {
-                    errorBitmap.Clear(BitmapColor.Red);
-                    errorBitmap.DrawText("ERR!");
-                    return errorBitmap.ToImage();
-                }
+                PluginLog.Error(ex, $"[GeneralButtonBase|GetCommandImage] Unhandled exception for action '{actionParameter}'.");
+                // 返回一个由 PluginImage 生成的错误图像
+                return PluginImage.DrawElement(imageSize, config, "ERR!", isActive:true, actualAuxText: config?.Text); // config可能为null，所以传一个简单的错误提示
             }
         }
 
@@ -404,29 +382,9 @@ namespace Loupedeck.ReaOSCPlugin.Base
         }
 
         #region UI辅助方法 
-        private int GetAutomaticTitleFontSize(String title) { if (String.IsNullOrEmpty(title)) return 23; var totalLengthWithSpaces = title.Length; int effectiveLength; if (totalLengthWithSpaces <= 8) { effectiveLength = totalLengthWithSpaces; } else { var words = title.Split(' '); effectiveLength = words.Length > 0 ? words.Max(word => word.Length) : 0; if (effectiveLength == 0 && totalLengthWithSpaces > 0) { effectiveLength = totalLengthWithSpaces; } } return effectiveLength switch { 1 => 38, 2 => 33, 3 => 31, 4 => 26, 5 => 23, 6 => 22, 7 => 20, 8 => 18, 9 => 17, 10 => 16, 11 => 13, _ => 18 }; }
-        // 【修正】HexToBitmapColor 支持 8 位 Hex (RRGGBBAA)
-        private static BitmapColor HexToBitmapColor(string hexColor)
-        {
-            if (String.IsNullOrEmpty(hexColor) || !hexColor.StartsWith("#"))
-                return BitmapColor.White;
-            var hex = hexColor.Substring(1);
-            if (hex.Length != 6 && hex.Length != 8)
-                return BitmapColor.White;
-            try
-            {
-                var r = (byte)Int32.Parse(hex.Substring(0, 2), NumberStyles.HexNumber);
-                var g = (byte)Int32.Parse(hex.Substring(2, 2), NumberStyles.HexNumber);
-                var b = (byte)Int32.Parse(hex.Substring(4, 2), NumberStyles.HexNumber);
-                if (hex.Length == 8) // 支持 alpha 通道
-                {
-                    var a = (byte)Int32.Parse(hex.Substring(6, 2), NumberStyles.HexNumber);
-                    return new BitmapColor(r, g, b, a);
-                }
-                return new BitmapColor(r, g, b);
-            }
-            catch { return BitmapColor.Red; } // 错误时返回红色，易于识别
-        }
+        // 【移除】GetAutomaticTitleFontSize 和 HexToBitmapColor，因为它们已移至 PluginImage.cs
+        // private int GetAutomaticTitleFontSize(String title) { ... }
+        // private static BitmapColor HexToBitmapColor(string hexColor) { ... }
         #endregion
     }
 }

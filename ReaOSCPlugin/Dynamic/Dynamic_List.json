@@ -43,7 +43,14 @@
           "TextColor": "#88E2FF"
         }
       ],
-      "Dials": []
+      "Dials": [
+        { "ActionType": "PlaceholderDial", "GroupName": "Add Track", "DisplayName": "PlaceholderDial_AT_0", "Title": "" },
+        { "ActionType": "PlaceholderDial", "GroupName": "Add Track", "DisplayName": "PlaceholderDial_AT_1", "Title": "" },
+        { "ActionType": "PlaceholderDial", "GroupName": "Add Track", "DisplayName": "PlaceholderDial_AT_2", "Title": "" },
+        { "ActionType": "PlaceholderDial", "GroupName": "Add Track", "DisplayName": "PlaceholderDial_AT_3", "Title": "" },
+        { "ActionType": "PlaceholderDial", "GroupName": "Add Track", "DisplayName": "PlaceholderDial_AT_4", "Title": "" },
+        { "ActionType": "NavigationDial", "GroupName": "Add Track", "DisplayName": "FolderBack_AT", "Title": "Back", "Description": "Go back" }
+      ]
     }
   },
   {
@@ -122,38 +129,12 @@
         }
       ],
       "Dials": [
-        {
-          "ActionType": "ParameterDial",
-          "GroupName": "Render",
-          "DisplayName": "Source",
-          "Title": "Source",
-          "ShowParameterInDial": "Yes",
-          "Titles": [ "Master", "Track", "Item" ]
-        },
-        {
-          "ActionType": "ParameterDial",
-          "GroupName": "Render",
-          "DisplayName": "Format",
-          "Title": "Format",
-          "ShowParameterInDial": "Yes",
-          "Titles": [ "Wav", "MP3", "ADM" ]
-        },
-        {
-          "ActionType": "ParameterDial",
-          "GroupName": "Render",
-          "DisplayName": "SampleRate",
-          "Title": "Sample Rate",
-          "ShowParameterInDial": "Yes",
-          "Titles": [ "48k", "96k", "192k", "44.1k", "88.2k", "176.4k" ]
-        },
-        {
-          "ActionType": "ParameterDial",
-          "GroupName": "Render",
-          "DisplayName": "BitDepth",
-          "Title": "BitDepth",
-          "ShowParameterInDial": "Yes",
-          "Titles": [ "16I", "24I", "32F", "32I" ]
-        }
+        { "ActionType": "ParameterDial", "GroupName": "Render", "DisplayName": "Source", "Title": "Source", "ShowParameterInDial": "Yes", "Titles": [ "Master", "Track", "Item" ] },
+        { "ActionType": "ParameterDial", "GroupName": "Render", "DisplayName": "Format", "Title": "Format", "ShowParameterInDial": "Yes", "Titles": [ "Wav", "MP3", "ADM" ] },
+        { "ActionType": "ParameterDial", "GroupName": "Render", "DisplayName": "SampleRate", "Title": "Sample Rate", "ShowParameterInDial": "Yes", "Titles": [ "48k", "96k", "192k", "44.1k", "88.2k", "176.4k" ] },
+        { "ActionType": "ParameterDial", "GroupName": "Render", "DisplayName": "BitDepth", "Title": "BitDepth", "ShowParameterInDial": "Yes", "Titles": [ "16I", "24I", "32F", "32I" ] },
+        { "ActionType": "PlaceholderDial", "GroupName": "Render", "DisplayName": "PlaceholderDial_Render_4", "Title": "" },
+        { "ActionType": "NavigationDial", "GroupName": "Render", "DisplayName": "FolderBack_Render", "Title": "Back", "Description": "Go back" }
       ]
     }
   },
@@ -194,64 +175,15 @@
           "DisplayName": "Format Display",
           "Title": "Format",
           "ParameterSourceDial": "Format"
-        },
-        {
-          "ActionType": "ToggleButton",
-          "GroupName": "Render",
-          "DisplayName": "TimeCode",
-          "Title": "TimeCode"
-        },
-        {
-          "ActionType": "ToggleButton",
-          "GroupName": "Render",
-          "DisplayName": "Tail",
-          "Title": "Tail"
-        },
-        {
-          "ActionType": "ToggleButton",
-          "GroupName": "Render",
-          "DisplayName": "Tempo",
-          "Title": "Tempo"
-        },
-        {
-          "ActionType": "ToggleButton",
-          "GroupName": "Render",
-          "DisplayName": "Online",
-          "Title": "Online"
-        },
-        {
-          "ActionType": "ToggleButton",
-          "GroupName": "Render",
-          "DisplayName": "Folder",
-          "Title": "Folder"
-        },
-        {
-          "ActionType": "ToggleButton",
-          "GroupName": "Render",
-          "DisplayName": "Auto Channel",
-          "Title": "Auto CH"
-        },
-        {
-          "ActionType": "CombineButton",
-          "GroupName": "Render",
-          "DisplayName": "Export",
-          "Title": "Export",
-          "ParameterOrder": [
-            "Source",
-            "SampleRate",
-            "BitDepth",
-            "Format",
-            "TimeCode",
-            "Tail",
-            "Tempo",
-            "Online",
-            "Folder",
-            "Auto Channel"
-          ]
         }
       ],
       "Dials": [
-
+        { "ActionType": "PlaceholderDial", "GroupName": "Track Routing", "DisplayName": "PlaceholderDial_TR_0", "Title": "" },
+        { "ActionType": "PlaceholderDial", "GroupName": "Track Routing", "DisplayName": "PlaceholderDial_TR_1", "Title": "" },
+        { "ActionType": "PlaceholderDial", "GroupName": "Track Routing", "DisplayName": "PlaceholderDial_TR_2", "Title": "" },
+        { "ActionType": "PlaceholderDial", "GroupName": "Track Routing", "DisplayName": "PlaceholderDial_TR_3", "Title": "" },
+        { "ActionType": "PlaceholderDial", "GroupName": "Track Routing", "DisplayName": "PlaceholderDial_TR_4", "Title": "" },
+        { "ActionType": "NavigationDial", "GroupName": "Track Routing", "DisplayName": "FolderBack_TR", "Title": "Back", "Description": "Go back" }
       ]
     }
   },

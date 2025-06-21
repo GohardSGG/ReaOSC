@@ -77,12 +77,12 @@
     {
       "DisplayName": "Nudge Set",
       "ActionType": "ToggleButton",
-      "Text": "Nudge Set"
+      "Title": "Nudge Set"
     },
     {
       "DisplayName": "Phase Align",
       "ActionType": "ToggleButton",
-      "Text": "Phase Align"
+      "Title": "Phase Align"
     }
   ],
   "MIDI": [
@@ -224,19 +224,18 @@
     {
       "DisplayName": "Show Last Touch",
       "ActionType": "ToggleButton",
-      "Text": "Last-Touch"
+      "Title": "Last-Touch"
     },
     {
       "DisplayName": "All Env View",
       "ActionType": "ToggleButton",
-      "Text": "Env View"
+      "Title": "Env View"
     },
     {
       "DisplayName": "Envelope State",
       "ActionType": "ToggleDial",
       "OscAddress": "Envelope/State",
-      "Title": "Envelope",
-      "Text": "State",
+      "Title": "Envelope State",
       "ResetOscAddress": "Envelope/Delete",
       "ActiveColor": "#00C800",
       "DeactiveColor": "#C80000"
@@ -282,8 +281,8 @@
       "ModeName": "FX/Chain Select",
       "OscAddress": "{mode}/Bypass",
       "ActiveColor": "#FFFFFF",
-      "TitleColor": "#000000",
-      "DeactiveTextColor": "#FFFFFF"
+      "Text": "{mode}",
+      "TextColor": "#88E2FF"
     },
     {
       "DisplayName": "Offline",
@@ -292,8 +291,8 @@
       "ModeName": "FX/Chain Select",
       "OscAddress": "{mode}/Offline",
       "ActiveColor": "#FFFFFF",
-      "TitleColor": "#000000",
-      "DeactiveTextColor": "#FFFFFF"
+      "Text": "{mode}",
+      "TextColor": "#88E2FF"
     },
     {
       "DisplayName": "Parallel",
@@ -302,8 +301,8 @@
       "ModeName": "FX/Chain Select",
       "OscAddress": "{mode}/Parallel",
       "ActiveColor": "#FFFFFF",
-      "TitleColor": "#000000",
-      "DeactiveTextColor": "#FFFFFF"
+      "Text": "{mode}",
+      "TextColor": "#88E2FF"
     },
     {
       "DisplayName": "Show",
@@ -312,8 +311,8 @@
       "ModeName": "FX/Chain Select",
       "OscAddress": "{mode}/Show",
       "ActiveColor": "#FFFFFF",
-      "TitleColor": "#000000",
-      "DeactiveTextColor": "#FFFFFF"
+      "Text": "{mode}",
+      "TextColor": "#88E2FF"
     },
     {
       "DisplayName": "Copy",
@@ -321,7 +320,9 @@
       "GroupName": "FX",
       "ModeName": "FX/Chain Select",
       "OscAddress": "{mode}/Copy",
-      "TitleColor": "#FFFFFF"
+      "ActiveColor": "#FFFFFF",
+      "Text": "{mode}",
+      "TextColor": "#88E2FF"
     }
   ],
   "Envelope": [
@@ -341,7 +342,10 @@
       "GroupName": "Envelope",
       "ModeName": "Envelope Select Mode",
       "Title": "Volume",
-      "OscAddress": "{mode}/Toggle/Volume"
+      "OscAddress": "{mode}/Toggle/Volume",
+      "ActiveColor": "#FFFFFF",
+      "Text": "{mode}",
+      "TextColor": "#88E2FF"
     },
     {
       "DisplayName": "Pan Toggle",
@@ -351,8 +355,8 @@
       "Title": "Pan",
       "OscAddress": "{mode}/Toggle/Pan",
       "ActiveColor": "#FFFFFF",
-      "TitleColor": "#000000",
-      "DeactiveTextColor": "#FFFFFF"
+      "Text": "{mode}",
+      "TextColor": "#88E2FF"
     },
     {
       "DisplayName": "Width/Pitch Toggle",
@@ -363,7 +367,10 @@
       "OscAddresses": [
         "/Track/Toggle/Width",
         "/Take/Toggle/Pitch"
-      ]
+      ],
+      "ActiveColor": "#FFFFFF",
+      "Text": "{mode}",
+      "TextColor": "#88E2FF"
     }
   ],
   "General": [
@@ -396,19 +403,19 @@
       "DisplayName": "Project Setting",
       "ActionType": "TriggerButton",
       "ActiveColor": "#FF8F15",
-      "Text": "Project Setting"
+      "Title": "Project Setting"
     },
     {
       "DisplayName": "New Project",
       "ActionType": "TriggerButton",
       "ActiveColor": "#FF8F15",
-      "Text": "New Project"
+      "Title": "New Project"
     },
     {
       "DisplayName": "Beat Tempo",
       "ActionType": "ToggleButton",
       "ActiveColor": "#FF8F15",
-      "Text": "Beat Tempo"
+      "Title": "Beat Tempo"
     }
   ],
   "Marker": [
@@ -456,76 +463,72 @@
     {
       "DisplayName": "Mixer",
       "ActionType": "ToggleButton",
-      "Text": "Mixer"
+      "Title": "Mixer"
     },
     {
       "DisplayName": "Big Clock",
       "ActionType": "ToggleButton",
-      "Text": "Big Clock"
+      "Title": "Big Clock"
     },
     {
       "DisplayName": "Track Manager",
       "ActionType": "ToggleButton",
-      "Text": "Track Manager"
+      "Title": "Track Manager"
     },
     {
       "DisplayName": "Track Wiring",
       "ActionType": "ToggleButton",
-      "Text": "Track Wiring"
+      "Title": "Track Wiring"
     },
     {
       "DisplayName": "Routing",
       "ActionType": "ToggleButton",
-      "Text": "Routing"
+      "Title": "Routing"
     },
     {
       "DisplayName": "Video",
       "ActionType": "ToggleButton",
-      "Text": "Video"
+      "Title": "Video"
     },
     {
       "DisplayName": "Region Manager",
       "ActionType": "ToggleButton",
-      "Text": "Region Manager"
+      "Title": "Region Manager"
     },
     {
       "DisplayName": "Media Explorer",
       "ActionType": "ToggleButton",
-      "Text": "Media Explorer"
+      "Title": "Media Explorer"
     },
     {
       "DisplayName": "Grouping",
       "ActionType": "ToggleButton",
-      "Text": "Grouping"
+      "Title": "Grouping"
     },
     {
       "DisplayName": "Item Property",
       "ActionType": "ToggleButton",
-      "Text": "Item Property"
+      "Title": "Item Property"
     },
     {
       "DisplayName": "Envelope Manager",
       "ActionType": "ToggleButton",
-      "Text": "Envelope Manager"
+      "Title": "Envelope Manager"
     },
     {
       "DisplayName": "Project Bay",
       "ActionType": "ToggleButton",
-      "Text": "Project Bay"
+      "Title": "Project Bay"
     }
   ],
   "Track": [
     {
       "DisplayName": "Solo",
-      "ActionType": "ToggleButton",
-      "Text": "Select",
-      "TextColor": "#88E2FF"
+      "ActionType": "ToggleButton"
     },
     {
       "DisplayName": "Mute",
-      "ActionType": "ToggleButton",
-      "Text": "Select",
-      "TextColor": "#88E2FF"
+      "ActionType": "ToggleButton"
     },
     {
       "DisplayName": "Arm",

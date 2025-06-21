@@ -5,6 +5,9 @@ namespace Loupedeck.ReaOSCPlugin.Base
     using System.Collections.Generic;
     using System.Globalization;
     using System.Linq;
+    using System.IO; // 【新增】 用于Path相关操作
+
+    using Loupedeck.ReaOSCPlugin.Helpers; // 【新增】引用新的绘图类
 
     // 【修改】实现 IDisposable 接口
     public class General_Dial_Base : PluginDynamicAdjustment, IDisposable
@@ -81,53 +84,93 @@ namespace Loupedeck.ReaOSCPlugin.Base
 
         protected override string GetAdjustmentValue(string actionParameter) => null; // 【无改动】
 
-        protected override BitmapImage GetCommandImage(string actionParameter, PluginImageSize imageSize) // 【无改动】
+        protected override BitmapImage GetCommandImage(string actionParameter, PluginImageSize imageSize)
         {
             var config = this._logicManager.GetConfig(actionParameter);
             if (config == null)
-                return null;
-
-            using (var bitmapBuilder = new BitmapBuilder(imageSize))
             {
-                if (config.ActionType == "2ModeTickDial")
-                {
-                    var currentMode = this._logicManager.GetDialMode(actionParameter);
-                    var title = currentMode == 0 ? config.Title : config.Title_Mode2;
-                    var titleColor = currentMode == 0 ? (String.IsNullOrEmpty(config.TitleColor) ? BitmapColor.White : HexToBitmapColor(config.TitleColor)) : (String.IsNullOrEmpty(config.TitleColor_Mode2) ? BitmapColor.White : HexToBitmapColor(config.TitleColor_Mode2));
-                    var bgColor = currentMode == 0 ? (String.IsNullOrEmpty(config.BackgroundColor) ? BitmapColor.Black : HexToBitmapColor(config.BackgroundColor)) : (String.IsNullOrEmpty(config.BackgroundColor_Mode2) ? BitmapColor.Black : HexToBitmapColor(config.BackgroundColor_Mode2));
-                    bitmapBuilder.Clear(bgColor);
-                    if (!String.IsNullOrEmpty(title))
-                    { bitmapBuilder.DrawText(text: title, fontSize: this.GetAutomaticDialTitleFontSize(title), color: titleColor); }
-                }
-                else // TickDial and ToggleDial
-                {
-                    BitmapColor currentBgColor = BitmapColor.Black;
-                    BitmapColor currentTitleColor = String.IsNullOrEmpty(config.TitleColor) ? BitmapColor.White : HexToBitmapColor(config.TitleColor);
+                PluginLog.Warning($"[GeneralDialBase|GetCommandImage] Config not found for actionParameter: {actionParameter}. Returning default image.");
+                return PluginImage.DrawElement(imageSize, null); 
+            }
 
-                    if (config.ActionType == "ToggleDial")
+            try
+            {
+                BitmapImage customIcon = null;
+                // 1. 图标加载逻辑 (统一) - 参照 General_Button_Base
+                string imagePathToLoad = !String.IsNullOrEmpty(config.ButtonImage) ? config.ButtonImage : null;
+                if (string.IsNullOrEmpty(imagePathToLoad))
+                {
+                    var displayNameFromActionParam = actionParameter.Split('/').LastOrDefault(); 
+                    // Extract the part after the last '/', which should be DisplayName or DisplayName + "/DialAction"
+                    var namePartToMatch = displayNameFromActionParam;
+                    if (namePartToMatch.EndsWith("/DialAction"))
                     {
-                        // 读取的是_toggleStates[actionParameter]，这个状态现在应该能被正确更新了
-                        var isActive = this._logicManager.GetToggleState(actionParameter);
-                        currentBgColor = isActive 
-                            ? (String.IsNullOrEmpty(config.ActiveColor) ? BitmapColor.Black : HexToBitmapColor(config.ActiveColor))
-                            : (String.IsNullOrEmpty(config.DeactiveColor) ? BitmapColor.Black : HexToBitmapColor(config.DeactiveColor));
-                        currentTitleColor = isActive
-                           ? (String.IsNullOrEmpty(config.ActiveTextColor) ? BitmapColor.White : HexToBitmapColor(config.ActiveTextColor))
-                           : (String.IsNullOrEmpty(config.DeactiveTextColor) ? BitmapColor.White : HexToBitmapColor(config.DeactiveTextColor));
+                        namePartToMatch = namePartToMatch.Substring(0, namePartToMatch.Length - "/DialAction".Length);
                     }
-                    // TickDial 默认背景黑色，标题颜色来自 TitleColor
 
-                    bitmapBuilder.Clear(currentBgColor);
-                    if (!String.IsNullOrEmpty(config.Title))
+                    if (!string.IsNullOrEmpty(namePartToMatch) &&
+                        Logic_Manager_Base.SanitizeOscPathSegment(namePartToMatch) == Logic_Manager_Base.SanitizeOscPathSegment(config.DisplayName))
                     {
-                        bitmapBuilder.DrawText(text: config.Title, fontSize: this.GetAutomaticDialTitleFontSize(config.Title), color: currentTitleColor);
-                    }
-                    if (!String.IsNullOrEmpty(config.Text)) // 次要文本，所有旋钮类型都可以有
-                    {
-                        bitmapBuilder.DrawText(text: config.Text, x: config.TextX ?? 5, y: config.TextY ?? (bitmapBuilder.Height - 20), width: config.TextWidth ?? (bitmapBuilder.Width - 10), height: config.TextHeight ?? 18, color: String.IsNullOrEmpty(config.TextColor) ? BitmapColor.White : HexToBitmapColor(config.TextColor), fontSize: config.TextSize ?? 12);
+                        imagePathToLoad = $"{Logic_Manager_Base.SanitizeOscPathSegment(config.DisplayName)}.png";
                     }
                 }
-                return bitmapBuilder.ToImage();
+
+                if (!string.IsNullOrEmpty(imagePathToLoad))
+                {
+                    try
+                    {
+                        customIcon = PluginResources.ReadImage(imagePathToLoad);
+                    }
+                    catch (Exception ex)
+                    {
+                        PluginLog.Error(ex, $"[GeneralDialBase|GetCommandImage] Failed to load icon '{imagePathToLoad}' for action '{actionParameter}'. Will draw text only.");
+                        customIcon = null;
+                    }
+                }
+
+                // 2. 确定状态和动态文本
+                bool isActive = false; // 主要用于ToggleDial
+                string mainTitleOverride = null;
+                string valueText = null; // 用于显示如参数值等
+                int currentMode = 0;    // 主要用于2ModeTickDial
+
+                if (config.ActionType == "ToggleDial")
+                {
+                    isActive = this._logicManager.GetToggleState(actionParameter);
+                    mainTitleOverride = config.Title ?? config.DisplayName;
+                }
+                else if (config.ActionType == "2ModeTickDial")
+                {
+                    currentMode = this._logicManager.GetDialMode(actionParameter);
+                    // mainTitleOverride 将在 PluginImage.DrawElement 中根据 currentMode 和 config 确定
+                    // 所以这里不需要特别设置 mainTitleOverride，除非有特定逻辑
+                    mainTitleOverride = config.Title ?? config.DisplayName; // 基准标题
+                }
+                // ParameterDial 通常在 Dynamic_Folder_Base 中处理其特定显示逻辑
+                // 但如果 General_Dial_Base 需要支持 ParameterDial 类型的独立旋钮，则在这里添加
+                // else if (config.ActionType == "ParameterDial") { ... }
+                else // TickDial 及其他
+                {
+                    mainTitleOverride = config.Title ?? config.DisplayName;
+                }
+
+                // 如果有 config.Text, 它会被 PluginImage.DrawElement 处理
+
+                return PluginImage.DrawElement(
+                    imageSize,
+                    config,
+                    mainTitleOverride,
+                    valueText,         // 传递给 PluginImage，如果以后有值显示需求
+                    isActive,          // 对于 ToggleDial
+                    currentMode,       // 对于 2ModeTickDial
+                    customIcon,
+                    false
+                );
+            }
+            catch (Exception ex)
+            {
+                PluginLog.Error(ex, $"[GeneralDialBase|GetCommandImage] Unhandled exception for action '{actionParameter}'.");
+                return PluginImage.DrawElement(imageSize, config, "ERR!", isActive: true); 
             }
         }
 
@@ -142,9 +185,10 @@ namespace Loupedeck.ReaOSCPlugin.Base
             // 则应在此处添加 base.Dispose(); (但通常Loupedeck的命令和调整项不需要显式调用基类Dispose)
         }
 
-        #region UI辅助方法 // 【无改动】
-        private int GetAutomaticDialTitleFontSize(String title) { if (String.IsNullOrEmpty(title)) return 16; var totalLengthWithSpaces = title.Length; int effectiveLength; if (totalLengthWithSpaces <= 10) { effectiveLength = totalLengthWithSpaces; } else { var words = title.Split(' '); effectiveLength = words.Length > 0 ? words.Max(word => word.Length) : 0; if (effectiveLength == 0 && totalLengthWithSpaces > 0) { effectiveLength = totalLengthWithSpaces; } } return effectiveLength switch { 1 => 26, 2 => 23, 3 => 21, 4 => 19, 5 => 17, >= 6 and <= 7 => 15, 8 => 13, 9 => 12, 10 => 11, 11 => 10, _ => 9 }; }
-        private static BitmapColor HexToBitmapColor(string hexColor) { if (String.IsNullOrEmpty(hexColor) || !hexColor.StartsWith("#")) return BitmapColor.White; var hex = hexColor.Substring(1); if (hex.Length != 6) return BitmapColor.White; try { var r = (byte)Int32.Parse(hex.Substring(0, 2), NumberStyles.HexNumber); var g = (byte)Int32.Parse(hex.Substring(2, 2), NumberStyles.HexNumber); var b = (byte)Int32.Parse(hex.Substring(4, 2), NumberStyles.HexNumber); return new BitmapColor(r, g, b); } catch { return BitmapColor.Red; } }
+        #region UI辅助方法 
+        // 【移除】GetAutomaticDialTitleFontSize 和 HexToBitmapColor，因为它们已移至 PluginImage.cs
+        // private int GetAutomaticDialTitleFontSize(String title) { ... }
+        // private static BitmapColor HexToBitmapColor(string hexColor) { ... }
         #endregion
     }
 }
