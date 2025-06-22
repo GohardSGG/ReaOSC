@@ -336,10 +336,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                                     itemConfig.ActionType = "TriggerButton"; 
                                 }
 
-                                if (itemConfig.FilterableProperties == null) 
-                                {
-                                    itemConfig.FilterableProperties = new Dictionary<String, String>();
-                                }
+                                itemConfig.FilterableProperties ??= new Dictionary<String, String>();
 
                                 // 填充FilterableProperties (来自JObject的直接属性，这些属性名对应FilterDial的DisplayName)
                                 foreach (var subFilterName in this._filterOptions.Keys)

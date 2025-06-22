@@ -241,3 +241,9 @@ dotnet_diagnostic.SA1633.severity = none
 
 dotnet_diagnostic.SX1309.severity = warning
 dotnet_diagnostic.SX1309S.severity = warning
+
+# IDE0045: Simplify if statement
+dotnet_diagnostic.IDE0045.severity = none
+
+# IDE0046: Simplify if statement
+dotnet_diagnostic.IDE0046.severity = none

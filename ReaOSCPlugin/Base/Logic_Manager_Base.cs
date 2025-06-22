@@ -158,7 +158,8 @@ namespace Loupedeck.ReaOSCPlugin.Base
         public void ToggleMode(String modeName) { if (this._currentModes.TryGetValue(modeName, out _) && this._modeOptions.TryGetValue(modeName, out var options)) { this._currentModes[modeName] = (this._currentModes[modeName] + 1) % options.Count; this._modeChangedEvents[modeName]?.Invoke(); PluginLog.Info($"[LogicManager][Mode] 模式组 '{modeName}' 已切换到: {this.GetCurrentModeString(modeName)}"); this.CommandStateNeedsRefresh?.Invoke(this, this.GetActionParameterForModeController(modeName)); } }
         private String GetActionParameterForModeController(String modeName) => this._allConfigs.FirstOrDefault(kvp => kvp.Value.ActionType == "SelectModeButton" && kvp.Value.DisplayName == modeName).Key;
         public String GetCurrentModeString(String modeName) { if (this._currentModes.TryGetValue(modeName, out var currentIndex) && this._modeOptions.TryGetValue(modeName, out var options) && currentIndex >= 0 && currentIndex < options.Count) { return options[currentIndex]; } return String.Empty; }
-        public Int32 GetCurrentModeIndex(String modeName) { return this._currentModes.TryGetValue(modeName, out var currentIndex) ? currentIndex : -1; }
+        public Int32 GetCurrentModeIndex(String modeName) => this._currentModes.TryGetValue(modeName, out var currentIndex) ? currentIndex : -1;
+
         public void SubscribeToModeChange(String modeName, Action handler) { if (String.IsNullOrEmpty(modeName) || handler == null) { return; } if (!this._modeChangedEvents.ContainsKey(modeName)) { this._modeChangedEvents[modeName] = null; } this._modeChangedEvents[modeName] += handler; }
         public void UnsubscribeFromModeChange(String modeName, Action handler) { if (String.IsNullOrEmpty(modeName) || handler == null) { return; } if (this._modeChangedEvents.ContainsKey(modeName)) { this._modeChangedEvents[modeName] -= handler; } }
         #endregion
