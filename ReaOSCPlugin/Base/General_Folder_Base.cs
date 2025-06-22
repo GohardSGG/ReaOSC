@@ -241,9 +241,32 @@ namespace Loupedeck.ReaOSCPlugin.Base
             this._currentFilterValues.Clear();
             this._busFilterDialDisplayName = null;
 
-            // 过滤器选项的来源是 _folderDialConfigs 中 ActionType 为 "FilterDial" 的旋钮
-            // 以及它们在 _dataSourceJson 中对应的数组
-            foreach (var dialConfig in this._folderDialConfigs.Where(dc => dc.ActionType == "FilterDial"))
+            // 预先识别 BusFilter
+            var filterDialConfigs = this._folderDialConfigs.Where(dc => dc.ActionType == "FilterDial").ToList();
+            foreach (var dialConfigPreScan in filterDialConfigs)
+            {
+                if (!String.IsNullOrEmpty(dialConfigPreScan.BusFilter) && dialConfigPreScan.BusFilter.Equals("Yes", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (String.IsNullOrEmpty(dialConfigPreScan.DisplayName))
+                    {
+                        PluginLog.Warning($"[{this.DisplayName}] 一个被标记为BusFilter的旋钮没有DisplayName，已忽略此BusFilter标记。");
+                        continue;
+                    }
+                    if (this._busFilterDialDisplayName == null)
+                    {
+                        this._busFilterDialDisplayName = dialConfigPreScan.DisplayName;
+                        PluginLog.Info($"[{this.DisplayName}] 过滤器 '{this._busFilterDialDisplayName}' 被指定为 BusFilter。");
+                    }
+                    else
+                    {
+                        PluginLog.Warning($"[{this.DisplayName}] 发现多个BusFilter定义 ('{this._busFilterDialDisplayName}' 和 '{dialConfigPreScan.DisplayName}'). 将使用第一个 ('{this._busFilterDialDisplayName}')。");
+                    }
+                    // 找到第一个就跳出，因为只支持一个BusFilter
+                    break; 
+                }
+            }
+            
+            foreach (var dialConfig in filterDialConfigs)
             {
                 var filterName = dialConfig.DisplayName;
                 if (String.IsNullOrEmpty(filterName))
@@ -252,50 +275,41 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     continue;
                 }
 
+                List<String> options;
+                Boolean isThisTheBusFilter = !String.IsNullOrEmpty(this._busFilterDialDisplayName) && filterName == this._busFilterDialDisplayName;
+
                 if (this._dataSourceJson.TryGetValue(filterName, out JToken optionsToken) && optionsToken is JArray optionsArray)
                 {
-                    var options = optionsArray.ToObject<List<String>>() ?? new List<String>();
-                    
-                    if (!options.Contains("All")) { options.Insert(0, "All"); }
-
-#pragma warning disable IDE0007
-                    Boolean isBusFilter = !String.IsNullOrEmpty(dialConfig.BusFilter) && dialConfig.BusFilter.Equals("Yes", StringComparison.OrdinalIgnoreCase);
-#pragma warning restore IDE0007
-
-                    if (this._favoriteItemDisplayNames.Any() && !options.Contains("Favorite"))
-                    {
-                        Boolean shouldAddFavorite = isBusFilter || 
-                                                 (this._busFilterDialDisplayName == null && 
-                                                  this._folderDialConfigs.Where(dc => dc.ActionType == "FilterDial").FirstOrDefault() == dialConfig);
-                        if (shouldAddFavorite) 
-                        { 
-                            options.Insert(1, "Favorite"); // "All" 之后
-                        } 
-                    }
-                    
-                    this._filterOptions[filterName] = options;
-                    this._currentFilterValues[filterName] = "All"; 
-                    PluginLog.Info($"[{this.DisplayName}] 初始化过滤器 '{filterName}', 选项数量: {options.Count}. 当前值: All");
-
-                    if (isBusFilter)
-                    {
-                        if (this._busFilterDialDisplayName == null)
-                        {
-                            this._busFilterDialDisplayName = filterName;
-                            PluginLog.Info($"[{this.DisplayName}] 过滤器 '{filterName}' 被指定为 BusFilter。");
-                        }
-                        else
-                        {
-                             PluginLog.Warning($"[{this.DisplayName}] 发现多个BusFilter定义 ('{this._busFilterDialDisplayName}' 和 '{filterName}'). 将使用第一个。");
-                        }
-                    }
+                    options = optionsArray.ToObject<List<String>>() ?? new List<String>();
                 }
                 else
                 {
-                    PluginLog.Warning($"[{this.DisplayName}] FilterDial '{filterName}' 在数据源中未找到对应的选项列表。将使用默认'All'选项。");
-                    this._filterOptions[filterName] = new List<String> { "All" };
-                    this._currentFilterValues[filterName] = "All";
+                    options = new List<String>(); // 数据源中没有此过滤器的选项，从空列表开始
+                    PluginLog.Verbose($"[{this.DisplayName}] FilterDial '{filterName}' 在数据源JSON中未找到选项列表，将基于是否BusFilter和收藏夹情况构建选项。");
                 }
+
+                if (isThisTheBusFilter)
+                {
+                    // BusFilter: 不加 "All"
+                    // 如果有收藏夹且选项中不含 "Favorite"，则在开头添加 "Favorite"
+                    if (this._favoriteItemDisplayNames.Any() && !options.Contains("Favorite"))
+                    {
+                        options.Insert(0, "Favorite");
+                    }
+                    this._currentFilterValues[filterName] = options.FirstOrDefault(); // 默认选中第一个 (可能是Favorite或第一个分类)
+                }
+                else
+                {
+                    // 次级过滤器: 如果选项中不含 "All"，则在开头添加 "All"
+                    if (!options.Contains("All"))
+                    {
+                        options.Insert(0, "All");
+                    }
+                    this._currentFilterValues[filterName] = "All"; // 默认选中 "All"
+                }
+                
+                this._filterOptions[filterName] = options;
+                PluginLog.Info($"[{this.DisplayName}] 初始化过滤器 '{filterName}', BusFilter: {isThisTheBusFilter}. 选项数量: {options.Count}. 当前值: {this._currentFilterValues[filterName] ?? "无"}");
             }
 
             // --- 第3步: 解析动态列表项 ---
@@ -390,7 +404,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
             Boolean favoriteFilterActive = false;
             // 首先处理 BusFilter (如果定义了)
             if (!String.IsNullOrEmpty(this._busFilterDialDisplayName) &&
-                this._currentFilterValues.TryGetValue(this._busFilterDialDisplayName, out var busFilterValue))
+                this._currentFilterValues.TryGetValue(this._busFilterDialDisplayName, out var busFilterValue)) // busFilterValue 可以为 null
             {
                 if (busFilterValue == "Favorite")
                 {
@@ -410,12 +424,14 @@ namespace Loupedeck.ReaOSCPlugin.Base
                         PluginLog.Info($"[{this.DisplayName}] 收藏夹过滤器激活，但收藏列表为空。");
                     }
                 }
-                else if (busFilterValue != "All") // 如果BusFilter不是"All"也不是"Favorite"
+                // 【修改】如果 busFilterValue 不是 "Favorite" 且不为null/空 (即选定了具体分类)
+                else if (!String.IsNullOrEmpty(busFilterValue)) 
                 {
                     // BusFilter 通常作用于列表项的 GroupName
                     itemsToDisplay = itemsToDisplay.Where(item => item.GroupName == busFilterValue);
                     PluginLog.Info($"[{this.DisplayName}] 应用BusFilter '{this._busFilterDialDisplayName}' = '{busFilterValue}' (作用于GroupName)。");
                 }
+                // 如果 busFilterValue 是 null 或空，则不应用此 BusFilter (相当于以前 "All" 的效果，但 "All" 不再是选项)
             }
 
             // 然后处理其他次级过滤器 (如果收藏夹过滤器未激活，或者激活了但仍需进一步过滤)
@@ -426,15 +442,17 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 foreach (var filterEntry in this._currentFilterValues)
                 {
                     var filterName = filterEntry.Key;
-                    var selectedValue = filterEntry.Value;
+                    var selectedValue = filterEntry.Value; // selectedValue 可以为 null
 
                     // 跳过已经处理过的BusFilter本身，以及当BusFilter选为Favorite时也不再用次级过滤器（通常逻辑）
-                    if (filterName == this._busFilterDialDisplayName || (favoriteFilterActive && filterName != this._busFilterDialDisplayName) ) 
+                    // 【修正】如果收藏夹激活，次级过滤器应该仍然可以独立工作，而不是被跳过
+                    if (filterName == this._busFilterDialDisplayName) 
                     {
                         continue;
                     }
                     
-                    if (selectedValue != "All")
+                    // 【修改】如果 selectedValue 不为null/空 (即选定了具体分类) 且不为 "All"
+                    if (!String.IsNullOrEmpty(selectedValue) && selectedValue != "All")
                     {
                         itemsToDisplay = itemsToDisplay.Where(item =>
                             item.FilterableProperties != null &&
@@ -443,6 +461,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                         );
                         PluginLog.Info($"[{this.DisplayName}] 应用次级过滤器 '{filterName}' = '{selectedValue}'。");
                     }
+                    // 如果 selectedValue 是 null 或空或 "All"，则不应用此特定过滤器
                 }
             }
 
@@ -660,7 +679,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                         listChanged = true;    // 列表内容已改变
                         valueChanged = true;   // 此旋钮显示的值已改变
                         pageCountChanged = true; // 总页数可能已改变
-                        PluginLog.Info($"[{this.DisplayName}] FilterDial '{filterName}' 值变为: {this._currentFilterValues[filterName]}");
+                        PluginLog.Info($"[{this.DisplayName}] FilterDial '{filterName}' 值变为: {this._currentFilterValues[filterName] ?? "无"}");
                     }
                     break;
                 
@@ -777,7 +796,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     var pageDialLocalId = this.GetLocalDialId(pageDialConfig);
                     if(!String.IsNullOrEmpty(pageDialLocalId))
                     {
-                        this.AdjustmentValueChanged(this.CreateAdjustmentName(pageDialLocalId)); 
+                        this.AdjustmentValueChanged(pageDialLocalId);
                     }
                 }
             }
