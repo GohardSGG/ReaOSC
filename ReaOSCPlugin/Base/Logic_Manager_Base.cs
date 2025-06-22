@@ -469,49 +469,77 @@ namespace Loupedeck.ReaOSCPlugin.Base
             return null;
         }
 
-        public bool ProcessUserAction(string actionParameter, string dynamicFolderDisplayName = null)
+        public bool ProcessUserAction(string actionParameter, string dynamicFolderDisplayName = null, ButtonConfig itemConfig = null)
         {
-            var config = GetConfig(actionParameter);
+            // 优先使用传入的 itemConfig，如果为null，则尝试从 _allConfigs 中获取
+            var config = itemConfig ?? GetConfig(actionParameter);
+            
             if (config == null)
-            { PluginLog.Warning($"[LogicManager] ProcessUserAction: 未找到配置 for '{actionParameter}'"); return false; }
+            {
+                PluginLog.Warning($"[LogicManager] ProcessUserAction: 未找到配置 for '{actionParameter}', 且未提供 itemConfig。");
+                return false;
+            }
 
             bool needsUiRefresh = false;
+            string oscAddressToSend = null;
+            float oscValueToSend = 1.0f;
+            bool sendOsc = false;
+
             switch (config.ActionType)
             {
                 case "ToggleButton":
-                    SetToggleState(actionParameter, !GetToggleState(actionParameter)); // SetToggleState内部会调用CommandStateNeedsRefresh
-                    // 【修正OSC地址规则】使用控件自身的JSON GroupName
-                    string toggleOscAddress = DetermineOscAddressForAction(config, config.GroupName);
-                    if (!string.IsNullOrEmpty(toggleOscAddress) && toggleOscAddress != "/")
-                    { ReaOSCPlugin.SendOSCMessage(toggleOscAddress, GetToggleState(actionParameter) ? 1.0f : 0.0f); }
-                    else
-                    { PluginLog.Warning($"[LogicManager] ToggleButton '{actionParameter}' 无法确定有效OSC地址。"); }
+                    // 对于ToggleButton，其 actionParameter 应该是全局注册的 Key
+                    SetToggleState(actionParameter, !GetToggleState(actionParameter)); 
+                    oscAddressToSend = DetermineOscAddressForAction(config, config.GroupName); // 使用按钮自己的GroupName
+                    oscValueToSend = GetToggleState(actionParameter) ? 1.0f : 0.0f;
+                    sendOsc = true;
                     break;
+
                 case "TriggerButton":
-                    // 【修正OSC地址规则】使用控件自身的JSON GroupName
-                    string triggerOscAddress = DetermineOscAddressForAction(config, config.GroupName);
-                    if (!string.IsNullOrEmpty(triggerOscAddress) && triggerOscAddress != "/")
+                    if (itemConfig != null && !string.IsNullOrEmpty(dynamicFolderDisplayName)) // 表明是来自文件夹的动态列表项
                     {
-                        ReaOSCPlugin.SendOSCMessage(triggerOscAddress, 1.0f);
-                        PluginLog.Info($"[LogicManager] TriggerButton '{actionParameter}' SENT to '{triggerOscAddress}' (using JSON GroupName '{config.GroupName}')");
+                        // 构建特定格式的OSC地址: /FolderName/Add/TopGroup/ItemName
+                        var folderNamePart = SanitizeOscPathSegment(dynamicFolderDisplayName);
+                        var topGroupPart = SanitizeOscPathSegment(itemConfig.GroupName); // itemConfig.GroupName 是数据源JSON中的父级键
+                        var itemNamePart = SanitizeOscPathSegment(itemConfig.DisplayName);
+                        oscAddressToSend = $"/{folderNamePart}/Add/{topGroupPart}/{itemNamePart}".Replace("//", "/");
                     }
-                    else
-                    { PluginLog.Warning($"[LogicManager] TriggerButton '{actionParameter}' (JSON GroupName '{config.GroupName}') 无法确定有效OSC地址。"); }
-                    this.CommandStateNeedsRefresh?.Invoke(this, actionParameter);
+                    else // 普通的、已注册的 TriggerButton
+                    {
+                        oscAddressToSend = DetermineOscAddressForAction(config, config.GroupName); // 使用按钮自己的GroupName
+                    }
+                    oscValueToSend = 1.0f;
+                    sendOsc = true;
+                    this.CommandStateNeedsRefresh?.Invoke(this, actionParameter); // TriggerButton按下通常也刷新一下，用于瞬时反馈
                     break;
+
                 case "CombineButton":
-                    // 【修正OSC地址规则】ProcessCombineButtonAction将使用combineButtonConfig.GroupName
-                    // dynamicFolderDisplayName 参数仅用于日志或特定上下文，不再用于OSC路径或依赖查找
-                    ProcessCombineButtonAction(config, dynamicFolderDisplayName);
+                    ProcessCombineButtonAction(config, dynamicFolderDisplayName); // dynamicFolderDisplayName 仅用于日志或上下文
                     this.CommandStateNeedsRefresh?.Invoke(this, actionParameter);
                     break;
+
                 case "SelectModeButton":
-                    this.ToggleMode(config.DisplayName);
-                    needsUiRefresh = true;
+                    this.ToggleMode(config.DisplayName); // SelectModeButton的DisplayName是ModeGroup的名称
+                    // ToggleMode 内部会调用 CommandStateNeedsRefresh
+                    needsUiRefresh = true; // SelectModeButton按下通常需要刷新依赖它的按钮
                     break;
+
                 default:
-                    PluginLog.Warning($"[LogicManager] ProcessUserAction: 未处理的 ActionType '{config.ActionType}' for '{actionParameter}'");
+                    PluginLog.Warning($"[LogicManager] ProcessUserAction: 未处理的 ActionType '{config.ActionType}' for '{config.DisplayName}' (actionParameter: '{actionParameter}')");
                     break;
+            }
+
+            if (sendOsc)
+            {
+                if (!string.IsNullOrEmpty(oscAddressToSend) && oscAddressToSend != "/")
+                {
+                    ReaOSCPlugin.SendOSCMessage(oscAddressToSend, oscValueToSend);
+                    PluginLog.Info($"[LogicManager] ProcessUserAction: OSC已发送 '{oscAddressToSend}' -> {oscValueToSend} (源: '{config.DisplayName}', ActionType: {config.ActionType})");
+                }
+                else
+                {
+                    PluginLog.Warning($"[LogicManager] ProcessUserAction: 无法为 '{config.DisplayName}' (ActionType: {config.ActionType}) 确定有效的OSC地址。");
+                }
             }
             return needsUiRefresh;
         }
