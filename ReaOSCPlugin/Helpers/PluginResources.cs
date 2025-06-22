@@ -13,10 +13,10 @@ namespace Loupedeck.ReaOSCPlugin
     internal static class PluginResources
     {
         private static Assembly _assembly;
-        private static string[] _allResourceNames;
+        private static String[] _allResourceNames;
 
         /// <summary>
-        /// ����������ʼ����Դ�������������ڲ�����캯���е���һ�Ρ�
+        /// ʼԴڲ캯еһΡ
         /// </summary>
         public static void Init(Assembly assembly)
         {
@@ -35,7 +35,7 @@ namespace Loupedeck.ReaOSCPlugin
         /// <returns>����ҵ���������Դ���������ƣ����򷵻� null��</returns>
         public static String FindFile(String fileName)
         {
-            if (string.IsNullOrEmpty(fileName) || _allResourceNames == null)
+            if (String.IsNullOrEmpty(fileName) || _allResourceNames == null)
             {
                 return null;
             }
@@ -50,13 +50,13 @@ namespace Loupedeck.ReaOSCPlugin
         }
 
         /// <summary>
-        /// ָ "ļ" Ƕ����Դ�ļ������������б���
+        /// ָ "ļ" ǶԴļб
         /// </summary>
-        /// <param name="folderName">��Դ�� "�����ռ�·��"������ `Loupedeck.ReaOSCPlugin.Assets`</param>
-        /// <returns>��������ƥ����Դ�������Ƶ��ַ������飻����Ҳ�����Ϊ�����顣</returns>
+        /// <param name="folderName">Դ "ռ·" `Loupedeck.ReaOSCPlugin.Assets`</param>
+        /// <returns>ƥԴƵַ飻ҲΪ顣</returns>
         public static String[] GetFilesInFolder(String folderName)
         {
-            if (string.IsNullOrEmpty(folderName) || _allResourceNames == null)
+            if (String.IsNullOrEmpty(folderName) || _allResourceNames == null)
             {
                 return new String[0];
             }
@@ -64,13 +64,13 @@ namespace Loupedeck.ReaOSCPlugin
         }
 
         /// <summary>
-        /// ��������ʹ���������ʽ��������ƥ�����Դ�ļ���
+        /// ʹʽƥԴļ
         /// </summary>
-        /// <param name="regexPattern">�������ʽ�ַ�����</param>
-        /// <returns>��������ƥ����Դ�������Ƶ��ַ������飻����Ҳ�����Ϊ�����顣</returns>
+        /// <param name="regexPattern">ʽַ</param>
+        /// <returns>ƥԴƵַ飻ҲΪ顣</returns>
         public static String[] FindFiles(String regexPattern)
         {
-            if (string.IsNullOrEmpty(regexPattern) || _allResourceNames == null)
+            if (String.IsNullOrEmpty(regexPattern) || _allResourceNames == null)
             {
                 return new String[0];
             }
@@ -79,21 +79,21 @@ namespace Loupedeck.ReaOSCPlugin
         }
 
         /// <summary>
-        /// ����������ȫ�ػ�ȡָ��Ƕ����Դ��ԭʼ��������
+        /// ȫػȡָǶԴԭʼ
         /// </summary>
-        /// <param name="fileName">Ҫ���ҵ���Դ�ļ�����</param>
-        /// <returns>һ�� Stream ��������Ҳ����ļ��򷵻� null��</returns>
+        /// <param name="fileName">ҪҵԴļ</param>
+        /// <returns>һ Stream Ҳļ򷵻 null</returns>
         public static Stream GetStream(String fileName)
         {
             var resourcePath = FindFile(fileName);
-            return string.IsNullOrEmpty(resourcePath) ? null : _assembly.GetManifestResourceStream(resourcePath);
+            return String.IsNullOrEmpty(resourcePath) ? null : _assembly.GetManifestResourceStream(resourcePath);
         }
 
         /// <summary>
-        /// ����������ȫ�ض�ȡָ����Ƕ��ʽ�ı��ļ���
+        /// ȫضȡָǶʽıļ
         /// </summary>
-        /// <param name="fileName">Ҫ��ȡ���ı��ļ�����</param>
-        /// <returns>�����ļ������ı����ݵ��ַ���������Ҳ����ļ��򷵻� null��</returns>
+        /// <param name="fileName">Ҫȡıļ</param>
+        /// <returns>ļıݵַҲļ򷵻 null</returns>
         public static String ReadTextFile(String fileName)
         {
             using (var stream = GetStream(fileName))
@@ -135,14 +135,14 @@ namespace Loupedeck.ReaOSCPlugin
         /// </summary>
         /// <param name="fileName">Ҫ��ȡ��ͼ���ļ�����</param>
         /// <returns>һ�� BitmapImage ��������Ҳ��������ʧ�ܣ��򷵻� null��</returns>
-        public static BitmapImage ReadImage(string fileName)
+        public static BitmapImage ReadImage(String fileName)
         {
             try
             {
                 var resourcePath = FindFile(fileName);
-                if (string.IsNullOrEmpty(resourcePath))
+                if (String.IsNullOrEmpty(resourcePath))
                 {
-                    return null; // �Ҳ����ļ�����ȫ���� null
+                    return null; // Ҳļȫ null
                 }
 
                 if (Path.GetExtension(resourcePath).ToLowerInvariant() == ".svg")
@@ -169,7 +169,7 @@ namespace Loupedeck.ReaOSCPlugin
         /// <param name="fileName">Ҫ��ȡ��Ƕ����Դ���ļ�����</param>
         /// <param name="filePathName">Ҫ������Ӳ���ϵ�����·�����ļ�����</param>
         /// <returns>�����ȡ�ɹ����� true�����Դ�ļ��Ҳ�����д��ʧ���򷵻� false��</returns>
-        public static bool ExtractFile(String fileName, String filePathName)
+        public static Boolean ExtractFile(String fileName, String filePathName)
         {
             try
             {

@@ -21,25 +21,25 @@ namespace Loupedeck.ReaOSCPlugin.Helpers
         /// <param name="config">控件的配置。</param>
         /// <param name="contextDisplayName">可选，用于日志记录的上下文名称。</param>
         /// <returns>加载的 BitmapImage，如果失败则返回 null。</returns>
-        public static BitmapImage TryLoadIcon(ButtonConfig config, string contextDisplayName = null)
+        public static BitmapImage TryLoadIcon(ButtonConfig config, String contextDisplayName = null)
         {
             if (config == null)
             {
                 PluginLog.Verbose($"[{contextDisplayName ?? "PluginImage"}|TryLoadIcon] 传入的 ButtonConfig 为空。");
                 return null;
             }
-            string imagePathToLoad = null;
+            String imagePathToLoad = null;
             if (!String.IsNullOrEmpty(config.ButtonImage))
             {
                 imagePathToLoad = config.ButtonImage;
                 PluginLog.Verbose($"[{contextDisplayName ?? "PluginImage"}|TryLoadIcon] 尝试从 ButtonImage 字段 ('{config.ButtonImage}') 加载图标 for control '{config.DisplayName}'.");
             }
-            else if (!string.IsNullOrEmpty(config.DisplayName))
+            else if (!String.IsNullOrEmpty(config.DisplayName))
             {
                 imagePathToLoad = $"{config.DisplayName.Replace(" ", "_")}.png";
                 PluginLog.Verbose($"[{contextDisplayName ?? "PluginImage"}|TryLoadIcon] ButtonImage为空，尝试根据 DisplayName ('{config.DisplayName}') 推断图标: '{imagePathToLoad}'.");
             }
-            if (string.IsNullOrEmpty(imagePathToLoad))
+            if (String.IsNullOrEmpty(imagePathToLoad))
             {
                 PluginLog.Verbose($"[{contextDisplayName ?? "PluginImage"}|TryLoadIcon] 未能为控件 '{config.DisplayName}' 确定有效的图标路径。");
                 return null;
@@ -81,14 +81,14 @@ namespace Loupedeck.ReaOSCPlugin.Helpers
         public static BitmapImage DrawElement(
             PluginImageSize imageSize,
             ButtonConfig config,
-            string mainTitleOverride = null,
-            string valueText = null, // 在Dynamic_Folder_Base的旋钮绘制中有这个概念
-            bool isActive = false,
-            int currentMode = 0, // 0 通常是默认模式
+            String mainTitleOverride = null,
+            String valueText = null, // 在Dynamic_Folder_Base的旋钮绘制中有这个概念
+            Boolean isActive = false,
+            Int32 currentMode = 0, // 0 通常是默认模式
             BitmapImage customIcon = null,
-            bool forceTextOnly = false,
-            string actualAuxText = null,
-            bool preferIconOnlyForDial = false)
+            Boolean forceTextOnly = false,
+            String actualAuxText = null,
+            Boolean preferIconOnlyForDial = false)
         {
             if (config == null && customIcon == null) // 如果连配置和图标都没有，才绘制错误
             {
@@ -129,7 +129,7 @@ namespace Loupedeck.ReaOSCPlugin.Helpers
                 // --- 图标优先绘制逻辑 ---
                 if (customIcon != null && !forceTextOnly)
                 {
-                    bool isDial = config.ActionType?.Contains("Dial") ?? false;
+                    Boolean isDial = config.ActionType?.Contains("Dial") ?? false;
 
                     if (isDial && preferIconOnlyForDial) // 【旋钮：纯图标模式】
                     {
@@ -137,17 +137,17 @@ namespace Loupedeck.ReaOSCPlugin.Helpers
                     }
                     else // 【按钮：图标 + 下方文字模式】
                     {
-                        int titleFontSizeForIcon = imageSize == PluginImageSize.Width90 ? 10 : 12;
-                        int titleAreaHeight = titleFontSizeForIcon + (imageSize == PluginImageSize.Width90 ? 4 : 6); 
-                        int topMargin = imageSize == PluginImageSize.Width90 ? 2 : 3;
-                        int iconAreaHeight = bitmapBuilder.Height - titleAreaHeight - topMargin;
+                        Int32 titleFontSizeForIcon = imageSize == PluginImageSize.Width90 ? 10 : 12;
+                        Int32 titleAreaHeight = titleFontSizeForIcon + (imageSize == PluginImageSize.Width90 ? 4 : 6); 
+                        Int32 topMargin = imageSize == PluginImageSize.Width90 ? 2 : 3;
+                        Int32 iconAreaHeight = bitmapBuilder.Height - titleAreaHeight - topMargin;
                         iconAreaHeight = Math.Max(10, iconAreaHeight); 
-                        int iconAreaWidth = bitmapBuilder.Width - (imageSize == PluginImageSize.Width90 ? 4 : 6); 
+                        Int32 iconAreaWidth = bitmapBuilder.Width - (imageSize == PluginImageSize.Width90 ? 4 : 6); 
                         
                         var (drawnIconWidth, drawnIconHeight) = DrawScaledIcon(bitmapBuilder, customIcon, (bitmapBuilder.Width - iconAreaWidth)/2, topMargin, iconAreaWidth, iconAreaHeight, true); // 确保DrawScaledIcon内部能正确居中于给定的areaX, areaY, areaWidth, areaHeight
 
-                        string titleForIconMode = mainTitleOverride ?? config.Title ?? config.DisplayName;
-                        if (!string.IsNullOrEmpty(titleForIconMode))
+                        String titleForIconMode = mainTitleOverride ?? config.Title ?? config.DisplayName;
+                        if (!String.IsNullOrEmpty(titleForIconMode))
                         {
                             var textYUnderIcon = topMargin + drawnIconHeight + (imageSize == PluginImageSize.Width90 ? 1 : 2); 
                             var remainingHeightForTitle = bitmapBuilder.Height - textYUnderIcon - (imageSize == PluginImageSize.Width90 ? 1 : 2);
@@ -179,12 +179,12 @@ namespace Loupedeck.ReaOSCPlugin.Helpers
                     // 此部分严格参考用户提供的原始 PluginImage.cs 的文本绘制逻辑
                     // (假设在2024-07-15 10:19:47.561 UTC消息附近获取到的版本)
                     BitmapColor currentTitleColor = GetTitleColor(config, isActive, currentMode);
-                    string titleToDraw = mainTitleOverride ?? config.Title ?? config.DisplayName;
+                    String titleToDraw = mainTitleOverride ?? config.Title ?? config.DisplayName;
                     // 原始逻辑中，如果customIcon存在且!forceTextOnly，会先尝试绘制图标和其下小字标题
                     // 但此分支的条件是 customIcon == null || forceTextOnly == true，所以那部分不执行
                     // 直接进入原始的 (!iconDrawn) 分支逻辑:
                     
-                    bool shouldShowConfigTitle = !(config.ShowTitle?.Equals("No", StringComparison.OrdinalIgnoreCase) == true);
+                    Boolean shouldShowConfigTitle = !(config.ShowTitle?.Equals("No", StringComparison.OrdinalIgnoreCase) == true);
                     if (!String.IsNullOrEmpty(valueText)) 
                     { 
                         var paramValueFontSize = GetParameterValueFontSize(valueText);
@@ -200,12 +200,12 @@ namespace Loupedeck.ReaOSCPlugin.Helpers
                     }
                     else if (!String.IsNullOrEmpty(titleToDraw)) 
                     { 
-                        int titleFontSize = (config.ActionType != null && (config.ActionType.Contains("Dial"))) ? GetDialFontSize(titleToDraw) : GetButtonFontSize(titleToDraw);
+                        Int32 titleFontSize = (config.ActionType != null && (config.ActionType.Contains("Dial"))) ? GetDialFontSize(titleToDraw) : GetButtonFontSize(titleToDraw);
                         bitmapBuilder.DrawText(titleToDraw, currentTitleColor, titleFontSize);
                     }
 
                     // 绘制辅助文本 (config.Text) - 原始逻辑的第5步
-                    string textToRenderForAux = actualAuxText ?? config.Text;
+                    String textToRenderForAux = actualAuxText ?? config.Text;
                     if (!String.IsNullOrEmpty(textToRenderForAux))
                     {
                         var textX = config.TextX ?? 50;
@@ -230,28 +230,28 @@ namespace Loupedeck.ReaOSCPlugin.Helpers
         /// 辅助方法：在指定区域内绘制图标，保持宽高比并缩放（如果需要）。
         /// </summary>
         /// <returns>返回实际绘制的图标尺寸 (width, height)。</returns>
-        private static (int drawnWidth, int drawnHeight) DrawScaledIcon(BitmapBuilder bb, BitmapImage icon, int areaX, int areaY, int areaWidth, int areaHeight, bool centerInArea)
+        private static (Int32 drawnWidth, Int32 drawnHeight) DrawScaledIcon(BitmapBuilder bb, BitmapImage icon, Int32 areaX, Int32 areaY, Int32 areaWidth, Int32 areaHeight, Boolean centerInArea)
         {
             if (icon == null || areaWidth <= 0 || areaHeight <= 0) return (0,0);
 
-            int originalIconWidth = icon.Width;
-            int originalIconHeight = icon.Height;
-            int drawnWidth = originalIconWidth;
-            int drawnHeight = originalIconHeight;
-            double scale = 1.0;
+            Int32 originalIconWidth = icon.Width;
+            Int32 originalIconHeight = icon.Height;
+            Int32 drawnWidth = originalIconWidth;
+            Int32 drawnHeight = originalIconHeight;
+            Double scale = 1.0;
 
             // 计算缩放比例以适应区域，同时保持宽高比
-            if (originalIconHeight > areaHeight) { scale = (double)areaHeight / originalIconHeight; }
-            if (originalIconWidth * scale > areaWidth) { scale = Math.Min(scale, (double)areaWidth / originalIconWidth); } 
-            else if (originalIconWidth > areaWidth && Math.Abs(scale - 1.0) < 0.001) { scale = (double)areaWidth / originalIconWidth; } // 如果未因高度缩放，但宽度超出
+            if (originalIconHeight > areaHeight) { scale = (Double)areaHeight / originalIconHeight; }
+            if (originalIconWidth * scale > areaWidth) { scale = Math.Min(scale, (Double)areaWidth / originalIconWidth); } 
+            else if (originalIconWidth > areaWidth && Math.Abs(scale - 1.0) < 0.001) { scale = (Double)areaWidth / originalIconWidth; } // 如果未因高度缩放，但宽度超出
 
-            drawnWidth = (int)(originalIconWidth * scale);
-            drawnHeight = (int)(originalIconHeight * scale);
+            drawnWidth = (Int32)(originalIconWidth * scale);
+            drawnHeight = (Int32)(originalIconHeight * scale);
             drawnWidth = Math.Max(1, drawnWidth);
             drawnHeight = Math.Max(1, drawnHeight);
 
-            int finalX = areaX;
-            int finalY = areaY;
+            Int32 finalX = areaX;
+            Int32 finalY = areaY;
             if (centerInArea)
             {
                 finalX = areaX + (areaWidth - drawnWidth) / 2;
@@ -262,7 +262,7 @@ namespace Loupedeck.ReaOSCPlugin.Helpers
             return (drawnWidth, drawnHeight);
         }
 
-        private static BitmapColor GetTitleColor(ButtonConfig config, bool isActive, int currentMode)
+        private static BitmapColor GetTitleColor(ButtonConfig config, Boolean isActive, Int32 currentMode)
         {
             if (config == null) return BitmapColor.White;
             BitmapColor titleColor = HexToBitmapColor(config.TitleColor, BitmapColor.White);
@@ -278,7 +278,7 @@ namespace Loupedeck.ReaOSCPlugin.Helpers
         /// <summary>
         /// 将十六进制颜色字符串转换为 BitmapColor。
         /// </summary>
-        private static BitmapColor HexToBitmapColor(string hexColor, BitmapColor? defaultColor = null)
+        private static BitmapColor HexToBitmapColor(String hexColor, BitmapColor? defaultColor = null)
         {
             if (String.IsNullOrEmpty(hexColor)) return defaultColor ?? BitmapColor.Black; 
             if (!hexColor.StartsWith("#")) return defaultColor ?? (defaultColor.HasValue ? defaultColor.Value : BitmapColor.Red); 
@@ -286,10 +286,10 @@ namespace Loupedeck.ReaOSCPlugin.Helpers
             if (hex.Length != 6 && hex.Length != 8) return defaultColor ?? BitmapColor.Red; 
             try
             {
-                var r = (byte)Int32.Parse(hex.Substring(0, 2), NumberStyles.HexNumber);
-                var g = (byte)Int32.Parse(hex.Substring(2, 2), NumberStyles.HexNumber);
-                var b = (byte)Int32.Parse(hex.Substring(4, 2), NumberStyles.HexNumber);
-                if (hex.Length == 8) { var a = (byte)Int32.Parse(hex.Substring(6, 2), NumberStyles.HexNumber); return new BitmapColor(r, g, b, a); }
+                var r = (Byte)Int32.Parse(hex.Substring(0, 2), NumberStyles.HexNumber);
+                var g = (Byte)Int32.Parse(hex.Substring(2, 2), NumberStyles.HexNumber);
+                var b = (Byte)Int32.Parse(hex.Substring(4, 2), NumberStyles.HexNumber);
+                if (hex.Length == 8) { var a = (Byte)Int32.Parse(hex.Substring(6, 2), NumberStyles.HexNumber); return new BitmapColor(r, g, b, a); }
                 return new BitmapColor(r, g, b);
             }
             catch { return defaultColor ?? BitmapColor.Red; }
@@ -298,11 +298,11 @@ namespace Loupedeck.ReaOSCPlugin.Helpers
         /// <summary>
         /// 根据标题长度自动获取按钮的字体大小 (源自 General_Button_Base)。
         /// </summary>
-        private static int GetButtonFontSize(String title)
+        private static Int32 GetButtonFontSize(String title)
         {
             if (String.IsNullOrEmpty(title)) return 23;
             var totalLengthWithSpaces = title.Length;
-            int effectiveLength;
+            Int32 effectiveLength;
             if (totalLengthWithSpaces <= 8)
             {
                 effectiveLength = totalLengthWithSpaces;
@@ -336,11 +336,11 @@ namespace Loupedeck.ReaOSCPlugin.Helpers
         /// <summary>
         /// 根据标题长度自动获取旋钮的字体大小 (源自 General_Dial_Base)。
         /// </summary>
-        private static int GetDialFontSize(String title)
+        private static Int32 GetDialFontSize(String title)
         {
             if (String.IsNullOrEmpty(title)) return 16;
             var totalLengthWithSpaces = title.Length;
-            int effectiveLength;
+            Int32 effectiveLength;
             if (totalLengthWithSpaces <= 10) // General_Dial_Base logic
             {
                 effectiveLength = totalLengthWithSpaces;
@@ -371,7 +371,7 @@ namespace Loupedeck.ReaOSCPlugin.Helpers
         }
 
         // 【新增】获取参数值的字体大小
-        private static int GetParameterValueFontSize(string parameterValue)
+        private static Int32 GetParameterValueFontSize(String parameterValue)
         {
             if (String.IsNullOrEmpty(parameterValue)) return 10; // 默认一个较小值以防空字符串
             var len = parameterValue.Length;

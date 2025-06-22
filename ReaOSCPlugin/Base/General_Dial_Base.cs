@@ -12,7 +12,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
     // 【修改】实现 IDisposable 接口
     public class General_Dial_Base : PluginDynamicAdjustment, IDisposable
     {
-        private readonly Dictionary<string, DateTime> _lastEventTimes = new Dictionary<string, DateTime>();
+        private readonly Dictionary<String, DateTime> _lastEventTimes = new Dictionary<String, DateTime>();
         private readonly Logic_Manager_Base _logicManager = Logic_Manager_Base.Instance; // 【新增】方便引用
 
         public General_Dial_Base() : base(hasReset: true)
@@ -40,7 +40,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
         }
 
         // 【新增】处理来自Logic_Manager_Base的状态刷新通知的方法
-        private void OnLogicManagerCommandStateNeedsRefresh(object sender, string actionParameterThatChanged)
+        private void OnLogicManagerCommandStateNeedsRefresh(object sender, String actionParameterThatChanged)
         {
             // 当Logic_Manager_Base通知某个actionParameter的状态已更新时，
             // 我们需要检查这个actionParameter是否由当前这个General_Dial_Base实例管理。
@@ -62,7 +62,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
             }
         }
 
-        protected override void ApplyAdjustment(string actionParameter, int ticks) // 【无改动】
+        protected override void ApplyAdjustment(String actionParameter, Int32 ticks) // 【无改动】
         {
             var config = this._logicManager.GetConfig(actionParameter);
             if (config == null)
@@ -71,7 +71,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
             this.AdjustmentValueChanged(actionParameter); // 通知Loupedeck值已改变 (即使我们不直接显示值)
         }
 
-        protected override void RunCommand(string actionParameter) // 【无改动】
+        protected override void RunCommand(String actionParameter) // 【无改动】
         {
             var config = this._logicManager.GetConfig(actionParameter);
             if (config == null)
@@ -82,9 +82,9 @@ namespace Loupedeck.ReaOSCPlugin.Base
             }
         }
 
-        protected override string GetAdjustmentValue(string actionParameter) => null; // 【无改动】值通常不单独显示，而是绘制在图像中
+        protected override String GetAdjustmentValue(String actionParameter) => null; // 【无改动】值通常不单独显示，而是绘制在图像中
 
-        protected override BitmapImage GetCommandImage(string actionParameter, PluginImageSize imageSize)
+        protected override BitmapImage GetCommandImage(String actionParameter, PluginImageSize imageSize)
         {
             var config = this._logicManager.GetConfig(actionParameter);
             if (config == null)
@@ -97,10 +97,10 @@ namespace Loupedeck.ReaOSCPlugin.Base
             {
                 BitmapImage loadedIcon = PluginImage.TryLoadIcon(config, "GeneralDialBase_Press"); // Context for press
 
-                bool isActive = false; 
-                string mainTitleOverride = null;
-                string valueText = null; // 旋钮按下通常不显示值文本
-                int currentMode = 0;    
+                Boolean isActive = false; 
+                String mainTitleOverride = null;
+                String valueText = null; // 旋钮按下通常不显示值文本
+                Int32 currentMode = 0;    
 
                 if (config.ActionType == "ToggleDial")
                 {
@@ -139,7 +139,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
         }
 
         // 【新增】重写 GetAdjustmentImage 以实现图标优先逻辑
-        protected override BitmapImage GetAdjustmentImage(string actionParameter, PluginImageSize imageSize)
+        protected override BitmapImage GetAdjustmentImage(String actionParameter, PluginImageSize imageSize)
         {
             var config = this._logicManager.GetConfig(actionParameter);
             if (config == null)
@@ -152,12 +152,12 @@ namespace Loupedeck.ReaOSCPlugin.Base
             {
                 BitmapImage loadedIcon = PluginImage.TryLoadIcon(config, "GeneralDialBase_Adjustment");
 
-                bool isActive = false; 
-                int currentMode = 0;   
-                string valueTextForAdjustment = null; 
+                Boolean isActive = false; 
+                Int32 currentMode = 0;   
+                String valueTextForAdjustment = null; 
                 // mainTitleOverride 会在 PluginImage.DrawElement 中根据 config.Title/DisplayName 和 preferIconOnlyForDial 确定
                 // 如果是纯图标模式，标题会被忽略；如果是文本模式，会使用config的标题。
-                string mainTitleOverride = config.Title ?? config.DisplayName; // 供文本模式使用
+                String mainTitleOverride = config.Title ?? config.DisplayName; // 供文本模式使用
 
                 if (config.ActionType == "ToggleDial")
                 {

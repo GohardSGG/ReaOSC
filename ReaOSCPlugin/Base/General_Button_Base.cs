@@ -18,11 +18,11 @@ namespace Loupedeck.ReaOSCPlugin.Base
     public class General_Button_Base : PluginDynamicCommand, IDisposable
     {
         private readonly Logic_Manager_Base _logicManager = Logic_Manager_Base.Instance;
-        private readonly Dictionary<string, Action> _modeHandlers = new Dictionary<string, Action>();
-        private readonly Dictionary<string, EventHandler<OSCStateManager.StateChangedEventArgs>> _oscHandlers = new Dictionary<string, EventHandler<OSCStateManager.StateChangedEventArgs>>();
+        private readonly Dictionary<String, Action> _modeHandlers = new Dictionary<String, Action>();
+        private readonly Dictionary<String, EventHandler<OSCStateManager.StateChangedEventArgs>> _oscHandlers = new Dictionary<String, EventHandler<OSCStateManager.StateChangedEventArgs>>();
 
-        private readonly Dictionary<string, bool> _triggerTemporaryActiveStates = new Dictionary<string, bool>();
-        private readonly Dictionary<string, Timer> _triggerResetTimers = new Dictionary<string, Timer>();
+        private readonly Dictionary<String, Boolean> _triggerTemporaryActiveStates = new Dictionary<String, Boolean>();
+        private readonly Dictionary<String, Timer> _triggerResetTimers = new Dictionary<String, Timer>();
 
         public General_Button_Base()
         {
@@ -47,7 +47,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     this._modeHandlers[actionParameter] = handler;
                     this._logicManager.SubscribeToModeChange(config.DisplayName, handler);
                 }
-                else if (!string.IsNullOrEmpty(config.ModeName))
+                else if (!String.IsNullOrEmpty(config.ModeName))
                 {
                     Action handler = () => this.ActionImageChanged(actionParameter);
                     this._modeHandlers[actionParameter] = handler;
@@ -69,9 +69,9 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     if (config.ActionType == "ToggleButton")
                     {
                         EventHandler<OSCStateManager.StateChangedEventArgs> oscHandler = (s, e) => {
-                            string groupNameForPath = config.GroupName.Replace(" ", "_").Trim('/');
-                            string pathSuffix;
-                            if (!string.IsNullOrEmpty(config.OscAddress))
+                            String groupNameForPath = config.GroupName.Replace(" ", "_").Trim('/');
+                            String pathSuffix;
+                            if (!String.IsNullOrEmpty(config.OscAddress))
                             {
                                 pathSuffix = config.OscAddress.Replace(" ", "_").TrimStart('/');
                             }
@@ -79,9 +79,9 @@ namespace Loupedeck.ReaOSCPlugin.Base
                             {
                                 pathSuffix = config.DisplayName.Replace(" ", "_").TrimStart('/');
                             }
-                            string listenAddress = $"/{groupNameForPath}/{pathSuffix}".Replace("//", "/");
+                            String listenAddress = $"/{groupNameForPath}/{pathSuffix}".Replace("//", "/");
 
-                            if (string.IsNullOrEmpty(listenAddress) || listenAddress == "/")
+                            if (String.IsNullOrEmpty(listenAddress) || listenAddress == "/")
                                 return;
 
                             if (e.Address == listenAddress)
@@ -101,7 +101,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
             }
         }
 
-        private void InitializeTriggerButtonTimer(string actionParameter)
+        private void InitializeTriggerButtonTimer(String actionParameter)
         {
             this._triggerTemporaryActiveStates[actionParameter] = false;
             var timer = new Timer(200) { AutoReset = false };
@@ -115,10 +115,10 @@ namespace Loupedeck.ReaOSCPlugin.Base
             this._triggerResetTimers[actionParameter] = timer;
         }
 
-        private void OnModeButtonOscStateChanged(object sender, OSCStateManager.StateChangedEventArgs e, ButtonConfig config, string actionParameter)
+        private void OnModeButtonOscStateChanged(object sender, OSCStateManager.StateChangedEventArgs e, ButtonConfig config, String actionParameter)
         {
             var modeIndex = this._logicManager.GetCurrentModeIndex(config.ModeName);
-            string expectedAddress = null;
+            String expectedAddress = null;
 
             if (modeIndex != -1)
             {
@@ -126,18 +126,18 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 {
                     expectedAddress = config.OscAddresses[modeIndex];
                 }
-                if (string.IsNullOrEmpty(expectedAddress) && !string.IsNullOrEmpty(config.OscAddress))
+                if (String.IsNullOrEmpty(expectedAddress) && !String.IsNullOrEmpty(config.OscAddress))
                 {
-                    var currentModeString = this._logicManager.GetCurrentModeString(config.ModeName);
-                    if (!string.IsNullOrEmpty(currentModeString))
+                    String currentModeString = this._logicManager.GetCurrentModeString(config.ModeName);
+                    if (!String.IsNullOrEmpty(currentModeString))
                     {
-                        string groupNameForPath = config.GroupName.Replace(" ", "_").Trim('/');
-                        string pathAfterMode = config.OscAddress.Replace("{mode}", currentModeString).TrimStart('/');
+                        String groupNameForPath = config.GroupName.Replace(" ", "_").Trim('/');
+                        String pathAfterMode = config.OscAddress.Replace("{mode}", currentModeString).TrimStart('/');
                         expectedAddress = $"/{groupNameForPath}/{pathAfterMode}".Replace("//", "/");
                     }
                 }
             }
-            if (string.IsNullOrEmpty(expectedAddress))
+            if (String.IsNullOrEmpty(expectedAddress))
                 return;
             if (e.Address == expectedAddress)
             {
@@ -146,7 +146,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
             }
         }
 
-        protected override void RunCommand(string actionParameter)
+        protected override void RunCommand(String actionParameter)
         {
             if (this._logicManager.GetConfig(actionParameter) is not { } config)
                 return;
@@ -155,10 +155,10 @@ namespace Loupedeck.ReaOSCPlugin.Base
             {
                 this._logicManager.ToggleMode(config.DisplayName);
             }
-            else if (!string.IsNullOrEmpty(config.ModeName))
+            else if (!String.IsNullOrEmpty(config.ModeName))
             {
                 var modeIndex = this._logicManager.GetCurrentModeIndex(config.ModeName);
-                string currentModeStringForLog = this._logicManager.GetCurrentModeString(config.ModeName);
+                String currentModeStringForLog = this._logicManager.GetCurrentModeString(config.ModeName);
                 if (modeIndex == -1)
                 {
                     PluginLog.Warning($"[RunCommand] Button '{actionParameter}' ModeGroup '{config.ModeName}' invalid index.");
@@ -168,20 +168,20 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     { this._triggerTemporaryActiveStates[actionParameter] = true; this.ActionImageChanged(actionParameter); t.Stop(); t.Start(); }
                     return;
                 }
-                string finalOscAddress = null;
+                String finalOscAddress = null;
                 if (config.OscAddresses?.Count > modeIndex)
                 { finalOscAddress = config.OscAddresses[modeIndex]; }
-                if (string.IsNullOrEmpty(finalOscAddress) && !string.IsNullOrEmpty(config.OscAddress))
+                if (String.IsNullOrEmpty(finalOscAddress) && !String.IsNullOrEmpty(config.OscAddress))
                 {
-                    var currentModeString = this._logicManager.GetCurrentModeString(config.ModeName);
-                    if (!string.IsNullOrEmpty(currentModeString))
+                    String currentModeString = this._logicManager.GetCurrentModeString(config.ModeName);
+                    if (!String.IsNullOrEmpty(currentModeString))
                     {
-                        string groupNameForPath = config.GroupName.Replace(" ", "_").Trim('/');
-                        string pathAfterMode = config.OscAddress.Replace("{mode}", currentModeString).TrimStart('/');
+                        String groupNameForPath = config.GroupName.Replace(" ", "_").Trim('/');
+                        String pathAfterMode = config.OscAddress.Replace("{mode}", currentModeString).TrimStart('/');
                         finalOscAddress = $"/{groupNameForPath}/{pathAfterMode}".Replace("//", "/");
                     }
                 }
-                if (string.IsNullOrEmpty(finalOscAddress))
+                if (String.IsNullOrEmpty(finalOscAddress))
                 {
                     PluginLog.Warning($"[RunCommand] Button '{actionParameter}' (Mode '{currentModeStringForLog}') no valid OSC address.");
                     if (config.ActionType == "ToggleButton")
@@ -197,11 +197,11 @@ namespace Loupedeck.ReaOSCPlugin.Base
             }
             else
             {
-                string groupNameForPath = config.GroupName.Replace(" ", "_").Trim('/');
-                string pathSuffix = (!string.IsNullOrEmpty(config.OscAddress)) ? config.OscAddress.Replace(" ", "_").TrimStart('/') : config.DisplayName.Replace(" ", "_").TrimStart('/');
-                string targetOscAddress = $"/{groupNameForPath}/{pathSuffix}".Replace("//", "/");
+                String groupNameForPath = config.GroupName.Replace(" ", "_").Trim('/');
+                String pathSuffix = (!String.IsNullOrEmpty(config.OscAddress)) ? config.OscAddress.Replace(" ", "_").TrimStart('/') : config.DisplayName.Replace(" ", "_").TrimStart('/');
+                String targetOscAddress = $"/{groupNameForPath}/{pathSuffix}".Replace("//", "/");
 
-                if (string.IsNullOrEmpty(targetOscAddress) || targetOscAddress == "/")
+                if (String.IsNullOrEmpty(targetOscAddress) || targetOscAddress == "/")
                 {
                     PluginLog.Error($"[RunCommand] Button '{actionParameter}' (Normal) invalid target OSC address '{targetOscAddress}'.");
                     if (config.ActionType == "ToggleButton")
@@ -230,7 +230,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
             }
         }
 
-        protected override BitmapImage GetCommandImage(string actionParameter, PluginImageSize imageSize)
+        protected override BitmapImage GetCommandImage(String actionParameter, PluginImageSize imageSize)
         {
             var config = this._logicManager.GetConfig(actionParameter);
             if (config == null)
@@ -244,11 +244,11 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 BitmapImage loadedIcon = PluginImage.TryLoadIcon(config, "GeneralButtonBase");
 
                 // 准备 PluginImage.DrawElement 的其他参数 (大部分与之前 GetCommandImage 中手动绘制前的准备逻辑一致)
-                bool isActive = false;
-                string mainTitleOverride = null;
-                string valueText = null; // 按钮通常不直接显示 valueText
-                int currentModeForDrawing = 0; 
-                string actualAuxTextToDraw = config.Text; // PluginImage.DrawElement 在图标模式下不绘制此项
+                Boolean isActive = false;
+                String mainTitleOverride = null;
+                String valueText = null; // 按钮通常不直接显示 valueText
+                Int32 currentModeForDrawing = 0; 
+                String actualAuxTextToDraw = config.Text; // PluginImage.DrawElement 在图标模式下不绘制此项
 
                 // 确定 mainTitleOverride (基于模式或默认)
                 if (!String.IsNullOrEmpty(config.ModeName) && config.Titles != null && config.Titles.Any())
@@ -313,7 +313,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 if (this._modeHandlers.TryGetValue(actionParameter, out var handler))
                 {
                     var modeName = config.ActionType == "SelectModeButton" ? config.DisplayName : config.ModeName;
-                    if (!string.IsNullOrEmpty(modeName))
+                    if (!String.IsNullOrEmpty(modeName))
                     {
                         this._logicManager.UnsubscribeFromModeChange(modeName, handler);
                     }

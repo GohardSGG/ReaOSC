@@ -18,40 +18,40 @@ namespace Loupedeck.ReaOSCPlugin.Base
         private JObject _dataSourceJson;   // 动态列表的数据源 (例如Effect_List.json的内容)
 
         // 动态列表项管理 (源自 FX_Folder_Base)
-        private readonly Dictionary<string, ButtonConfig> _allListItems = new Dictionary<string, ButtonConfig>();
-        private List<string> _currentDisplayedItemActionNames = new List<string>();
+        private readonly Dictionary<String, ButtonConfig> _allListItems = new Dictionary<String, ButtonConfig>();
+        private List<String> _currentDisplayedItemActionNames = new List<String>();
 
         // 文件夹旋钮配置 (通用)
         private readonly List<ButtonConfig> _folderDialConfigs = new List<ButtonConfig>();
 
         // 过滤器管理 (源自 FX_Folder_Base)
-        private readonly Dictionary<string, List<string>> _filterOptions = new Dictionary<string, List<string>>();
-        private readonly Dictionary<string, string> _currentFilterValues = new Dictionary<string, string>();
-        private string _busFilterDialDisplayName = null;
-        private List<string> _favoriteItemDisplayNames = new List<string>();
+        private readonly Dictionary<String, List<String>> _filterOptions = new Dictionary<String, List<String>>();
+        private readonly Dictionary<String, String> _currentFilterValues = new Dictionary<String, String>();
+        private String _busFilterDialDisplayName = null;
+        private List<String> _favoriteItemDisplayNames = new List<String>();
 
         // 分页管理 (源自 FX_Folder_Base)
-        private int _currentPage = 0;
-        private int _totalPages = 1;
+        private Int32 _currentPage = 0;
+        private Int32 _totalPages = 1;
 
         // UI反馈辅助 (通用，FX_Folder_Base 中已有 _lastPressTimes)
-        private readonly Dictionary<string, DateTime> _lastPressTimes = new Dictionary<string, DateTime>();
+        private readonly Dictionary<String, DateTime> _lastPressTimes = new Dictionary<String, DateTime>();
 
 
         // --- 来自旧 Dynamic_Folder_Base (并引入/整合) ---
-        private bool _isButtonListDynamic; // 标记按钮列表是静态还是动态
+        private Boolean _isButtonListDynamic; // 标记按钮列表是静态还是动态
 
         // 静态按钮管理 (源自旧 Dynamic_Folder_Base)
-        private readonly List<string> _localButtonIds = new List<string>();
-        private readonly Dictionary<string, string> _localIdToGlobalActionParameter_Buttons = new Dictionary<string, string>();
-        private readonly Dictionary<string, ButtonConfig> _localIdToConfig_Buttons = new Dictionary<string, ButtonConfig>();
+        private readonly List<String> _localButtonIds = new List<String>();
+        private readonly Dictionary<String, String> _localIdToGlobalActionParameter_Buttons = new Dictionary<String, String>();
+        private readonly Dictionary<String, ButtonConfig> _localIdToConfig_Buttons = new Dictionary<String, ButtonConfig>();
 
         // ParameterDial 状态管理 (源自旧 Dynamic_Folder_Base)
-        private readonly Dictionary<string, int> _parameterDialCurrentIndexes = new Dictionary<string, int>();
+        private readonly Dictionary<String, Int32> _parameterDialCurrentIndexes = new Dictionary<String, Int32>();
 
         // 旧版静态按钮瞬时反馈 (源自旧 Dynamic_Folder_Base - 待评估是否合并到 _lastPressTimes)
-        private readonly Dictionary<string, DateTime> _lastTriggerPressTimes = new Dictionary<string, DateTime>();
-        private readonly Dictionary<string, DateTime> _lastCombineButtonPressTimes = new Dictionary<string, DateTime>();
+        private readonly Dictionary<String, DateTime> _lastTriggerPressTimes = new Dictionary<String, DateTime>();
+        private readonly Dictionary<String, DateTime> _lastCombineButtonPressTimes = new Dictionary<String, DateTime>();
 
         public General_Folder_Base()
         {
@@ -86,8 +86,8 @@ namespace Loupedeck.ReaOSCPlugin.Base
                         this._folderDialConfigs.Add(dialConfig);
                         if (dialConfig.ActionType == "ParameterDial")
                         {
-                            string localId = this.GetLocalDialId(dialConfig);
-                            if (!string.IsNullOrEmpty(localId) && dialConfig.Parameter != null && dialConfig.Parameter.Any())
+                            String localId = this.GetLocalDialId(dialConfig);
+                            if (!String.IsNullOrEmpty(localId) && dialConfig.Parameter != null && dialConfig.Parameter.Any())
                             {
                                 this._parameterDialCurrentIndexes[localId] = 0; // 默认选中第一个参数
                             }
@@ -127,19 +127,19 @@ namespace Loupedeck.ReaOSCPlugin.Base
         }
 
         // 辅助方法，用于生成旋钮的内部localId (与旧Dynamic_Folder_Base和FX_Folder_Base逻辑类似)
-        private string GetLocalDialId(ButtonConfig dialConfig)
+        private String GetLocalDialId(ButtonConfig dialConfig)
         {
             if (dialConfig == null) return null;
             var groupName = dialConfig.GroupName ?? this.DisplayName; 
             var displayName = dialConfig.DisplayName ?? ""; 
 
-            if (string.IsNullOrEmpty(displayName) && dialConfig.ActionType != "Placeholder")
+            if (String.IsNullOrEmpty(displayName) && dialConfig.ActionType != "Placeholder")
             {
                  PluginLog.Warning($"[{this.DisplayName}] GetLocalDialId: 旋钮配置 (类型: {dialConfig.ActionType}) 的 DisplayName 为空。GroupName: {groupName}");
                  return null; 
             }
             
-            if (dialConfig.ActionType == "Placeholder" && string.IsNullOrEmpty(displayName))
+            if (dialConfig.ActionType == "Placeholder" && String.IsNullOrEmpty(displayName))
             {
                  PluginLog.Verbose($"[{this.DisplayName}] GetLocalDialId: Placeholder类型旋钮无DisplayName，不生成特定localId。");
                  return null; 
@@ -174,7 +174,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 var globalActionParameter = kvp.Key;   
                 var loadedConfig = kvp.Value; // 这是从Logic_Manager加载的完整配置，可能包含更多信息或已被处理过         
 
-                if (string.IsNullOrEmpty(globalActionParameter) || loadedConfig == null)
+                if (String.IsNullOrEmpty(globalActionParameter) || loadedConfig == null)
                 {
                     PluginLog.Warning($"[{this.DisplayName}] PopulateStaticButtonMappings: 未能从Logic_Manager找到按钮的全局配置。按钮DisplayName='{buttonConfigFromJson.DisplayName}', 按钮原始GroupName='{buttonConfigFromJson.GroupName ?? "(未定义，使用文件夹名)"}'。");
                     continue;
@@ -198,9 +198,9 @@ namespace Loupedeck.ReaOSCPlugin.Base
         }
 
         // 辅助方法，用于从 ButtonConfig (通常是动态列表项) 创建唯一的动作参数 (与 FX_Folder_Base 逻辑一致)
-        private string CreateActionParameterForItem(ButtonConfig config)
+        private String CreateActionParameterForItem(ButtonConfig config)
         {
-            if (config == null || string.IsNullOrEmpty(config.GroupName) || string.IsNullOrEmpty(config.DisplayName))
+            if (config == null || String.IsNullOrEmpty(config.GroupName) || String.IsNullOrEmpty(config.DisplayName))
             {
                 PluginLog.Warning($"[{this.DisplayName}] CreateActionParameterForItem: 无法为配置不完整的项创建ActionParameter。GroupName='{config?.GroupName}', DisplayName='{config?.DisplayName}'");
                 return null; // 或者抛出异常，取决于期望的严格程度
@@ -226,7 +226,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
             this._favoriteItemDisplayNames.Clear();
             if (this._dataSourceJson.TryGetValue("Favorite", out JToken favToken) && favToken is JArray favArray)
             {
-                this._favoriteItemDisplayNames = favArray.ToObject<List<string>>() ?? new List<string>();
+                this._favoriteItemDisplayNames = favArray.ToObject<List<String>>() ?? new List<String>();
                 PluginLog.Info($"[{this.DisplayName}] 加载到 {this._favoriteItemDisplayNames.Count} 个收藏项。");
             }
 
@@ -240,7 +240,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
             foreach (var dialConfig in this._folderDialConfigs.Where(dc => dc.ActionType == "FilterDial"))
             {
                 var filterName = dialConfig.DisplayName;
-                if (string.IsNullOrEmpty(filterName))
+                if (String.IsNullOrEmpty(filterName))
                 {
                     PluginLog.Warning($"[{this.DisplayName}] 发现一个FilterDial没有DisplayName，已跳过。");
                     continue;
@@ -248,15 +248,17 @@ namespace Loupedeck.ReaOSCPlugin.Base
 
                 if (this._dataSourceJson.TryGetValue(filterName, out JToken optionsToken) && optionsToken is JArray optionsArray)
                 {
-                    var options = optionsArray.ToObject<List<string>>() ?? new List<string>();
+                    var options = optionsArray.ToObject<List<String>>() ?? new List<String>();
                     
                     if (!options.Contains("All")) { options.Insert(0, "All"); }
 
-                    bool isBusFilter = !string.IsNullOrEmpty(dialConfig.BusFilter) && dialConfig.BusFilter.Equals("Yes", StringComparison.OrdinalIgnoreCase);
+#pragma warning disable IDE0007
+                    Boolean isBusFilter = !String.IsNullOrEmpty(dialConfig.BusFilter) && dialConfig.BusFilter.Equals("Yes", StringComparison.OrdinalIgnoreCase);
+#pragma warning restore IDE0007
 
                     if (this._favoriteItemDisplayNames.Any() && !options.Contains("Favorite"))
                     {
-                        bool shouldAddFavorite = isBusFilter || 
+                        Boolean shouldAddFavorite = isBusFilter || 
                                                  (this._busFilterDialDisplayName == null && 
                                                   this._folderDialConfigs.Where(dc => dc.ActionType == "FilterDial").FirstOrDefault() == dialConfig);
                         if (shouldAddFavorite) 
@@ -285,14 +287,14 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 else
                 {
                     PluginLog.Warning($"[{this.DisplayName}] FilterDial '{filterName}' 在数据源中未找到对应的选项列表。将使用默认'All'选项。");
-                    this._filterOptions[filterName] = new List<string> { "All" };
+                    this._filterOptions[filterName] = new List<String> { "All" };
                     this._currentFilterValues[filterName] = "All";
                 }
             }
 
             // --- 第3步: 解析动态列表项 ---
             this._allListItems.Clear();
-            var processedTopLevelKeys = new HashSet<string> { "Favorite" }; // "All" 不是顶层键，是选项值
+            var processedTopLevelKeys = new HashSet<String> { "Favorite" }; // "All" 不是顶层键，是选项值
             foreach (var filterNameInDataSource in this._filterOptions.Keys)
             {
                 processedTopLevelKeys.Add(filterNameInDataSource); // 记录已作为过滤器处理的顶层键
@@ -315,7 +317,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                             try
                             {
                                 ButtonConfig itemConfig = itemJObject.ToObject<ButtonConfig>();
-                                if (itemConfig == null || string.IsNullOrEmpty(itemConfig.DisplayName))
+                                if (itemConfig == null || String.IsNullOrEmpty(itemConfig.DisplayName))
                                 {
                                     PluginLog.Warning($"[{this.DisplayName}] 解析列表项失败或DisplayName为空，在主分类 '{topLevelKey}' 下。项: {itemJObject.ToString(Newtonsoft.Json.Formatting.None)}");
                                     continue;
@@ -323,14 +325,14 @@ namespace Loupedeck.ReaOSCPlugin.Base
 
                                 itemConfig.GroupName = topLevelKey; // 列表项的GroupName是其在数据源JSON中的父级键名
 
-                                if (string.IsNullOrEmpty(itemConfig.ActionType)) // 默认为TriggerButton以用于PluginImage绘制
+                                if (String.IsNullOrEmpty(itemConfig.ActionType)) // 默认为TriggerButton以用于PluginImage绘制
                                 {
                                     itemConfig.ActionType = "TriggerButton"; 
                                 }
 
                                 if (itemConfig.FilterableProperties == null) 
                                 {
-                                    itemConfig.FilterableProperties = new Dictionary<string, string>();
+                                    itemConfig.FilterableProperties = new Dictionary<String, String>();
                                 }
 
                                 // 填充FilterableProperties (来自JObject的直接属性，这些属性名对应FilterDial的DisplayName)
@@ -345,8 +347,8 @@ namespace Loupedeck.ReaOSCPlugin.Base
                                     }
                                 }
                                 
-                                string actionParameter = this.CreateActionParameterForItem(itemConfig);
-                                if (string.IsNullOrEmpty(actionParameter))
+                                String actionParameter = this.CreateActionParameterForItem(itemConfig);
+                                if (String.IsNullOrEmpty(actionParameter))
                                 {
                                     PluginLog.Warning($"[{this.DisplayName}] 为项目 '{itemConfig.DisplayName}' (GroupName '{itemConfig.GroupName}') 生成的actionParameter为空，已跳过。");
                                     continue;
@@ -380,9 +382,9 @@ namespace Loupedeck.ReaOSCPlugin.Base
             PluginLog.Info($"[{this.DisplayName}] 开始更新动态显示列表...");
             IEnumerable<ButtonConfig> itemsToDisplay = this._allListItems.Values;
 
-            bool favoriteFilterActive = false;
+            Boolean favoriteFilterActive = false;
             // 首先处理 BusFilter (如果定义了)
-            if (!string.IsNullOrEmpty(this._busFilterDialDisplayName) &&
+            if (!String.IsNullOrEmpty(this._busFilterDialDisplayName) &&
                 this._currentFilterValues.TryGetValue(this._busFilterDialDisplayName, out var busFilterValue))
             {
                 if (busFilterValue == "Favorite")
@@ -440,8 +442,8 @@ namespace Loupedeck.ReaOSCPlugin.Base
             this._currentDisplayedItemActionNames = itemsToDisplay.Select(config => this.CreateActionParameterForItem(config)).ToList();
             
             // 计算分页，假设每页12个项 (Loupedeck标准按钮数量)
-            int itemsPerPage = 12; 
-            this._totalPages = (int)Math.Ceiling((double)this._currentDisplayedItemActionNames.Count / itemsPerPage); 
+            Int32 itemsPerPage = 12; 
+            this._totalPages = (Int32)Math.Ceiling((Double)this._currentDisplayedItemActionNames.Count / itemsPerPage); 
             if (this._totalPages == 0) this._totalPages = 1; // 至少有1页，即使是空的
             
             this._currentPage = Math.Min(this._currentPage, this._totalPages - 1); // 确保当前页不超过总页数
@@ -487,13 +489,13 @@ namespace Loupedeck.ReaOSCPlugin.Base
 
         // --- 核心Loupedeck SDK方法重写 ---
 
-        public override IEnumerable<string> GetButtonPressActionNames()
+        public override IEnumerable<String> GetButtonPressActionNames()
         {
             if (this._isButtonListDynamic)
             {
                 // 对于动态列表，从 _currentDisplayedItemActionNames 获取当前页的项
                 // 假设每页12个按钮
-                int itemsPerPage = 12; 
+                Int32 itemsPerPage = 12; 
                 return this._currentDisplayedItemActionNames
                     .Skip(this._currentPage * itemsPerPage)
                     .Take(itemsPerPage)
@@ -506,11 +508,11 @@ namespace Loupedeck.ReaOSCPlugin.Base
             }
         }
 
-        public override IEnumerable<string> GetEncoderRotateActionNames()
+        public override IEnumerable<String> GetEncoderRotateActionNames()
         {
-            var rotateActionNames = new string[6]; // 设备通常有6个旋钮
+            var rotateActionNames = new String[6]; // 设备通常有6个旋钮
 
-            for (int i = 0; i < 6; i++)
+            for (Int32 i = 0; i < 6; i++)
             {
                 if (i < this._folderDialConfigs.Count)
                 {
@@ -522,7 +524,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     else
                     {
                         var localId = this.GetLocalDialId(dialConfig);
-                        if (!string.IsNullOrEmpty(localId)) 
+                        if (!String.IsNullOrEmpty(localId)) 
                         {
                             rotateActionNames[i] = this.CreateAdjustmentName(localId); 
                         }
@@ -537,15 +539,15 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     rotateActionNames[i] = null; // 超出JSON定义数量的槽位也为空
                 }
             }
-            PluginLog.Info($"[{this.DisplayName}] GetEncoderRotateActionNames: [{string.Join(", ", rotateActionNames.Select(s => s ?? "null"))}]");
+            PluginLog.Info($"[{this.DisplayName}] GetEncoderRotateActionNames: [{String.Join(", ", rotateActionNames.Select(s => s ?? "null"))}]");
             return rotateActionNames;
         }
 
-        public override IEnumerable<string> GetEncoderPressActionNames(DeviceType deviceType)
+        public override IEnumerable<String> GetEncoderPressActionNames(DeviceType deviceType)
         {
-            var pressActionNames = new string[6]; // 设备通常有6个旋钮
+            var pressActionNames = new String[6]; // 设备通常有6个旋钮
 
-            for (int i = 0; i < 6; i++)
+            for (Int32 i = 0; i < 6; i++)
             {
                 if (i < this._folderDialConfigs.Count)
                 {
@@ -558,7 +560,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     else if (dialConfig.ActionType == "NavigationDial" && dialConfig.DisplayName == "Back") 
                     {
                         var localId = this.GetLocalDialId(dialConfig);
-                        if (!string.IsNullOrEmpty(localId)) 
+                        if (!String.IsNullOrEmpty(localId)) 
                         {
                             // 对于文件夹导航命令，如 "Back"，通常使用 base.CreateCommandName
                             // 或者如果希望它通过本类的 RunCommand 处理，也可以用 this.CreateCommandName
@@ -575,7 +577,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     {
                         // 如果这些类型的旋钮按下确实需要一个由 RunCommand(localId) 处理的独立命令：
                         var localId = this.GetLocalDialId(dialConfig);
-                        if (!string.IsNullOrEmpty(localId))
+                        if (!String.IsNullOrEmpty(localId))
                         {
                             pressActionNames[i] = this.CreateCommandName(localId); // 使用 this.CreateCommandName
                         }
@@ -592,14 +594,14 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     pressActionNames[i] = null; // 超出JSON定义数量的槽位也为空
                 }
             }
-            PluginLog.Info($"[{this.DisplayName}] GetEncoderPressActionNames: [{string.Join(", ", pressActionNames.Select(s => s ?? "null"))}]");
+            PluginLog.Info($"[{this.DisplayName}] GetEncoderPressActionNames: [{String.Join(", ", pressActionNames.Select(s => s ?? "null"))}]");
             return pressActionNames;
         }
 
         public override PluginDynamicFolderNavigation GetNavigationArea(DeviceType _) =>
             PluginDynamicFolderNavigation.None; // 插件将通过自定义的"Back"旋钮等方式处理导航
 
-        public override void ApplyAdjustment(string actionParameter, int ticks)
+        public override void ApplyAdjustment(String actionParameter, Int32 ticks)
         {
             // SDK 传入的 actionParameter 通常是 CreateAdjustmentName(localId) 中的 localId
             var localDialId = actionParameter; 
@@ -612,9 +614,9 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 return; 
             }
             
-            bool listChanged = false;       // 标记按钮/列表项是否因调整而改变 (用于 ButtonActionNamesChanged)
-            bool valueChanged = false;      // 标记旋钮本身显示的值是否改变 (用于 AdjustmentValueChanged)
-            bool pageCountChanged = false;  // 标记总页数是否因过滤器调整而改变
+            Boolean listChanged = false;       // 标记按钮/列表项是否因调整而改变 (用于 ButtonActionNamesChanged)
+            Boolean valueChanged = false;      // 标记旋钮本身显示的值是否改变 (用于 AdjustmentValueChanged)
+            Boolean pageCountChanged = false;  // 标记总页数是否因过滤器调整而改变
 
             switch (dialConfig.ActionType)
             {
@@ -690,9 +692,9 @@ namespace Loupedeck.ReaOSCPlugin.Base
                         kvp.Value.ActionType == dialConfig.ActionType
                     );
 
-                    if (!EqualityComparer<KeyValuePair<string, ButtonConfig>>.Default.Equals(globalParamKvp, default(KeyValuePair<string, ButtonConfig>)))
+                    if (!EqualityComparer<KeyValuePair<String, ButtonConfig>>.Default.Equals(globalParamKvp, default(KeyValuePair<String, ButtonConfig>)))
                     {
-                        string globalActionParameter = globalParamKvp.Key;
+                        String globalActionParameter = globalParamKvp.Key;
                         Logic_Manager_Base.Instance.ProcessDialAdjustment(globalActionParameter, ticks);
                         // Logic_Manager_Base.ProcessDialAdjustment 内部应负责调用 CommandStateNeedsRefresh
                         // 这会触发 OnCommandStateNeedsRefresh, 进而调用 AdjustmentValueChanged
@@ -709,7 +711,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                             {
                                 currentIndex = 0; // 理论上构造函数已初始化
                             }
-                            int newParamIndex = (currentIndex + ticks + dialConfig.Parameter.Count) % dialConfig.Parameter.Count;
+                            Int32 newParamIndex = (currentIndex + ticks + dialConfig.Parameter.Count) % dialConfig.Parameter.Count;
                             if (newParamIndex < 0) newParamIndex += dialConfig.Parameter.Count;
                             this._parameterDialCurrentIndexes[localDialId] = newParamIndex;
                             valueChanged = true;
@@ -742,7 +744,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 if(pageDialConfig != null)
                 {
                     var pageDialLocalId = this.GetLocalDialId(pageDialConfig);
-                    if(!string.IsNullOrEmpty(pageDialLocalId))
+                    if(!String.IsNullOrEmpty(pageDialLocalId))
                     {
                         this.AdjustmentValueChanged(this.CreateAdjustmentName(pageDialLocalId)); 
                     }
@@ -750,10 +752,10 @@ namespace Loupedeck.ReaOSCPlugin.Base
             }
         }
 
-        public override void RunCommand(string actionParameter)
+        public override void RunCommand(String actionParameter)
         {
-            string commandLocalIdToLookup = actionParameter;
-            const string commandPrefix = "plugin:command:"; // Loupedeck SDK 可能会添加的前缀
+            String commandLocalIdToLookup = actionParameter;
+            const String commandPrefix = "plugin:command:"; // Loupedeck SDK 可能会添加的前缀
             if (actionParameter.StartsWith(commandPrefix))
             {
                 commandLocalIdToLookup = actionParameter.Substring(commandPrefix.Length);
@@ -788,9 +790,9 @@ namespace Loupedeck.ReaOSCPlugin.Base
                         kvp.Value.ActionType == dialConfigPressed.ActionType
                     );
 
-                    if (!EqualityComparer<KeyValuePair<string, ButtonConfig>>.Default.Equals(globalParamKvp, default(KeyValuePair<string, ButtonConfig>)))
+                    if (!EqualityComparer<KeyValuePair<String, ButtonConfig>>.Default.Equals(globalParamKvp, default(KeyValuePair<String, ButtonConfig>)))
                     {
-                        string globalDialActionParameter = globalParamKvp.Key;
+                        String globalDialActionParameter = globalParamKvp.Key;
                         if (Logic_Manager_Base.Instance.ProcessDialPress(globalDialActionParameter))
                         {
                             // ProcessDialPress 返回true通常表示状态已改变 (例如2ModeTickDial切换了模式)
@@ -880,8 +882,8 @@ namespace Loupedeck.ReaOSCPlugin.Base
 
             if (buttonEvent.EventType == DeviceButtonEventType.Press)
             {
-                string commandLocalIdToLookup = actionParameter;
-                const string commandPrefix = "plugin:command:"; 
+                String commandLocalIdToLookup = actionParameter;
+                const String commandPrefix = "plugin:command:"; 
                 if (actionParameter.StartsWith(commandPrefix))
                 {
                     commandLocalIdToLookup = actionParameter.Substring(commandPrefix.Length);
@@ -905,10 +907,10 @@ namespace Loupedeck.ReaOSCPlugin.Base
         }
 
         // --- III. UI 绘制方法 ---
-        public override BitmapImage GetCommandImage(string actionParameter, PluginImageSize imageSize)
+        public override BitmapImage GetCommandImage(String actionParameter, PluginImageSize imageSize)
         {
-            string localId = actionParameter; 
-            const string commandPrefix = "plugin:command:"; 
+            String localId = actionParameter; 
+            const String commandPrefix = "plugin:command:"; 
             if (actionParameter.StartsWith(commandPrefix))
             { localId = actionParameter.Substring(commandPrefix.Length); }
 
@@ -918,8 +920,8 @@ namespace Loupedeck.ReaOSCPlugin.Base
             }
 
             ButtonConfig configToDraw = null;
-            string globalParamForState = null; 
-            bool isStaticButton = false;
+            String globalParamForState = null; 
+            Boolean isStaticButton = false;
 
             if (this._isButtonListDynamic)
             {
@@ -936,20 +938,20 @@ namespace Loupedeck.ReaOSCPlugin.Base
             if (configToDraw == null) { return PluginImage.DrawElement(imageSize, null, "Err", isActive:true, preferIconOnlyForDial: false);}
 
             BitmapImage loadedIcon = PluginImage.TryLoadIcon(configToDraw, this.DisplayName);
-            string mainTitleOverride = null; 
-            bool isActive = false;
-            int currentModeForDrawing = 0; 
+            String mainTitleOverride = null; 
+            Boolean isActive = false;
+            Int32 currentModeForDrawing = 0; 
 
             if (configToDraw.ActionType == "TriggerButton" || configToDraw.ActionType == "CombineButton")
             {
                 DateTime pressTime = DateTime.MinValue; 
-                bool foundInDynamic = !isStaticButton && this._lastPressTimes.TryGetValue(localId, out pressTime);
-                bool foundInStaticTrigger = isStaticButton && configToDraw.ActionType == "TriggerButton" && this._lastTriggerPressTimes.TryGetValue(localId, out pressTime);
-                bool foundInStaticCombine = isStaticButton && configToDraw.ActionType == "CombineButton" && this._lastCombineButtonPressTimes.TryGetValue(localId, out pressTime);
+                Boolean foundInDynamic = !isStaticButton && this._lastPressTimes.TryGetValue(localId, out pressTime);
+                Boolean foundInStaticTrigger = isStaticButton && configToDraw.ActionType == "TriggerButton" && this._lastTriggerPressTimes.TryGetValue(localId, out pressTime);
+                Boolean foundInStaticCombine = isStaticButton && configToDraw.ActionType == "CombineButton" && this._lastCombineButtonPressTimes.TryGetValue(localId, out pressTime);
                 if (foundInDynamic || foundInStaticTrigger || foundInStaticCombine) { if ((DateTime.Now - pressTime).TotalMilliseconds < 200) { isActive = true; } }
             }
             else if (configToDraw.ActionType == "ToggleButton")
-            { if (isStaticButton && !string.IsNullOrEmpty(globalParamForState)) { isActive = Logic_Manager_Base.Instance.GetToggleState(globalParamForState); } }
+            { if (isStaticButton && !String.IsNullOrEmpty(globalParamForState)) { isActive = Logic_Manager_Base.Instance.GetToggleState(globalParamForState); } }
             else if (configToDraw.ActionType == "ParameterButton" && isStaticButton)
             { mainTitleOverride = this.DetermineParameterButtonTitle(configToDraw); }
             
@@ -958,19 +960,19 @@ namespace Loupedeck.ReaOSCPlugin.Base
             return PluginImage.DrawElement(imageSize, configToDraw, mainTitleOverride, null, isActive, currentModeForDrawing, loadedIcon, false, null, false );
         }
 
-        public override BitmapImage GetAdjustmentImage(string actionParameter, PluginImageSize imageSize)
+        public override BitmapImage GetAdjustmentImage(String actionParameter, PluginImageSize imageSize)
         {
-            if (string.IsNullOrEmpty(actionParameter)) { using (var bb = new BitmapBuilder(imageSize)) { bb.Clear(BitmapColor.Black); return bb.ToImage(); } }
+            if (String.IsNullOrEmpty(actionParameter)) { using (var bb = new BitmapBuilder(imageSize)) { bb.Clear(BitmapColor.Black); return bb.ToImage(); } }
             var localDialId = actionParameter; 
             var dialConfig = this._folderDialConfigs.FirstOrDefault(dc => this.GetLocalDialId(dc) == localDialId);
             if (dialConfig == null || dialConfig.ActionType == "Placeholder") { using (var bb = new BitmapBuilder(imageSize)) { bb.Clear(BitmapColor.Black); return bb.ToImage(); } }
             
             BitmapImage loadedIcon = PluginImage.TryLoadIcon(dialConfig, this.DisplayName);
-            string mainTitleToDraw = dialConfig.ShowTitle?.Equals("No", StringComparison.OrdinalIgnoreCase) == true ? null : (dialConfig.Title ?? dialConfig.DisplayName);
-            string valueTextToDisplay = null; 
-            bool isActiveStatus = false; 
-            int currentModeStatus = 0;    
-            string globalParamForState = GetGlobalParamForDialState(dialConfig);
+            String mainTitleToDraw = dialConfig.ShowTitle?.Equals("No", StringComparison.OrdinalIgnoreCase) == true ? null : (dialConfig.Title ?? dialConfig.DisplayName);
+            String valueTextToDisplay = null; 
+            Boolean isActiveStatus = false; 
+            Int32 currentModeStatus = 0;    
+            String globalParamForState = GetGlobalParamForDialState(dialConfig);
 
             switch (dialConfig.ActionType)
             {
@@ -988,53 +990,53 @@ namespace Loupedeck.ReaOSCPlugin.Base
         public override BitmapImage GetButtonImage(PluginImageSize imageSize) // 文件夹入口按钮
         {
             if (this._entryConfig == null) 
-            { using (var bb = new BitmapBuilder(imageSize)) { bb.Clear(BitmapColor.Black); bb.DrawText((!string.IsNullOrEmpty(this.DisplayName) ? this.DisplayName : "Folder"), BitmapColor.White, GetButtonFontSize(this.DisplayName)); return bb.ToImage(); } }
+            { using (var bb = new BitmapBuilder(imageSize)) { bb.Clear(BitmapColor.Black); bb.DrawText((!String.IsNullOrEmpty(this.DisplayName) ? this.DisplayName : "Folder"), BitmapColor.White, GetButtonFontSize(this.DisplayName)); return bb.ToImage(); } }
             BitmapImage loadedEntryIcon = PluginImage.TryLoadIcon(this._entryConfig, this.DisplayName);
             // 文件夹入口是按钮，preferIconOnlyForDial: false
             // actualAuxText 由 DrawElement 根据 config.Text 处理
             return PluginImage.DrawElement(imageSize, this._entryConfig, null, null, false, 0, loadedEntryIcon, false, null, false);
         }
 
-        private string DetermineParameterButtonTitle(ButtonConfig paramButtonConfig)
+        private String DetermineParameterButtonTitle(ButtonConfig paramButtonConfig)
         {
             var sourceDialGlobalParam = this.FindSourceDialGlobalActionParameter(paramButtonConfig, paramButtonConfig.ParameterSourceDial);
-            return !string.IsNullOrEmpty(sourceDialGlobalParam)
+            return !String.IsNullOrEmpty(sourceDialGlobalParam)
                 ? (Logic_Manager_Base.Instance.GetParameterDialSelectedTitle(sourceDialGlobalParam) ?? paramButtonConfig.Title ?? paramButtonConfig.DisplayName)
                 : $"Err:{paramButtonConfig.ParameterSourceDial?.Substring(0, Math.Min(paramButtonConfig.ParameterSourceDial?.Length ?? 0, 4))}";
         }
-        private string DetermineParameterDialValue(ButtonConfig dialCfg, string localDialId)
+        private String DetermineParameterDialValue(ButtonConfig dialCfg, String localDialId)
         {
             if (this._parameterDialCurrentIndexes.TryGetValue(localDialId, out var currentIndex) && 
                 dialCfg.Parameter != null && currentIndex >= 0 && currentIndex < dialCfg.Parameter.Count)
             { return dialCfg.Parameter[currentIndex]; }
             return dialCfg.Parameter?.FirstOrDefault() ?? "N/A"; 
         }
-        private string GetGlobalParamForDialState(ButtonConfig dialCfg)
+        private String GetGlobalParamForDialState(ButtonConfig dialCfg)
         {
              var kvp = Logic_Manager_Base.Instance.GetAllConfigs().FirstOrDefault(c => 
                 (c.Value.GroupName == this.DisplayName || c.Value.GroupName == dialCfg.GroupName) && 
                 c.Value.DisplayName == dialCfg.DisplayName && 
                 c.Value.ActionType == dialCfg.ActionType );
-            return !EqualityComparer<KeyValuePair<string, ButtonConfig>>.Default.Equals(kvp, default(KeyValuePair<string, ButtonConfig>)) ? kvp.Key : null;
+            return !EqualityComparer<KeyValuePair<String, ButtonConfig>>.Default.Equals(kvp, default(KeyValuePair<String, ButtonConfig>)) ? kvp.Key : null;
         }
 
         // 辅助方法，用于根据标题长度自动获取按钮的字体大小 (如果PluginImage需要，但它内部有自己的)
         // 此方法可以从旧 Dynamic_Folder_Base 迁移，但 PluginImage.GetButtonFontSize 更通用
-        private static int GetButtonFontSize(String title) { if (String.IsNullOrEmpty(title)) return 23; var len = title.Length; return len switch { 1 => 38, 2 => 33, 3 => 31, 4 => 26, 5 => 23, 6 => 22, 7 => 20, 8 => 18, _ => 16 }; }
+        private static Int32 GetButtonFontSize(String title) { if (String.IsNullOrEmpty(title)) return 23; var len = title.Length; return len switch { 1 => 38, 2 => 33, 3 => 31, 4 => 26, 5 => 23, 6 => 22, 7 => 20, 8 => 18, _ => 16 }; }
 
         // --- IV. 辅助方法与事件处理 ---
         // (GetLocalDialId, CreateActionParameterForItem, FindSourceDialGlobalActionParameter 已实现)
 
-        private void OnCommandStateNeedsRefresh(object sender, string globalActionParameterThatChanged)
+        private void OnCommandStateNeedsRefresh(object sender, String globalActionParameterThatChanged)
         {
-            if (string.IsNullOrEmpty(globalActionParameterThatChanged))
+            if (String.IsNullOrEmpty(globalActionParameterThatChanged))
             {
                 return;
             }
 
             // 检查是否为本文件夹管理的静态按钮相关的状态变化
             var staticButtonEntry = this._localIdToGlobalActionParameter_Buttons.FirstOrDefault(kvp => kvp.Value == globalActionParameterThatChanged);
-            if (!EqualityComparer<KeyValuePair<string, string>>.Default.Equals(staticButtonEntry, default(KeyValuePair<string, string>)))
+            if (!EqualityComparer<KeyValuePair<String, String>>.Default.Equals(staticButtonEntry, default(KeyValuePair<String, String>)))
             {
                 var localButtonId = staticButtonEntry.Key;
                 if (this._localIdToConfig_Buttons.TryGetValue(localButtonId, out var buttonConfig))
@@ -1064,10 +1066,10 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     kvp.Value.ActionType == dialConfig.ActionType
                 );
 
-                if (!EqualityComparer<KeyValuePair<string, ButtonConfig>>.Default.Equals(globalDialKvp, default(KeyValuePair<string, ButtonConfig>)) && globalDialKvp.Key == globalActionParameterThatChanged)
+                if (!EqualityComparer<KeyValuePair<String, ButtonConfig>>.Default.Equals(globalDialKvp, default(KeyValuePair<String, ButtonConfig>)) && globalDialKvp.Key == globalActionParameterThatChanged)
                 {
                     var localDialId = this.GetLocalDialId(dialConfig);
-                    if (!string.IsNullOrEmpty(localDialId))
+                    if (!String.IsNullOrEmpty(localDialId))
                     {
                         PluginLog.Info($"[{this.DisplayName}] OnCommandStateNeedsRefresh: 旋钮 '{dialConfig.DisplayName}' (localId: {localDialId}, global: {globalActionParameterThatChanged}) 状态改变，触发UI刷新。");
                         this.AdjustmentValueChanged(this.CreateAdjustmentName(localDialId));
@@ -1075,7 +1077,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                         // 如果是ParameterDial改变，需要检查是否有链接的ParameterButton在此文件夹内并刷新它们
                         if (dialConfig.ActionType == "ParameterDial")
                         {
-                            bool linkedButtonNeedsRefresh = false;
+                            Boolean linkedButtonNeedsRefresh = false;
                             foreach (var btnEntryKvp in this._localIdToConfig_Buttons) // 仅检查此文件夹内的静态按钮
                             {
                                 var otherLocalConfig = btnEntryKvp.Value;
@@ -1100,10 +1102,10 @@ namespace Loupedeck.ReaOSCPlugin.Base
             // PluginLog.Verbose($"[{this.DisplayName}] OnCommandStateNeedsRefresh: globalActionParameter '{globalActionParameterThatChanged}' 与当前文件夹管理的任何已知项不直接匹配。");
         }
 
-        public override string GetCommandDisplayName(string actionParameter, PluginImageSize imageSize)
+        public override String GetCommandDisplayName(String actionParameter, PluginImageSize imageSize)
         {
-            string localId = actionParameter;
-            const string commandPrefix = "plugin:command:";
+            String localId = actionParameter;
+            const String commandPrefix = "plugin:command:";
             if (actionParameter.StartsWith(commandPrefix))
             {
                 localId = actionParameter.Substring(commandPrefix.Length);
@@ -1149,14 +1151,14 @@ namespace Loupedeck.ReaOSCPlugin.Base
             return null; // 默认或未找到配置则返回null
         }
 
-        public override string GetAdjustmentDisplayName(string actionParameter, PluginImageSize imageSize) => null; // 旋钮名称直接绘制在图像上
+        public override String GetAdjustmentDisplayName(String actionParameter, PluginImageSize imageSize) => null; // 旋钮名称直接绘制在图像上
 
-        public override string GetAdjustmentValue(string actionParameter) => null; // 旋钮值直接绘制在图像上
+        public override String GetAdjustmentValue(String actionParameter) => null; // 旋钮值直接绘制在图像上
 
         // 从旧 Dynamic_Folder_Base 迁移，用于 ParameterButton 查找其数据源 ParameterDial
-        private string FindSourceDialGlobalActionParameter(ButtonConfig parameterButtonConfig, string sourceDialDisplayNameFromButtonConfig)
+        private String FindSourceDialGlobalActionParameter(ButtonConfig parameterButtonConfig, String sourceDialDisplayNameFromButtonConfig)
         {
-            if (parameterButtonConfig == null || string.IsNullOrEmpty(parameterButtonConfig.GroupName) || string.IsNullOrEmpty(sourceDialDisplayNameFromButtonConfig))
+            if (parameterButtonConfig == null || String.IsNullOrEmpty(parameterButtonConfig.GroupName) || String.IsNullOrEmpty(sourceDialDisplayNameFromButtonConfig))
             {
                 PluginLog.Warning($"[{this.DisplayName}] FindSourceDialGlobal: 无效的参数。ParameterButtonConfig 或其 GroupName 为空，或 sourceDialDisplayName 为空。");
                 return null;
@@ -1168,7 +1170,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 kvp.Value.GroupName == parameterButtonConfig.GroupName && 
                 kvp.Value.ActionType == "ParameterDial");
 
-            if (!EqualityComparer<KeyValuePair<string, ButtonConfig>>.Default.Equals(foundDialEntry, default(KeyValuePair<string, ButtonConfig>)) && !string.IsNullOrEmpty(foundDialEntry.Key))
+            if (!EqualityComparer<KeyValuePair<String, ButtonConfig>>.Default.Equals(foundDialEntry, default(KeyValuePair<String, ButtonConfig>)) && !String.IsNullOrEmpty(foundDialEntry.Key))
             {
                 return foundDialEntry.Key;
             }

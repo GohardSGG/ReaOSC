@@ -10,19 +10,19 @@ namespace Loupedeck.ReaOSCPlugin
 
     public class ReaOSCPlugin : Plugin
     {
-        // === Loupedeck±ØĞèÅäÖÃ ===
-        public override bool UsesApplicationApiOnly => true;
-        public override bool HasNoApplication => true;
+        // === Loupedeckï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ===
+        public override Boolean UsesApplicationApiOnly => true;
+        public override Boolean HasNoApplication => true;
 
-        // === µ¥ÀıÊµÀı ===
+        // === Êµ ===
         public static ReaOSCPlugin Instance { get; private set; }
 
-        // === WebSocketÅäÖÃ ===
-        private const string WS_SERVER = "ws://localhost:9122";
+        // === WebSocket ===
+        private const String WS_SERVER = "ws://localhost:9122";
         private WebSocket _wsClient;
-        private bool _isReconnecting;
+        private Boolean _isReconnecting;
 
-        // === ²å¼ş³õÊ¼»¯ ===
+        // === Ê¼ ===
         public ReaOSCPlugin()
         {
             Instance = this;
@@ -31,7 +31,7 @@ namespace Loupedeck.ReaOSCPlugin
             this.InitializeWebSocket();
         }
 
-        // === WebSocketÁ¬½Ó¹ÜÀí ===
+        // === WebSocketï¿½ï¿½ï¿½Ó¹ï¿½ï¿½ï¿½ ===
         private void InitializeWebSocket()
         {
             this._wsClient = new WebSocket(WS_SERVER);
@@ -41,13 +41,13 @@ namespace Loupedeck.ReaOSCPlugin
 
         private void OnWebSocketMessage(object sender, MessageEventArgs e)
         {
-            // ÊÕµ½·şÎñ¶ËÍÆËÍµÄ OSC ¶ş½øÖÆÏûÏ¢
+            // ï¿½Õµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Íµï¿½ OSC ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï¢
             if (e.IsBinary)
             {
                 var (address, value) = this.ParseOSCMessage(e.RawData);
-                if (!string.IsNullOrEmpty(address))
+                if (!String.IsNullOrEmpty(address))
                 {
-                    // ¸üĞÂ»º´æ²¢Í¨ÖªËùÓĞ¶©ÔÄÕß
+                    // Â»æ²¢Í¨ÖªĞ¶
                     OSCStateManager.Instance.UpdateState(address, value);
                 }
             }
@@ -65,11 +65,11 @@ namespace Loupedeck.ReaOSCPlugin
                 try
                 {
                     this._wsClient?.Connect();
-                    //PluginLog.Info("WebSocketÁ¬½Ó³É¹¦");
+                    //PluginLog.Info("WebSocketï¿½ï¿½ï¿½Ó³É¹ï¿½");
                 }
                 catch (Exception ex)
                 {
-                    //PluginLog.Error($"Á¬½ÓÊ§°Ü: {ex.Message}");
+                    //PluginLog.Error($"ï¿½ï¿½ï¿½ï¿½Ê§ï¿½ï¿½: {ex.Message}");
                     this.ScheduleReconnect();
                 }
             });
@@ -86,65 +86,65 @@ namespace Loupedeck.ReaOSCPlugin
             Task.Run(async () =>
             {
                 await Task.Delay(5000);
-                //PluginLog.Info("³¢ÊÔÖØĞÂÁ¬½Ó...");
+                //PluginLog.Info("ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½...");
                 this._isReconnecting = false;
                 this.InitializeWebSocket();
             });
         }
 
-        // === OSC¶ş½øÖÆÏûÏ¢½âÎö ===
-        private (string address, float value) ParseOSCMessage(byte[] data)
+        // === OSCï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï¢ï¿½ï¿½ï¿½ï¿½ ===
+        private (String address, Single value) ParseOSCMessage(Byte[] data)
         {
             try
             {
-                int index = 0;
+                Int32 index = 0;
 
-                // ½âÎöµØÖ·²¿·Ö£¨ÒÔnull½áÎ²µÄ×Ö·û´®£©
-                int addrEnd = Array.IndexOf(data, (byte)0, index);
+                // Ö·Ö£nullÎ²Ö·
+                Int32 addrEnd = Array.IndexOf(data, (Byte)0, index);
                 if (addrEnd < 0)
                     return (null, 0f);
 
-                string address = Encoding.ASCII.GetString(data, 0, addrEnd);
+                String address = Encoding.ASCII.GetString(data, 0, addrEnd);
 
-                // µØÖ·Ìî³ä¶ÔÆëµ½4×Ö½Ú
+                // Ö·ëµ½4Ö½
                 index = (addrEnd + 4) & ~3;
                 if (index + 4 > data.Length)
-                    return (null, 0f); // ÖÁÉÙĞèÒª ",f" + float
+                    return (null, 0f); // Òª ",f" + float
 
-                // ¼ì²éÀàĞÍ±êÇ©ÊÇ·ñÎª ",f"
-                string typeTag = Encoding.ASCII.GetString(data, index, 2);
+                // Í±Ç©Ç·Îª ",f"
+                String typeTag = Encoding.ASCII.GetString(data, index, 2);
                 if (typeTag != ",f")
                     return (null, 0f);
 
-                // ¸¡µãÊıÖµÆ«ÒÆ£¨ÀàĞÍ±êÇ©ºóµÄÌî³ä£©
-                index += 4; // ",f" + 2×Ö½ÚÌî³ä
+                // ÖµÆ«Æ£Í±Ç©ä£©
+                index += 4; // ",f" + 2Ö½
                 if (index + 4 > data.Length)
                     return (null, 0f);
 
-                // ¶ÁÈ¡´ó¶ËĞòfloat
-                byte[] floatBytes = new byte[4];
+                // È¡float
+                Byte[] floatBytes = new Byte[4];
                 Buffer.BlockCopy(data, index, floatBytes, 0, 4);
                 if (BitConverter.IsLittleEndian)
                 {
                     Array.Reverse(floatBytes);
                 }
 
-                float value = BitConverter.ToSingle(floatBytes, 0);
+                Single value = BitConverter.ToSingle(floatBytes, 0);
                 return (address, value);
             }
             catch (Exception ex)
             {
-                //PluginLog.Error($"½âÎöÒì³££º{ex.Message}");
+                //PluginLog.Error($"ì³£{ex.Message}");
                 return (null, 0f);
             }
         }
 
-        // === ¶ÔÍâ·¢ËÍOSCÏûÏ¢£¨¾²Ì¬·½·¨£©===
-        public static void SendOSCMessage(string address, float value)
+        // === â·¢OSCÏ¢Ì¬===
+        public static void SendOSCMessage(String address, Single value)
         {
             if (Instance?._wsClient?.IsAlive != true)
             {
-                //PluginLog.Error("WebSocketÁ¬½ÓÎ´¾ÍĞ÷£¬·¢ËÍÊ§°Ü");
+                //PluginLog.Error("WebSocketï¿½ï¿½ï¿½ï¿½Î´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê§ï¿½ï¿½");
                 return;
             }
 
@@ -153,141 +153,141 @@ namespace Loupedeck.ReaOSCPlugin
                 var oscData = CreateOSCMessage(address, value);
                 Instance._wsClient.Send(oscData);
 
-                PluginLog.Info($"·¢ËÍOSCÏûÏ¢³É¹¦: {address} -> {value}");
+                PluginLog.Info($"ï¿½ï¿½ï¿½ï¿½OSCï¿½ï¿½Ï¢ï¿½É¹ï¿½: {address} -> {value}");
             }
             catch (Exception ex)
             {
-                PluginLog.Error($"·¢ËÍÏûÏ¢Ê§°Ü: {ex.Message}");
+                PluginLog.Error($"ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï¢Ê§ï¿½ï¿½: {ex.Message}");
                 Instance.ScheduleReconnect();
             }
         }
 
-        private static void DebugStringChars(string prefix, string s)
+        private static void DebugStringChars(String prefix, String s)
         {
             var sb = new System.Text.StringBuilder();
             sb.Append($"{prefix} => s.Length={s.Length}, chars:");
-            for (int i = 0; i < s.Length; i++)
+            for (Int32 i = 0; i < s.Length; i++)
             {
-                sb.Append($" [i={i}]='\\u{(int)s[i]:X4}'");
+                sb.Append($" [i={i}]='\\u{(Int32)s[i]:X4}'");
             }
             PluginLog.Info(sb.ToString());
         }
 
-        // ½« (µØÖ· + floatÊıÖµ) ·â×°³É¼òµ¥µÄOSC¶ş½øÖÆ¸ñÊ½
-        private static byte[] CreateOSCMessage(string address, float value)
+        //  (Ö· + floatÖµ) ×°É¼òµ¥µOSCÆ¸Ê½
+        private static Byte[] CreateOSCMessage(String address, Single value)
         {
-            // µÚ0²½£ºÈô´«ÈëµØÖ·ÊÇnull»ò¿Õ×Ö·û´®£¬¸ø¸öÄ¬ÈÏ£¬ÒÔÃâºóĞø³öÏÖÒì³£
-            if (string.IsNullOrEmpty(address))
+            // 0Ö·nullÖ·Ä¬Ï£ì³£
+            if (String.IsNullOrEmpty(address))
             {
                 address = "/EmptyAddress";
             }
 
-            // µÚ1²½£ºÇ¿ÖÆÈ¥µôËùÓĞ·Ç¿É¼û ASCII ×Ö·û£¬·ÀÖ¹Ç±ÔÚµÄ \0¡¢Áã¿í×Ö·û¡¢»Ø³µµÈ
-            //  ¿É¼ûASCII·¶Î§£º0x20(¿Õ¸ñ) ~ 0x7E(~)
+            // 1Ç¿È¥Ğ·Ç¿É¼ ASCII Ö·Ö¹Ç±Úµ \0Ö·Ø³
+            //  É¼ASCIIÎ§0x20(Õ¸) ~ 0x7E(~)
             address = System.Text.RegularExpressions.Regex.Replace(address, @"[^\x20-\x7E]", "");
 
-            // µÚ2²½£ºÍ³Ò»ÔÚÄ©Î²¼ÓÉÏ '\0'£¬ÎŞÂÛËüÔ­±¾ÊÇ·ñ´øÓĞ
-            //   ÏÈ TrimEnd('\0') Çå³ıÎ²²¿ÒÑÓĞµÄ \0£¬ÔÙ×·¼ÓÒ»´Î
+            // 2Í³Ò»Ä©Î² '\0'Ô­Ç·
+            //    TrimEnd('\0') Î²Ğµ \0×·Ò»
             address = address.TrimEnd('\0') + "\0";
 
-            // µÚ3²½£ºÓÃ ASCII ±àÂëÔÙ×ö 4 ×Ö½Ú¶ÔÆë
+            // 3 ASCII  4 Ö½Ú¶
             var addressBytes = Encoding.ASCII.GetBytes(address);
-            int pad = (4 - (addressBytes.Length % 4)) % 4;
-            var addressBuf = new byte[addressBytes.Length + pad];
+            Int32 pad = (4 - (addressBytes.Length % 4)) % 4;
+            var addressBuf = new Byte[addressBytes.Length + pad];
             Buffer.BlockCopy(addressBytes, 0, addressBuf, 0, addressBytes.Length);
-            // ²»ÓÃÊÖ¶¯²¹Áã£¬new ³öÀ´µÄ byte[] Ä¬ÈÏ¶¼ÊÇ 0£¬ÕıºÃÂú×ã¶ÔÆëĞèÇó
+            // Ö¶ã£¬new  byte[] Ä¬Ï¶ 0
 
-            // µÚ4²½£ºÀàĞÍ±êÇ© ",f\0\0"
-            var typeTagBytes = new byte[] { 0x2C, 0x66, 0x00, 0x00 };
+            // 4Í±Ç© ",f\0\0"
+            var typeTagBytes = new Byte[] { 0x2C, 0x66, 0x00, 0x00 };
 
-            // µÚ5²½£º´¦Àí float Îª´ó¶ËĞò
+            // 5 float Îª
             var valueBytes = BitConverter.GetBytes(value);
             if (BitConverter.IsLittleEndian)
             {
                 Array.Reverse(valueBytes);
             }
 
-            // µÚ6²½£ºÆ´½Ó³É×îÖÕµÄ OSC ÏûÏ¢
-            var oscMessage = new byte[addressBuf.Length + typeTagBytes.Length + valueBytes.Length];
+            // 6Æ´Ó³Õµ OSC Ï¢
+            var oscMessage = new Byte[addressBuf.Length + typeTagBytes.Length + valueBytes.Length];
             Buffer.BlockCopy(addressBuf, 0, oscMessage, 0, addressBuf.Length);
             Buffer.BlockCopy(typeTagBytes, 0, oscMessage, addressBuf.Length, typeTagBytes.Length);
             Buffer.BlockCopy(valueBytes, 0, oscMessage, addressBuf.Length + typeTagBytes.Length, valueBytes.Length);
 
-            // Äã¿ÉÒÔ±£ÁôÈÕÖ¾´òÓ¡£¬±ãÓÚ¼ì²é×îÖÕ×Ö½Ú³¤¶È
-            //DebugLogHex(oscMessage, "Ò»ÀÍÓÀÒİµÄOSCÊı¾İ:");
+            // Ô±Ö¾Ó¡Ú¼Ö½Ú³
+            //DebugLogHex(oscMessage, "Ò»İµOSC:");
             return oscMessage;
         }
 
 
 
-        private static void DebugLogHex(byte[] data, string title)
+        private static void DebugLogHex(Byte[] data, String title)
         {
             var hex = BitConverter.ToString(data).Replace("-", " ");
-            PluginLog.Info($"{title} ³¤¶È={data.Length}\n{hex}\n");
+            PluginLog.Info($"{title} ={data.Length}\n{hex}\n");
         }
 
 
         /// <summary>
-        /// ²å¼ş¼ÓÔØÍê³ÉÊ±´¥·¢
+        /// Ê±
         /// </summary>
-        public override void Load() => PluginLog.Info("²å¼şÒÑ¼ÓÔØ");
+        public override void Load() => PluginLog.Info("Ñ¼");
 
         /// <summary>
-        /// ·¢ËÍ´øÒ»¸ö float ²ÎÊıµÄÍ¨ÓÃOSCÏûÏ¢
+        /// Í´Ò» float Í¨OSCÏ¢
         /// </summary>
-        public static void SendGeneralMessage(string category, string address, int value)
+        public static void SendGeneralMessage(String category, String address, Int32 value)
         {
             if (Instance?._wsClient?.IsAlive != true)
             {
-                PluginLog.Error("Á¬½ÓÎ´¾ÍĞ÷");
+                PluginLog.Error("Î´");
                 return;
             }
 
-            // Æ´½ÓµØÖ·: /category/address
+            // Æ´ÓµÖ·: /category/address
             var fullAddress = $"/{category}/{address}".Replace("//", "/");
-            float floatValue = value;
+            Single floatValue = value;
 
-            // ×ßÕæÕıµÄ OSC ·â×°
+            //  OSC ×°
             var oscData = CreateOSCMessage(fullAddress, floatValue);
 
-            // Í¨¹ıWebSocket·¢ËÍ¶ş½øÖÆ
+            // Í¨WebSocketÍ¶
             Instance._wsClient.Send(oscData);
-            PluginLog.Verbose($"[SendGeneralMessage] ÒÑ·¢ËÍ: {fullAddress} -> {floatValue}");
+            PluginLog.Verbose($"[SendGeneralMessage] Ñ·: {fullAddress} -> {floatValue}");
         }
 
-        // ========== ×¨ÓÃÏûÏ¢·¢ËÍ·½·¨ ==========
+        // ========== ×¨Ï¢Í· ==========
 
         /// <summary>
-        /// ·¢ËÍFXĞ§¹ûÆ÷¿ØÖÆÏûÏ¢ (½«Ô­ÏÈint value×÷ÎªOSCµÄfloat·¢ËÍ)
+        /// FXĞ§Ï¢ (Ô­int valueÎªOSCfloat)
         /// </summary>
-        public static void SendFXMessage(string address, int value)
+        public static void SendFXMessage(String address, Int32 value)
         {
-            // ÏÈÆ´ÍêÕûµØÖ·: /FX/xxx
+            // Æ´Ö·: /FX/xxx
             var fullAddress = $"/FX/{address}".Replace("//", "/");
-            // °Ñ int ×ª³É float, Èç¹ûÄãÏë±£³Ö float ÓïÒå
-            float floatValue = value;
+            //  int ×ª float, ë±£ float 
+            Single floatValue = value;
 
-            // Ö±½Óµ÷ÓÃ SendOSCMessage ½øĞĞ·â×°²¢·¢ËÍ¶ş½øÖÆ
+            // Ö±Óµ SendOSCMessage Ğ·×°Í¶
             SendOSCMessage(fullAddress, floatValue);
         }
 
         /// <summary>
-        /// ·¢ËÍ³£¹æ¿ØÖÆÏûÏ¢
+        /// Í³Ï¢
         /// </summary>
-        /// <param name="address">¿ØÖÆµØÖ·</param>
-        /// <param name="value">¿ØÖÆÖµ</param>
-        public static void SendGeneralMessage(string address, int value)
+        /// <param name="address">ÆµÖ·</param>
+        /// <param name="value">Öµ</param>
+        public static void SendGeneralMessage(String address, Int32 value)
             => SendGeneralMessage("General", address, value);
 
         /// <summary>
-        /// ²å¼şĞ¶ÔØÊ±ÇåÀí×ÊÔ´
+        /// ï¿½ï¿½ï¿½Ğ¶ï¿½ï¿½Ê±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô´
         /// </summary>
         public override void Unload()
         {
             if (_wsClient?.IsAlive == true)
             {
-                _wsClient.Close(CloseStatusCode.Normal); // °²È«¹Ø±ÕÁ¬½Ó
-                PluginLog.Info("Á¬½ÓÒÑÕı³£¹Ø±Õ");
+                _wsClient.Close(CloseStatusCode.Normal); // ï¿½ï¿½È«ï¿½Ø±ï¿½ï¿½ï¿½ï¿½ï¿½
+                PluginLog.Info("ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ø±ï¿½");
             }
             base.Unload();
         }
@@ -301,20 +301,20 @@ namespace Loupedeck.ReaOSCPlugin
             new Lazy<OSCStateManager>(() => new OSCStateManager());
         public static OSCStateManager Instance => _instance.Value;
 
-        private readonly ConcurrentDictionary<string, float> _stateCache =
-            new ConcurrentDictionary<string, float>();
+        private readonly ConcurrentDictionary<String, Single> _stateCache =
+            new ConcurrentDictionary<String, Single>();
 
         public class StateChangedEventArgs : EventArgs
         {
-            public string Address { get; set; }
-            public float Value { get; set; }
+            public String Address { get; set; }
+            public Single Value { get; set; }
         }
 
-        // µ±ÈÎÒâµØÖ·µÄ×´Ì¬¸üĞÂÊ±£¬»á´¥·¢´ËÊÂ¼ş
+        // Ö·×´Ì¬Ê±á´¥Â¼
         public event EventHandler<StateChangedEventArgs> StateChanged;
 
-        // ¸üĞÂÄ³µØÖ·µÄfloatÊıÖµ£¬Í¬Ê±´¥·¢ÊÂ¼ş
-        public void UpdateState(string address, float value)
+        // Ä³Ö·floatÖµÍ¬Ê±Â¼
+        public void UpdateState(String address, Single value)
         {
             this._stateCache.AddOrUpdate(address, value, (k, v) => value);
 
@@ -326,15 +326,15 @@ namespace Loupedeck.ReaOSCPlugin
             });
         }
 
-        // »ñÈ¡Ä³µØÖ·µ±Ç°Öµ£¬Èô²»´æÔÚÔò·µ»Ø0
-        public float GetState(string address) =>
+        // È¡Ä³Ö·Ç°Öµò·µ»0
+        public Single GetState(String address) =>
             this._stateCache.TryGetValue(address, out var value) ? value : 0f;
 
-        // ĞÂÔö£º»ñÈ¡ËùÓĞ×´Ì¬µÄ¿ìÕÕ£¬ÓÃÓÚ±éÀú
-        public IDictionary<string, float> GetAllStates()
+        // È¡×´Ì¬Ä¿Õ£Ú±
+        public IDictionary<String, Single> GetAllStates()
         {
-            // ·µ»ØÒ»¸ö¿½±´£¬ÒÔÃâÍâ²¿Ö±½Ó¸Ä¶¯ÄÚ²¿×Öµä
-            return new Dictionary<string, float>(this._stateCache);
+            // Ò»â²¿Ö±Ó¸Ä¶Ú²Öµ
+            return new Dictionary<String, Single>(this._stateCache);
         }
     }
 
