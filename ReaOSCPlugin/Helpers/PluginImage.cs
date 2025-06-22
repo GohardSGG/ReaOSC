@@ -193,14 +193,14 @@ namespace Loupedeck.ReaOSCPlugin.Helpers
                             var labelFontSize = GetDialFontSize(titleToDraw);
                             // 原始位置: y:5, height: bitmapBuilder.Height / 2 - 7 (标题)
                             //            y: bitmapBuilder.Height / 2 - 2, height: bitmapBuilder.Height / 2 - 3 (值)
-                            bitmapBuilder.DrawText(titleToDraw, x: 0, y: 5, width: bitmapBuilder.Width, height: (bitmapBuilder.Height / 2) - 7, color: currentTitleColor, fontSize: labelFontSize );
-                            bitmapBuilder.DrawText(valueText, x: 0, y: (bitmapBuilder.Height / 2) - 2, width: bitmapBuilder.Width, height: (bitmapBuilder.Height / 2) - 3, color: currentTitleColor, fontSize: paramValueFontSize);
+                            bitmapBuilder.DrawText(titleToDraw, x: 0, y: 5, width: bitmapBuilder.Width, height: bitmapBuilder.Height / 2 - 7, color: currentTitleColor, fontSize: labelFontSize );
+                            bitmapBuilder.DrawText(valueText, x: 0, y: bitmapBuilder.Height / 2 - 2, width: bitmapBuilder.Width, height: bitmapBuilder.Height / 2 - 3, color: currentTitleColor, fontSize: paramValueFontSize);
                         }
                         else { bitmapBuilder.DrawText(valueText, currentTitleColor, paramValueFontSize); }
                     }
                     else if (!String.IsNullOrEmpty(titleToDraw)) 
                     { 
-                        Int32 titleFontSize = (config.ActionType != null && (config.ActionType.Contains("Dial"))) ? GetDialFontSize(titleToDraw) : GetButtonFontSize(titleToDraw);
+                        Int32 titleFontSize = (config.ActionType != null && config.ActionType.Contains("Dial")) ? GetDialFontSize(titleToDraw) : GetButtonFontSize(titleToDraw);
                         bitmapBuilder.DrawText(titleToDraw, currentTitleColor, titleFontSize);
                     }
 
@@ -297,7 +297,7 @@ namespace Loupedeck.ReaOSCPlugin.Helpers
 
             if (!hexColor.StartsWith("#"))
             {
-                return defaultColor ?? (defaultColor.HasValue ? defaultColor.Value : BitmapColor.Red);
+                return defaultColor ?? defaultColor ?? BitmapColor.Red;
             }
 
 

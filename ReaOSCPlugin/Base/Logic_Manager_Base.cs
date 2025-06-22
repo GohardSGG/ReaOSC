@@ -150,7 +150,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
             this.LoadAllConfigs();
             OSCStateManager.Instance.StateChanged += this.OnOSCStateChanged;
             this._isInitialized = true;
-            PluginLog.Info($"[LogicManager] 初始化成功。加载了 {_allConfigs.Count} 个配置项。");
+            PluginLog.Info($"[LogicManager] 初始化成功。加载了 {this._allConfigs.Count} 个配置项。");
         }
 
         #region 模式管理

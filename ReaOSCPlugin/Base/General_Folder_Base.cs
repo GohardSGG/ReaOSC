@@ -377,7 +377,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     }
                 }
             }
-            PluginLog.Info($"[{this.DisplayName}] 完成列表项解析，共加载 {_allListItems.Count} 个项。");
+            PluginLog.Info($"[{this.DisplayName}] 完成列表项解析，共加载 {this._allListItems.Count} 个项。");
 
             // --- 第4步: 初始列表内容更新 ---
             this.UpdateDisplayedDynamicItemsList(); // (将在后续实现)
@@ -714,7 +714,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                         kvp.Value.ActionType == dialConfig.ActionType
                     );
 
-                    if (!EqualityComparer<KeyValuePair<String, ButtonConfig>>.Default.Equals(globalParamKvp, default(KeyValuePair<String, ButtonConfig>)))
+                    if (!EqualityComparer<KeyValuePair<String, ButtonConfig>>.Default.Equals(globalParamKvp, default))
                     {
                         String globalActionParameter = globalParamKvp.Key;
                         Logic_Manager_Base.Instance.ProcessDialAdjustment(globalActionParameter, ticks);
@@ -821,7 +821,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                         kvp.Value.ActionType == dialConfigPressed.ActionType
                     );
 
-                    if (!EqualityComparer<KeyValuePair<String, ButtonConfig>>.Default.Equals(globalParamKvp, default(KeyValuePair<String, ButtonConfig>)))
+                    if (!EqualityComparer<KeyValuePair<String, ButtonConfig>>.Default.Equals(globalParamKvp, default))
                     {
                         String globalDialActionParameter = globalParamKvp.Key;
                         if (Logic_Manager_Base.Instance.ProcessDialPress(globalDialActionParameter))
@@ -1003,7 +1003,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
             String valueTextToDisplay = null; 
             Boolean isActiveStatus = false; 
             Int32 currentModeStatus = 0;    
-            String globalParamForState = GetGlobalParamForDialState(dialConfig);
+            String globalParamForState = this.GetGlobalParamForDialState(dialConfig);
 
             switch (dialConfig.ActionType)
             {
@@ -1031,7 +1031,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
         public override BitmapImage GetButtonImage(PluginImageSize imageSize) // 文件夹入口按钮
         {
             if (this._entryConfig == null) 
-            { using (var bb = new BitmapBuilder(imageSize)) { bb.Clear(BitmapColor.Black); bb.DrawText((!String.IsNullOrEmpty(this.DisplayName) ? this.DisplayName : "Folder"), BitmapColor.White, GetButtonFontSize(this.DisplayName)); return bb.ToImage(); } }
+            { using (var bb = new BitmapBuilder(imageSize)) { bb.Clear(BitmapColor.Black); bb.DrawText(!String.IsNullOrEmpty(this.DisplayName) ? this.DisplayName : "Folder", BitmapColor.White, GetButtonFontSize(this.DisplayName)); return bb.ToImage(); } }
             BitmapImage loadedEntryIcon = PluginImage.TryLoadIcon(this._entryConfig, this.DisplayName);
             // 文件夹入口是按钮，preferIconOnlyForDial: false
             // actualAuxText 由 DrawElement 根据 config.Text 处理
@@ -1060,7 +1060,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 (c.Value.GroupName == this.DisplayName || c.Value.GroupName == dialCfg.GroupName) && 
                 c.Value.DisplayName == dialCfg.DisplayName && 
                 c.Value.ActionType == dialCfg.ActionType );
-            return !EqualityComparer<KeyValuePair<String, ButtonConfig>>.Default.Equals(kvp, default(KeyValuePair<String, ButtonConfig>)) ? kvp.Key : null;
+            return !EqualityComparer<KeyValuePair<String, ButtonConfig>>.Default.Equals(kvp, default) ? kvp.Key : null;
         }
 
         // 辅助方法，用于根据标题长度自动获取按钮的字体大小 (如果PluginImage需要，但它内部有自己的)
@@ -1078,7 +1078,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
         // --- IV. 辅助方法与事件处理 ---
         // (GetLocalDialId, CreateActionParameterForItem, FindSourceDialGlobalActionParameter 已实现)
 
-        private void OnCommandStateNeedsRefresh(object sender, String globalActionParameterThatChanged)
+        private void OnCommandStateNeedsRefresh(Object sender, String globalActionParameterThatChanged)
         {
             if (String.IsNullOrEmpty(globalActionParameterThatChanged))
             {
@@ -1087,7 +1087,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
 
             // 检查是否为本文件夹管理的静态按钮相关的状态变化
             var staticButtonEntry = this._localIdToGlobalActionParameter_Buttons.FirstOrDefault(kvp => kvp.Value == globalActionParameterThatChanged);
-            if (!EqualityComparer<KeyValuePair<String, String>>.Default.Equals(staticButtonEntry, default(KeyValuePair<String, String>)))
+            if (!EqualityComparer<KeyValuePair<String, String>>.Default.Equals(staticButtonEntry, default))
             {
                 var localButtonId = staticButtonEntry.Key;
                 if (this._localIdToConfig_Buttons.TryGetValue(localButtonId, out var buttonConfig))
@@ -1117,7 +1117,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     kvp.Value.ActionType == dialConfig.ActionType
                 );
 
-                if (!EqualityComparer<KeyValuePair<String, ButtonConfig>>.Default.Equals(globalDialKvp, default(KeyValuePair<String, ButtonConfig>)) && globalDialKvp.Key == globalActionParameterThatChanged)
+                if (!EqualityComparer<KeyValuePair<String, ButtonConfig>>.Default.Equals(globalDialKvp, default) && globalDialKvp.Key == globalActionParameterThatChanged)
                 {
                     var localDialId = this.GetLocalDialId(dialConfig);
                     if (!String.IsNullOrEmpty(localDialId))
@@ -1224,7 +1224,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 kvp.Value.GroupName == parameterButtonConfig.GroupName && 
                 kvp.Value.ActionType == "ParameterDial");
 
-            if (!EqualityComparer<KeyValuePair<String, ButtonConfig>>.Default.Equals(foundDialEntry, default(KeyValuePair<String, ButtonConfig>)) && !String.IsNullOrEmpty(foundDialEntry.Key))
+            if (!EqualityComparer<KeyValuePair<String, ButtonConfig>>.Default.Equals(foundDialEntry, default) && !String.IsNullOrEmpty(foundDialEntry.Key))
             {
                 return foundDialEntry.Key;
             }

@@ -70,15 +70,9 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     {
                         EventHandler<OSCStateManager.StateChangedEventArgs> oscHandler = (s, e) => {
                             String groupNameForPath = config.GroupName.Replace(" ", "_").Trim('/');
-                            String pathSuffix;
-                            if (!String.IsNullOrEmpty(config.OscAddress))
-                            {
-                                pathSuffix = config.OscAddress.Replace(" ", "_").TrimStart('/');
-                            }
-                            else
-                            {
-                                pathSuffix = config.DisplayName.Replace(" ", "_").TrimStart('/');
-                            }
+                            String pathSuffix = !String.IsNullOrEmpty(config.OscAddress)
+                                ? config.OscAddress.Replace(" ", "_").TrimStart('/')
+                                : config.DisplayName.Replace(" ", "_").TrimStart('/');
                             String listenAddress = $"/{groupNameForPath}/{pathSuffix}".Replace("//", "/");
 
                             if (listenAddress == "/")
