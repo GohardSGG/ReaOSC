@@ -40,7 +40,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
         }
 
         // 【新增】处理来自Logic_Manager_Base的状态刷新通知的方法
-        private void OnLogicManagerCommandStateNeedsRefresh(object sender, String actionParameterThatChanged)
+        private void OnLogicManagerCommandStateNeedsRefresh(Object sender, String actionParameterThatChanged)
         {
             // 当Logic_Manager_Base通知某个actionParameter的状态已更新时，
             // 我们需要检查这个actionParameter是否由当前这个General_Dial_Base实例管理。
@@ -66,7 +66,10 @@ namespace Loupedeck.ReaOSCPlugin.Base
         {
             var config = this._logicManager.GetConfig(actionParameter);
             if (config == null)
+            {
                 return;
+            }
+
             this._logicManager.ProcessDialAdjustment(config, ticks, actionParameter, this._lastEventTimes);
             this.AdjustmentValueChanged(actionParameter); // 通知Loupedeck值已改变 (即使我们不直接显示值)
         }
@@ -75,7 +78,10 @@ namespace Loupedeck.ReaOSCPlugin.Base
         {
             var config = this._logicManager.GetConfig(actionParameter);
             if (config == null)
+            {
                 return;
+            }
+
             if (this._logicManager.ProcessDialPress(config, actionParameter)) // 如果ProcessDialPress返回true (例如2ModeTickDial切换了模式)
             {
                 this.ActionImageChanged(actionParameter); // 则刷新UI

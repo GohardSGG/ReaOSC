@@ -232,7 +232,11 @@ namespace Loupedeck.ReaOSCPlugin.Helpers
         /// <returns>返回实际绘制的图标尺寸 (width, height)。</returns>
         private static (Int32 drawnWidth, Int32 drawnHeight) DrawScaledIcon(BitmapBuilder bb, BitmapImage icon, Int32 areaX, Int32 areaY, Int32 areaWidth, Int32 areaHeight, Boolean centerInArea)
         {
-            if (icon == null || areaWidth <= 0 || areaHeight <= 0) return (0,0);
+            if (icon == null || areaWidth <= 0 || areaHeight <= 0)
+            {
+                return (0,0);
+            }
+
 
             Int32 originalIconWidth = icon.Width;
             Int32 originalIconHeight = icon.Height;
@@ -264,7 +268,12 @@ namespace Loupedeck.ReaOSCPlugin.Helpers
 
         private static BitmapColor GetTitleColor(ButtonConfig config, Boolean isActive, Int32 currentMode)
         {
-            if (config == null) return BitmapColor.White;
+            if (config == null)
+            {
+                return BitmapColor.White;
+            }
+
+
             BitmapColor titleColor = HexToBitmapColor(config.TitleColor, BitmapColor.White);
             if (config.ActionType == "ToggleButton" || config.ActionType == "ToggleDial")
             { titleColor = isActive ? HexToBitmapColor(config.ActiveTextColor, BitmapColor.White) : HexToBitmapColor(config.DeactiveTextColor, BitmapColor.White); }
@@ -280,10 +289,25 @@ namespace Loupedeck.ReaOSCPlugin.Helpers
         /// </summary>
         private static BitmapColor HexToBitmapColor(String hexColor, BitmapColor? defaultColor = null)
         {
-            if (String.IsNullOrEmpty(hexColor)) return defaultColor ?? BitmapColor.Black; 
-            if (!hexColor.StartsWith("#")) return defaultColor ?? (defaultColor.HasValue ? defaultColor.Value : BitmapColor.Red); 
+            if (String.IsNullOrEmpty(hexColor))
+            {
+                return defaultColor ?? BitmapColor.Black;
+            }
+
+
+            if (!hexColor.StartsWith("#"))
+            {
+                return defaultColor ?? (defaultColor.HasValue ? defaultColor.Value : BitmapColor.Red);
+            }
+
+
             var hex = hexColor.Substring(1);
-            if (hex.Length != 6 && hex.Length != 8) return defaultColor ?? BitmapColor.Red; 
+            if (hex.Length != 6 && hex.Length != 8)
+            {
+                return defaultColor ?? BitmapColor.Red;
+            }
+
+
             try
             {
                 var r = (Byte)Int32.Parse(hex.Substring(0, 2), NumberStyles.HexNumber);
@@ -300,7 +324,12 @@ namespace Loupedeck.ReaOSCPlugin.Helpers
         /// </summary>
         private static Int32 GetButtonFontSize(String title)
         {
-            if (String.IsNullOrEmpty(title)) return 23;
+            if (String.IsNullOrEmpty(title))
+            {
+                return 23;
+            }
+
+
             var totalLengthWithSpaces = title.Length;
             Int32 effectiveLength;
             if (totalLengthWithSpaces <= 8)
@@ -338,7 +367,12 @@ namespace Loupedeck.ReaOSCPlugin.Helpers
         /// </summary>
         private static Int32 GetDialFontSize(String title)
         {
-            if (String.IsNullOrEmpty(title)) return 16;
+            if (String.IsNullOrEmpty(title))
+            {
+                return 16;
+            }
+
+
             var totalLengthWithSpaces = title.Length;
             Int32 effectiveLength;
             if (totalLengthWithSpaces <= 10) // General_Dial_Base logic
@@ -373,7 +407,12 @@ namespace Loupedeck.ReaOSCPlugin.Helpers
         // 【新增】获取参数值的字体大小
         private static Int32 GetParameterValueFontSize(String parameterValue)
         {
-            if (String.IsNullOrEmpty(parameterValue)) return 10; // 默认一个较小值以防空字符串
+            if (String.IsNullOrEmpty(parameterValue))
+            {
+                return 10; // 默认一个较小值以防空字符串
+            }
+
+
             var len = parameterValue.Length;
             return len switch
             {

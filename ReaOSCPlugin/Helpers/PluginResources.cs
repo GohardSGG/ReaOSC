@@ -21,7 +21,10 @@ namespace Loupedeck.ReaOSCPlugin
         public static void Init(Assembly assembly)
         {
             if (_assembly != null)
+            {
                 return; // ��ֹ�ظ���ʼ��
+            }
+
 
             _assembly = assembly ?? throw new ArgumentNullException(nameof(assembly));
             _allResourceNames = _assembly.GetManifestResourceNames();

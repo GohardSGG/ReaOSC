@@ -129,7 +129,10 @@ namespace Loupedeck.ReaOSCPlugin.Base
         // 辅助方法，用于生成旋钮的内部localId (与旧Dynamic_Folder_Base和FX_Folder_Base逻辑类似)
         private String GetLocalDialId(ButtonConfig dialConfig)
         {
-            if (dialConfig == null) return null;
+            if (dialConfig == null)
+            {
+                return null;
+            }
             var groupName = dialConfig.GroupName ?? this.DisplayName; 
             var displayName = dialConfig.DisplayName ?? ""; 
 
@@ -163,7 +166,10 @@ namespace Loupedeck.ReaOSCPlugin.Base
             foreach (var buttonConfigFromJson in staticButtonConfigs) 
             {
                 // Placeholder按钮类型也应该被跳过 (如果未来按钮也支持Placeholder的话)
-                if (buttonConfigFromJson.ActionType == "Placeholder") { continue; }
+                if (buttonConfigFromJson.ActionType == "Placeholder") 
+                {
+                    continue; 
+                }
 
                 // 注意: 静态按钮的 GroupName 和 DisplayName 来自其在 folderContentConfig.Buttons 中的定义
                 // 我们需要用这些信息去 Logic_Manager_Base 中查找匹配的已注册全局配置
@@ -339,7 +345,9 @@ namespace Loupedeck.ReaOSCPlugin.Base
                                 foreach (var subFilterName in this._filterOptions.Keys)
                                 {
                                     if (subFilterName == this._busFilterDialDisplayName) // BusFilter的值通常是GroupName，不作为可过滤属性
+                                    {
                                         continue;
+                                    }
 
                                     if (itemJObject.TryGetValue(subFilterName, out JToken propValToken) && propValToken.Type != JTokenType.Null)
                                     {
@@ -425,7 +433,9 @@ namespace Loupedeck.ReaOSCPlugin.Base
 
                     // 跳过已经处理过的BusFilter本身，以及当BusFilter选为Favorite时也不再用次级过滤器（通常逻辑）
                     if (filterName == this._busFilterDialDisplayName || (favoriteFilterActive && filterName != this._busFilterDialDisplayName) ) 
+                    {
                         continue;
+                    }
                     
                     if (selectedValue != "All")
                     {
@@ -444,10 +454,16 @@ namespace Loupedeck.ReaOSCPlugin.Base
             // 计算分页，假设每页12个项 (Loupedeck标准按钮数量)
             Int32 itemsPerPage = 12; 
             this._totalPages = (Int32)Math.Ceiling((Double)this._currentDisplayedItemActionNames.Count / itemsPerPage); 
-            if (this._totalPages == 0) this._totalPages = 1; // 至少有1页，即使是空的
+            if (this._totalPages == 0)
+            {
+                this._totalPages = 1; // 至少有1页，即使是空的
+            }
             
             this._currentPage = Math.Min(this._currentPage, this._totalPages - 1); // 确保当前页不超过总页数
-            if (this._currentPage < 0) this._currentPage = 0; // 确保当前页不为负
+            if (this._currentPage < 0)
+            {
+                this._currentPage = 0; // 确保当前页不为负
+            }
 
             PluginLog.Info($"[{this.DisplayName}] 动态列表更新完毕。当前显示 {this._currentDisplayedItemActionNames.Count} 项。总页数: {this._totalPages}, 当前页: {this._currentPage + 1}");
         }
@@ -626,10 +642,16 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     {
                         var currentSelectedValue = this._currentFilterValues.ContainsKey(filterName) ? this._currentFilterValues[filterName] : options[0];
                         var currentIndex = options.IndexOf(currentSelectedValue);
-                        if (currentIndex == -1) currentIndex = 0;
+                        if (currentIndex == -1)
+                        {
+                            currentIndex = 0;
+                        }
 
                         var newIndex = (currentIndex + ticks + options.Count) % options.Count;
-                        if (newIndex < 0) newIndex += options.Count; // 确保正索引
+                        if (newIndex < 0)
+                        {
+                            newIndex += options.Count; // 确保正索引
+                        }
                         this._currentFilterValues[filterName] = options[newIndex];
                         
                         this._currentPage = 0; // 过滤器改变，重置到第一页
@@ -700,7 +722,11 @@ namespace Loupedeck.ReaOSCPlugin.Base
                         // 这会触发 OnCommandStateNeedsRefresh, 进而调用 AdjustmentValueChanged
                         // 所以这里可能不需要直接调用 this.AdjustmentValueChanged(actionParameter);
                         // 但如果Logic_Manager不保证刷新本旋钮，则需要调用。ToggleDial等状态变化会触发。ParameterDial的值变化需要本地刷新。
-                        if(dialConfig.ActionType == "ParameterDial") valueChanged = true;
+                        if(dialConfig.ActionType == "ParameterDial")
+                        {
+                            valueChanged = true;
+                        }
+
                     }
                     else
                     {
@@ -712,7 +738,12 @@ namespace Loupedeck.ReaOSCPlugin.Base
                                 currentIndex = 0; // 理论上构造函数已初始化
                             }
                             Int32 newParamIndex = (currentIndex + ticks + dialConfig.Parameter.Count) % dialConfig.Parameter.Count;
-                            if (newParamIndex < 0) newParamIndex += dialConfig.Parameter.Count;
+                            if (newParamIndex < 0)
+                            {
+                                newParamIndex += dialConfig.Parameter.Count;
+                            }
+
+
                             this._parameterDialCurrentIndexes[localDialId] = newParamIndex;
                             valueChanged = true;
                             PluginLog.Info($"[{this.DisplayName}] ParameterDial '{dialConfig.DisplayName}' (本地处理) 值变为索引 {newParamIndex}: '{dialConfig.Parameter[newParamIndex]}'.");
@@ -979,8 +1010,18 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 case "FilterDial": valueTextToDisplay = this._currentFilterValues.TryGetValue(dialConfig.DisplayName, out var val) ? val : "N/A"; break;
                 case "PageDial": valueTextToDisplay = $"{this._currentPage + 1} / {this._totalPages}"; break;
                 case "ParameterDial": valueTextToDisplay = this.DetermineParameterDialValue(dialConfig, localDialId); break;
-                case "ToggleDial": if(globalParamForState != null) isActiveStatus = Logic_Manager_Base.Instance.GetToggleState(globalParamForState); break;
-                case "2ModeTickDial": if(globalParamForState != null) currentModeStatus = Logic_Manager_Base.Instance.GetDialMode(globalParamForState); break;
+                case "ToggleDial": 
+                    if(globalParamForState != null)
+                    {
+                        isActiveStatus = Logic_Manager_Base.Instance.GetToggleState(globalParamForState); 
+                    }
+                    break;
+                case "2ModeTickDial": if(globalParamForState != null)
+                    {
+                        currentModeStatus = Logic_Manager_Base.Instance.GetDialMode(globalParamForState);
+                    }
+
+                    break;
             }
             // 对于旋钮，actualAuxText 将由 PluginImage.DrawElement 在文本模式下根据 config.Text 处理
             // 在图标模式下 (preferIconOnlyForDial=true)，旋钮不显示任何文本
@@ -1008,7 +1049,9 @@ namespace Loupedeck.ReaOSCPlugin.Base
         {
             if (this._parameterDialCurrentIndexes.TryGetValue(localDialId, out var currentIndex) && 
                 dialCfg.Parameter != null && currentIndex >= 0 && currentIndex < dialCfg.Parameter.Count)
-            { return dialCfg.Parameter[currentIndex]; }
+            { 
+                return dialCfg.Parameter[currentIndex]; 
+            }
             return dialCfg.Parameter?.FirstOrDefault() ?? "N/A"; 
         }
         private String GetGlobalParamForDialState(ButtonConfig dialCfg)
@@ -1022,7 +1065,15 @@ namespace Loupedeck.ReaOSCPlugin.Base
 
         // 辅助方法，用于根据标题长度自动获取按钮的字体大小 (如果PluginImage需要，但它内部有自己的)
         // 此方法可以从旧 Dynamic_Folder_Base 迁移，但 PluginImage.GetButtonFontSize 更通用
-        private static Int32 GetButtonFontSize(String title) { if (String.IsNullOrEmpty(title)) return 23; var len = title.Length; return len switch { 1 => 38, 2 => 33, 3 => 31, 4 => 26, 5 => 23, 6 => 22, 7 => 20, 8 => 18, _ => 16 }; }
+        private static Int32 GetButtonFontSize(String title) 
+        {
+            if (String.IsNullOrEmpty(title))
+            {
+                return 23;
+            }
+            var len = title.Length; 
+            return len switch { 1 => 38, 2 => 33, 3 => 31, 4 => 26, 5 => 23, 6 => 22, 7 => 20, 8 => 18, _ => 16 }; 
+        }
 
         // --- IV. 辅助方法与事件处理 ---
         // (GetLocalDialId, CreateActionParameterForItem, FindSourceDialGlobalActionParameter 已实现)
@@ -1093,7 +1144,10 @@ namespace Loupedeck.ReaOSCPlugin.Base
                             }
                             // 如果是动态列表文件夹，ParameterButton可能在 _allListItems 中，需要不同的检查逻辑（暂未实现，因为动态列表项通常不是ParameterButton）
                             
-                            if(linkedButtonNeedsRefresh) this.ButtonActionNamesChanged();
+                            if(linkedButtonNeedsRefresh) 
+                            {
+                                this.ButtonActionNamesChanged();
+                            }
                         }
                         return; // 处理完毕
                     }

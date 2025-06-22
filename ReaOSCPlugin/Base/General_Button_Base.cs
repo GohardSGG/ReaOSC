@@ -81,8 +81,10 @@ namespace Loupedeck.ReaOSCPlugin.Base
                             }
                             String listenAddress = $"/{groupNameForPath}/{pathSuffix}".Replace("//", "/");
 
-                            if (String.IsNullOrEmpty(listenAddress) || listenAddress == "/")
+                            if (listenAddress == "/")
+                            {
                                 return;
+                            }
 
                             if (e.Address == listenAddress)
                             {
@@ -115,7 +117,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
             this._triggerResetTimers[actionParameter] = timer;
         }
 
-        private void OnModeButtonOscStateChanged(object sender, OSCStateManager.StateChangedEventArgs e, ButtonConfig config, String actionParameter)
+        private void OnModeButtonOscStateChanged(Object sender, OSCStateManager.StateChangedEventArgs e, ButtonConfig config, String actionParameter)
         {
             var modeIndex = this._logicManager.GetCurrentModeIndex(config.ModeName);
             String expectedAddress = null;
@@ -138,7 +140,9 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 }
             }
             if (String.IsNullOrEmpty(expectedAddress))
+            {
                 return;
+            }
             if (e.Address == expectedAddress)
             {
                 this._logicManager.SetToggleState(actionParameter, e.Value > 0.5f);
@@ -149,7 +153,9 @@ namespace Loupedeck.ReaOSCPlugin.Base
         protected override void RunCommand(String actionParameter)
         {
             if (this._logicManager.GetConfig(actionParameter) is not { } config)
+            {
                 return;
+            }
 
             if (config.ActionType == "SelectModeButton")
             {
@@ -170,7 +176,9 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 }
                 String finalOscAddress = null;
                 if (config.OscAddresses?.Count > modeIndex)
-                { finalOscAddress = config.OscAddresses[modeIndex]; }
+                {
+                    finalOscAddress = config.OscAddresses[modeIndex];
+                }
                 if (String.IsNullOrEmpty(finalOscAddress) && !String.IsNullOrEmpty(config.OscAddress))
                 {
                     String currentModeString = this._logicManager.GetCurrentModeString(config.ModeName);
@@ -233,7 +241,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
         protected override BitmapImage GetCommandImage(String actionParameter, PluginImageSize imageSize)
         {
             var config = this._logicManager.GetConfig(actionParameter);
-            if (config == null)
+            if (config is null)
             {
                 PluginLog.Warning($"[GeneralButtonBase|GetCommandImage] Config not found for actionParameter: {actionParameter}. Returning default image.");
                 return PluginImage.DrawElement(imageSize, null, preferIconOnlyForDial: false);
