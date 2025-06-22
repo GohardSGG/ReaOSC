@@ -21,7 +21,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
         public String GroupName { get; set; }
         public String ActionType { get; set; }
         // 可能的值: "TriggerButton", "ToggleButton", "TickDial", "ToggleDial", "2ModeTickDial", "SelectModeButton",
-        // 【新增】 "ParameterDial", "ParameterButton", "CombineButton", "FilterDial", "PageDial", "PlaceholderDial", "NavigationDial"
+        // 【新增】 "ParameterDial", "ParameterButton", "CombineButton", "FilterDial", "PageDial", "PlaceholderDial", "NavigationDial", "ControlDial"
         public String Description { get; set; }
 
         // --- OSC 相关 ---
@@ -95,7 +95,11 @@ namespace Loupedeck.ReaOSCPlugin.Base
         public String ShowTitle { get; set; } // JSON中可以是 "Yes" 或 "No"
 
         // === 【新增】ParameterDial 特有的参数列表 ===
-        public List<String> Parameter { get; set; } // 用于存储ParameterDial的参数选项列表
+        // === 【修改】也用于 ControlDial 的参数列表 ===
+        public List<String> Parameter { get; set; } // 用于存储ParameterDial的参数选项列表，或ControlDial的配置
+
+        // === 【新增】用于 ControlDial 指定默认值 ===
+        public String ParameterDefault { get; set; }
 
         // === 【新增】用于捕获JSON中未明确定义的其他属性 ===
         // Newtonsoft.Json.JsonExtensionDataAttribute 标签可以自动捕获额外数据到字典
@@ -111,6 +115,17 @@ namespace Loupedeck.ReaOSCPlugin.Base
         public List<ButtonConfig> Buttons { get; set; } = new List<ButtonConfig>();
         public List<ButtonConfig> Dials { get; set; } = new List<ButtonConfig>();
         public Boolean IsButtonListDynamic { get; set; } // 【新增】标记按钮列表是否为动态加载
+    }
+
+    // 【新增】用于存储ControlDial解析后的配置
+    internal enum ControlDialMode { Continuous, Discrete }
+    internal class ControlDialParsedConfig
+    {
+        public ControlDialMode Mode { get; set; }
+        public Int32 MinValue { get; set; } // 仅用于 Continuous 模式
+        public Int32 MaxValue { get; set; } // 仅用于 Continuous 模式
+        public List<Int32> DiscreteValues { get; set; } // 仅用于 Discrete 模式
+        public Int32 DefaultValue { get; set; }
     }
 
     public class Logic_Manager_Base : IDisposable
@@ -137,6 +152,10 @@ namespace Loupedeck.ReaOSCPlugin.Base
         public event EventHandler<String> CommandStateNeedsRefresh;
 
         private readonly Dictionary<String, Int32> _parameterDialSelectedIndexes = new Dictionary<String, Int32>();
+
+        // 【新增】用于 ControlDial 状态存储
+        private readonly Dictionary<String, Int32> _controlDialCurrentValues = new Dictionary<String, Int32>();
+        private readonly Dictionary<String, ControlDialParsedConfig> _controlDialConfigs = new Dictionary<String, ControlDialParsedConfig>();
 
         private Logic_Manager_Base() { }
 
@@ -377,11 +396,18 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 this._allConfigs[actionParameter] = config;
 
                 if (config.ActionType == "ToggleButton" || config.ActionType == "ToggleDial")
-                { this._toggleStates[actionParameter] = false; }
+                { 
+                    this._toggleStates[actionParameter] = false; 
+                    PluginLog.Info($"[LogicManager|RegisterConfigs] Initialized toggle state for '{actionParameter}' to false."); // 保留原有日志或调整
+                }
                 else if (config.ActionType == "2ModeTickDial")
                 { this._dialModes[actionParameter] = 0; }
                 else if (config.ActionType == "ParameterDial")
                 { this._parameterDialSelectedIndexes[actionParameter] = 0; }
+                else if (config.ActionType == "ControlDial")
+                {
+                    this.ParseAndStoreControlDialConfig(config, actionParameter);
+                }
 
                 String effectiveOscAddressForStateListener = null;
                 if (!String.IsNullOrEmpty(config.OscAddress))
@@ -401,8 +427,20 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     if (config.ActionType == "ToggleButton" || config.ActionType == "ToggleDial")
                     {
                         this._oscAddressToActionParameterMap[effectiveOscAddressForStateListener] = actionParameter;
+                        PluginLog.Info($"[LogicManager|RegisterConfigs] Mapping OSC listen address \'{effectiveOscAddressForStateListener}\' to actionParameter \'{actionParameter}\' for ToggleButton/Dial \'{config.DisplayName}\' (JSON Group: \'{config.GroupName}\')."); // 新增日志记录监听地址和actionParameter
                         // 初始化状态时也考虑当前OSC设备的状态
-                        this._toggleStates[actionParameter] = OSCStateManager.Instance.GetState(effectiveOscAddressForStateListener) > 0.5f;
+                        // 【修正】确保 GetState 的调用不会因为 OSCStateManager 未初始化而异常 (虽然不太可能，但保险起见)
+                        var initialStateFromDevice = OSCStateManager.Instance?.GetState(effectiveOscAddressForStateListener) > 0.5f;
+                        if (this._toggleStates.TryGetValue(actionParameter, out var currentState) && currentState != initialStateFromDevice)
+                        {
+                            this._toggleStates[actionParameter] = initialStateFromDevice;
+                            PluginLog.Info($"[LogicManager|RegisterConfigs] Initial toggle state for '{actionParameter}' (from device) set to {initialStateFromDevice}. Overwrote previous default.");
+                        }
+                        else if (!this._toggleStates.ContainsKey(actionParameter)) // 避免覆盖上面已设置的false，除非来自设备
+                        {
+                             this._toggleStates[actionParameter] = initialStateFromDevice;
+                             PluginLog.Info($"[LogicManager|RegisterConfigs] Initial toggle state for '{actionParameter}' (from device) set to {initialStateFromDevice}.");
+                        }
                     }
                 }
             }
@@ -443,22 +481,75 @@ namespace Loupedeck.ReaOSCPlugin.Base
 
         private void OnOSCStateChanged(Object sender, OSCStateManager.StateChangedEventArgs e)
         {
+            PluginLog.Info($"[LogicManager|OnOSCStateChanged] Received OSC: Address='{e.Address}', Value='{e.Value}'"); // 新增日志：记录收到的OSC消息
             if (this._oscAddressToActionParameterMap.TryGetValue(e.Address, out String mappedActionParameter))
             {
                 var config = this.GetConfig(mappedActionParameter);
                 if (config == null)
                 {
+                    PluginLog.Warning($"[LogicManager|OnOSCStateChanged] Matched OSC Address '{e.Address}' to actionParameter '{mappedActionParameter}', but config is null."); // 完善日志
                     return;
                 }
+                PluginLog.Info($"[LogicManager|OnOSCStateChanged] Matched OSC Address '{e.Address}' to actionParameter '{mappedActionParameter}' (Config: '{config.DisplayName}', Type: '{config.ActionType}')."); // 完善日志
+
                 if (config.ActionType == "ToggleButton" || config.ActionType == "ToggleDial")
                 {
                     var newState = e.Value > 0.5f;
                     if (!this._toggleStates.ContainsKey(mappedActionParameter) || this._toggleStates[mappedActionParameter] != newState)
                     {
                         this._toggleStates[mappedActionParameter] = newState;
+                        PluginLog.Info($"[LogicManager|OnOSCStateChanged] State for '{mappedActionParameter}' ('{config.DisplayName}') changed to {newState}. Invoking CommandStateNeedsRefresh."); // 完善日志
                         this.CommandStateNeedsRefresh?.Invoke(this, mappedActionParameter);
                     }
+                    else
+                    {
+                        PluginLog.Verbose($"[LogicManager|OnOSCStateChanged] State for '{mappedActionParameter}' ('{config.DisplayName}') already {newState}. No change needed."); // 新增日志：状态未变
+                    }
                 }
+                // 【新增】处理ControlDial的外部状态更新
+                else if (config.ActionType == "ControlDial")
+                {
+                    if (this._controlDialConfigs.TryGetValue(mappedActionParameter, out var parsedDialConfig) && 
+                        this._controlDialCurrentValues.ContainsKey(mappedActionParameter))
+                    {
+                        Int32 incomingIntValue = (Int32)e.Value; // OSC值通常是float，转为int (截断)
+                        Int32 validatedValue = incomingIntValue;
+                        Int32 currentStoredValue = this._controlDialCurrentValues[mappedActionParameter];
+
+                        if (parsedDialConfig.Mode == ControlDialMode.Continuous)
+                        {
+                            validatedValue = Math.Clamp(incomingIntValue, parsedDialConfig.MinValue, parsedDialConfig.MaxValue);
+                        }
+                        else // Discrete Mode
+                        {
+                            if (!parsedDialConfig.DiscreteValues.Contains(incomingIntValue))
+                            {
+                                PluginLog.Warning($"[LogicManager|OnOSCStateChanged] ControlDial '{config.DisplayName}' (action: {mappedActionParameter}) received OSC value {incomingIntValue} which is not in its discrete list of values. Ignoring update from OSC.");
+                                return; // 忽略无效的离散值
+                            }
+                            // validatedValue 已经是 incomingIntValue，且已确认在列表中
+                        }
+
+                        if (validatedValue != currentStoredValue)
+                        {
+                            this._controlDialCurrentValues[mappedActionParameter] = validatedValue;
+                            PluginLog.Info($"[LogicManager|OnOSCStateChanged] ControlDial '{config.DisplayName}' (action: {mappedActionParameter}) state updated via OSC from {currentStoredValue} to {validatedValue}. Address: {e.Address}");
+                            this.CommandStateNeedsRefresh?.Invoke(this, mappedActionParameter);
+                        }
+                        else
+                        {
+                            PluginLog.Verbose($"[LogicManager|OnOSCStateChanged] ControlDial '{config.DisplayName}' (action: {mappedActionParameter}) received OSC value {validatedValue} which matches current state. No change needed from OSC.");
+                        }
+                    }
+                    else
+                    {
+                        PluginLog.Warning($"[LogicManager|OnOSCStateChanged] ControlDial '{config.DisplayName}' (action: {mappedActionParameter}) received OSC for address '{e.Address}', but its internal config or current value was not found.");
+                    }
+                }
+            }
+            else
+            {
+                PluginLog.Info($"[LogicManager|OnOSCStateChanged] OSC Address '{e.Address}' NOT found in _oscAddressToActionParameterMap."); // 新增日志：未匹配到地址
             }
         }
 
@@ -480,6 +571,12 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 { return config.Titles[index]; }
             }
             return null;
+        }
+
+        // 【新增】获取 ControlDial 当前值
+        public Int32 GetControlDialValue(String actionParameter)
+        {
+            return this._controlDialCurrentValues.TryGetValue(actionParameter, out var val) ? val : 0;
         }
 
         public Boolean ProcessUserAction(String actionParameter, String dynamicFolderDisplayName = null, ButtonConfig itemConfig = null)
@@ -536,7 +633,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     // ToggleMode 内部会调用 CommandStateNeedsRefresh
                     needsUiRefresh = true; // SelectModeButton按下通常需要刷新依赖它的按钮
                     break;
-
+                // ControlDial 的按下操作由 ProcessDialPress 处理，不应在此处处理旋转逻辑
                 default:
                     PluginLog.Warning($"[LogicManager] ProcessUserAction: 未处理的 ActionType '{config.ActionType}' for '{config.DisplayName}' (actionParameter: '{actionParameter}')");
                     break;
@@ -619,9 +716,49 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     // 但如果新路径也可能调整它们，需要在这里发送OSC
                     // 调用ProcessLegacyDialAdjustmentInternal以复用其OSC发送逻辑，它已使用JSON GroupName
                     this.ProcessLegacyDialAdjustmentInternal(config, ticks, globalActionParameter, null); // lastEventTimes 可能需要传递或处理
+                    this.CommandStateNeedsRefresh?.Invoke(this, globalActionParameter); // 确保刷新
                     break;
                 case "ToggleDial":
                     this.ProcessLegacyToggleDialAdjustmentInternal(config, ticks, globalActionParameter);
+                    this.CommandStateNeedsRefresh?.Invoke(this, globalActionParameter); // 确保刷新
+                    break;
+                case "ControlDial":
+                    if (this._controlDialConfigs.TryGetValue(globalActionParameter, out var controlConfig) &&
+                        this._controlDialCurrentValues.TryGetValue(globalActionParameter, out var currentValue))
+                    {
+                        Int32 newValue = currentValue;
+                        if (controlConfig.Mode == ControlDialMode.Continuous)
+                        {
+                            newValue = Math.Clamp(currentValue + ticks, controlConfig.MinValue, controlConfig.MaxValue);
+                        }
+                        else // Discrete Mode
+                        {
+                            if (controlConfig.DiscreteValues != null && controlConfig.DiscreteValues.Any())
+                            {
+                                var discreteModeCurrentIndex = controlConfig.DiscreteValues.IndexOf(currentValue); // 变量重命名
+                                if (discreteModeCurrentIndex == -1) // Should not happen if initialized correctly
+                                {
+                                    discreteModeCurrentIndex = 0;
+                                }
+                                var newIndex = (discreteModeCurrentIndex + ticks % controlConfig.DiscreteValues.Count + controlConfig.DiscreteValues.Count) % controlConfig.DiscreteValues.Count;
+                                newValue = controlConfig.DiscreteValues[newIndex];
+                            }
+                        }
+
+                        if (newValue != currentValue)
+                        {
+                            this._controlDialCurrentValues[globalActionParameter] = newValue;
+                            // OSC地址构建: 优先用config.OscAddress, 否则用 /<GroupName>/<Title>
+                            // 注意：config.Title 是预期的显示标题，比 config.DisplayName 更适合用于OSC路径 (如果OscAddress未定义)
+                            String oscAddress = this.DetermineOscAddressForAction(config, config.GroupName, config.OscAddress ?? config.Title);
+                            if (!String.IsNullOrEmpty(oscAddress) && oscAddress != "/")
+                            {
+                                ReaOSCPlugin.SendOSCMessage(oscAddress, newValue); // 发送整数值
+                                PluginLog.Info($"[LogicManager] ControlDial '{config.DisplayName}' OSC sent to '{oscAddress}' -> {newValue}");
+                            }
+                            this.CommandStateNeedsRefresh?.Invoke(this, globalActionParameter);
+                        }
+                    }
                     break;
                 default:
                     PluginLog.Warning($"[LogicManager] ProcessDialAdjustment (New): 未处理的 ActionType '{config.ActionType}' for '{globalActionParameter}'");
@@ -645,6 +782,18 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     break;
                 case "ParameterDial":
                     this.ProcessDialAdjustment(actionParameter, ticks);
+                    break;
+                case "ControlDial":
+                    if (this._controlDialConfigs.TryGetValue(actionParameter, out var controlConfigToReset))
+                    {
+                        this._controlDialCurrentValues[actionParameter] = controlConfigToReset.DefaultValue;
+                        String oscAddressReset = this.DetermineOscAddressForAction(config, config.GroupName, config.OscAddress ?? config.Title);
+                        if (!String.IsNullOrEmpty(oscAddressReset) && oscAddressReset != "/")
+                        {
+                            ReaOSCPlugin.SendOSCMessage(oscAddressReset, controlConfigToReset.DefaultValue); // 发送默认整数值
+                            PluginLog.Info($"[LogicManager] ControlDial '{config.DisplayName}' Reset OSC sent to '{oscAddressReset}' -> {controlConfigToReset.DefaultValue}");
+                        }
+                    }
                     break;
                 default:
                     PluginLog.Warning($"[LogicManager] ProcessDialAdjustment (Legacy): 未处理的 ActionType '{config.ActionType}' for '{actionParameter}'");
@@ -677,12 +826,38 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     if (!String.IsNullOrEmpty(config.ResetOscAddress))
                     { this.SendResetOscForDial(config, globalActionParameter); }
                     break;
+                case "ControlDial":
+                    if (this._controlDialConfigs.TryGetValue(globalActionParameter, out var controlConfigToReset) &&
+                        this._controlDialCurrentValues.ContainsKey(globalActionParameter)) // 【修改】确保当前值也存在，以便比较
+                    {
+                        var oldValue = this._controlDialCurrentValues[globalActionParameter]; // 获取旧值用于比较
+                        var newValue = controlConfigToReset.DefaultValue;
+                        this._controlDialCurrentValues[globalActionParameter] = newValue;
+                        
+                        String oscAddressReset = this.DetermineOscAddressForAction(config, config.GroupName, config.OscAddress ?? config.Title);
+                        if (!String.IsNullOrEmpty(oscAddressReset) && oscAddressReset != "/")
+                        {
+                            ReaOSCPlugin.SendOSCMessage(oscAddressReset, newValue); // 发送默认整数值
+                            PluginLog.Info($"[LogicManager] ControlDial '{config.DisplayName}' Reset OSC sent to '{oscAddressReset}' -> {newValue}");
+                        }
+
+                        if (oldValue != newValue) // 只有当值确实因为重置而改变时才标记UI刷新
+                        {
+                            uiShouldRefresh = true; 
+                        }
+                        else
+                        {
+                             PluginLog.Info($"[LogicManager] ControlDial '{config.DisplayName}' was already at its default value {newValue}. Press did not change value, UI refresh relies on external OSC feedback if any.");
+                        }
+                    }
+                    break;
             }
-            if (uiShouldRefresh && config.ActionType != "2ModeTickDial") // 2ModeTickDial 已在内部调用
+            // 【修改】将 CommandStateNeedsRefresh 的调用移到 switch 之后，并基于 uiShouldRefresh
+            if (uiShouldRefresh) 
             {
                 this.CommandStateNeedsRefresh?.Invoke(this, globalActionParameter);
             }
-            return uiShouldRefresh;
+            return uiShouldRefresh; // 返回最终的刷新状态
         }
 
         private void SendResetOscForDial(ButtonConfig config, String actionParameterKey)
@@ -716,6 +891,10 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 this.SendResetOscForDial(config, actionParameter);
             }
             else if (config.ActionType == "ParameterDial")
+            {
+                return this.ProcessDialPress(actionParameter);
+            }
+            else if (config.ActionType == "ControlDial") // 【新增】适配旧版 ProcessDialPress
             {
                 return this.ProcessDialPress(actionParameter);
             }
@@ -862,9 +1041,27 @@ namespace Loupedeck.ReaOSCPlugin.Base
 
             if (String.IsNullOrEmpty(basePath) || basePath == "/") // 如果 basePath 为空或仅为根
             {
-                return $"/{sanitizedActionPath}".Replace("//", "/");
+                // 如果 actionPath 是 DisplayName (例如 ControlDial 且 OscAddress 未定义)，我们要确保它不被 SanitizeOscPathSegment 进一步处理 (因为它已经是合适的片段)
+                // 但如果 actionPath 本身包含斜杠 (例如用户定义的 OscAddress)，则 SanitizeOscPathSegment 可能仍然需要。
+                // 这里的逻辑是：如果原始actionPath (未经过SanitizeOscPathSegment的) 包含斜杠，则它可能已经是相对路径或绝对路径的一部分
+                if (actionPath.Contains("/")) 
+                {
+                    return $"/{sanitizedActionPath}".Replace("//", "/");
+                }
+                else // 如果原始actionPath不含斜杠，则它是纯粹的名称，应该直接附加
+                {
+                     return $"/{actionPath}".Replace("//", "/"); // 使用原始 actionPath
+                }
             }
-            return $"/{basePath}/{sanitizedActionPath}".Replace("//", "/");
+            // 如果 basePath 存在，且 actionPath 不以斜杠开头
+            if (actionPath.Contains("/")) // 如果 actionPath 包含斜杠，它可能是多段路径
+            {
+                 return $"/{basePath}/{sanitizedActionPath}".Replace("//", "/");
+            }
+            else // 如果 actionPath 不含斜杠，它是纯粹的名称
+            {
+                 return $"/{basePath}/{actionPath}".Replace("//", "/"); // 使用原始 actionPath
+            }
         }
         #endregion
 
@@ -926,6 +1123,111 @@ namespace Loupedeck.ReaOSCPlugin.Base
             this._modeChangedEvents.Clear();
             this._isInitialized = false;
             PluginLog.Info("[LogicManager] Disposed.");
+        }
+
+        // 【新增】辅助方法：解析并存储 ControlDial 的配置
+        private void ParseAndStoreControlDialConfig(ButtonConfig config, String actionParameter)
+        {
+            if (config.Parameter == null || !config.Parameter.Any())
+            {
+                PluginLog.Warning($"[LogicManager] ControlDial '{config.DisplayName}' (action: {actionParameter}) has no 'Parameter' array defined. Cannot initialize.");
+                return;
+            }
+
+            var parsedDialConfig = new ControlDialParsedConfig();
+            Int32 defaultValueFromParam = 0; // 临时默认值，如果ParameterDefault未提供
+
+            if (config.Parameter.Count > 0 && config.Parameter[0]?.ToLower() == "true")
+            {
+                // 连续模式
+                parsedDialConfig.Mode = ControlDialMode.Continuous;
+                if (config.Parameter.Count >= 3 &&
+                    Int32.TryParse(config.Parameter[1], out var min) &&
+                    Int32.TryParse(config.Parameter[2], out var max))
+                {
+                    parsedDialConfig.MinValue = Math.Min(min, max);
+                    parsedDialConfig.MaxValue = Math.Max(min, max);
+                    defaultValueFromParam = parsedDialConfig.MinValue; // 连续模式下，若无ParameterDefault，则默认值为最小值
+                }
+                else
+                {
+                    PluginLog.Warning($"[LogicManager] ControlDial '{config.DisplayName}' (action: {actionParameter}) continuous mode parameters are invalid. Expected true, min_int, max_int. Using 0-100 default.");
+                    parsedDialConfig.MinValue = 0;
+                    parsedDialConfig.MaxValue = 100;
+                    defaultValueFromParam = 0;
+                }
+            }
+            else
+            {
+                // 离散模式
+                parsedDialConfig.Mode = ControlDialMode.Discrete;
+                parsedDialConfig.DiscreteValues = new List<Int32>();
+                foreach (var paramStr in config.Parameter)
+                {
+                    if (Int32.TryParse(paramStr, out var val))
+                    {
+                        parsedDialConfig.DiscreteValues.Add(val);
+                    }
+                    else
+                    {
+                        PluginLog.Warning($"[LogicManager] ControlDial '{config.DisplayName}' (action: {actionParameter}) discrete mode parameter '{paramStr}' is not a valid integer. Skipping.");
+                    }
+                }
+                if (!parsedDialConfig.DiscreteValues.Any())
+                {
+                    PluginLog.Warning($"[LogicManager] ControlDial '{config.DisplayName}' (action: {actionParameter}) discrete mode has no valid integer parameters. Adding 0 as default.");
+                    parsedDialConfig.DiscreteValues.Add(0);
+                }
+                defaultValueFromParam = parsedDialConfig.DiscreteValues[0]; // 离散模式下，若无ParameterDefault，则默认值为列表第一个值
+            }
+
+            // 处理 ParameterDefault
+            parsedDialConfig.DefaultValue = defaultValueFromParam; // 先用从Parameter数组推断的
+            if (!String.IsNullOrEmpty(config.ParameterDefault) && Int32.TryParse(config.ParameterDefault, out var explicitDefault))
+            {
+                if (parsedDialConfig.Mode == ControlDialMode.Continuous)
+                {
+                    parsedDialConfig.DefaultValue = Math.Clamp(explicitDefault, parsedDialConfig.MinValue, parsedDialConfig.MaxValue);
+                }
+                else // Discrete
+                {
+                    if (parsedDialConfig.DiscreteValues.Contains(explicitDefault))
+                    {
+                        parsedDialConfig.DefaultValue = explicitDefault;
+                    }
+                    else
+                    {
+                         PluginLog.Warning($"[LogicManager] ControlDial '{config.DisplayName}' (action: {actionParameter}) ParameterDefault '{explicitDefault}' not found in discrete values. Using first discrete value as default.");
+                        // DefaultValue 保持为 defaultValueFromParam (即列表第一个)
+                    }
+                }
+            }
+
+            this._controlDialConfigs[actionParameter] = parsedDialConfig;
+            this._controlDialCurrentValues[actionParameter] = parsedDialConfig.DefaultValue;
+            PluginLog.Info($"[LogicManager] ControlDial '{config.DisplayName}' (action: {actionParameter}) initialized. Mode: {parsedDialConfig.Mode}, Default: {parsedDialConfig.DefaultValue}. Current: {this._controlDialCurrentValues[actionParameter]}");
+
+            // 【新增】为ControlDial注册OSC地址以进行监听
+            // OSC地址构建: 优先用config.OscAddress, 否则用 /<GroupName>/<Title>
+            String oscAddressForListening = this.DetermineOscAddressForAction(config, config.GroupName, config.OscAddress ?? config.Title);
+            if (!String.IsNullOrEmpty(oscAddressForListening) && oscAddressForListening != "/")
+            {
+                if (!this._oscAddressToActionParameterMap.ContainsKey(oscAddressForListening))
+                {
+                    this._oscAddressToActionParameterMap[oscAddressForListening] = actionParameter;
+                    PluginLog.Info($"[LogicManager|ParseAndStoreControlDialConfig] ControlDial '{config.DisplayName}' (action: {actionParameter}) is now listening on OSC address '{oscAddressForListening}' for external state changes.");
+                }
+                else if (this._oscAddressToActionParameterMap[oscAddressForListening] != actionParameter)
+                {
+                    // 如果地址已被映射到其他action，这是一个配置冲突
+                    PluginLog.Error($"[LogicManager|ParseAndStoreControlDialConfig] OSC Address Conflict: Address '{oscAddressForListening}' for ControlDial '{config.DisplayName}' (action: {actionParameter}) is already mapped to another action '{this._oscAddressToActionParameterMap[oscAddressForListening]}'. External state changes for this ControlDial might not be received correctly.");
+                }
+                // 如果地址已被映射到相同的action (例如，插件重载或重复注册)，则无需操作，保持现有映射
+            }
+            else
+            {
+                PluginLog.Warning($"[LogicManager|ParseAndStoreControlDialConfig] ControlDial '{config.DisplayName}' (action: {actionParameter}) could not determine a valid OSC address for listening to external state changes. It will not be updated by incoming OSC messages.");
+            }
         }
     }
 }

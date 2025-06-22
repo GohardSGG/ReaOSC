@@ -319,7 +319,8 @@
         {
           "ActionType": "ToggleButton",
           "DisplayName": "Phase",
-          "Title": "Phase"
+          "Title": "Phase",
+          "ActiveColor": "#FF8F15"
         },
         {
           "ActionType": "ToggleButton",
@@ -327,7 +328,8 @@
           "Title": "Master",
           "OscAddress": "Send/Master",
           "Text": "Send",
-          "TextColor": "#88E2FF"
+          "TextColor": "#88E2FF",
+          "ActiveColor": "#FF8F15"
         },
         {
           "ActionType": "ToggleButton",
@@ -341,7 +343,7 @@
       ],
       "Dials": [
         {
-          "ActionType": "ParameterDial",
+          "ActionType": "ControlDial",
           "DisplayName": "Channel",
           "ShowTitle": "Yes",
           "Parameter": [
@@ -365,27 +367,29 @@
           ]
         },
         {
-          "ActionType": "ParameterDial",
+          "ActionType": "ControlDial",
           "DisplayName": "Width",
           "ShowTitle": "Yes",
           "Parameter": [
             true,
-            "0",
+            "-100",
             "100"
-          ]
+          ],
+          "ParameterDefault": "100"
         },
         {
-          "ActionType": "ParameterDial",
+          "ActionType": "ControlDial",
           "DisplayName": "Pan",
           "ShowTitle": "Yes",
           "Parameter": [
             true,
             "-100",
             "100"
-          ]
+          ],
+          "ParameterDefault": "0"
         },
         {
-          "ActionType": "ParameterDial",
+          "ActionType": "ControlDial",
           "DisplayName": "Bus",
           "ShowTitle": "Yes",
           "Parameter": [
@@ -409,14 +413,15 @@
           ]
         },
         {
-          "ActionType": "ParameterDial",
+          "ActionType": "ControlDial",
           "DisplayName": "Offset",
           "ShowTitle": "Yes",
           "Parameter": [
             true,
             "-256",
             "256"
-          ]
+          ],
+          "ParameterDefault": "0"
         },
         {
           "ActionType": "NavigationDial",

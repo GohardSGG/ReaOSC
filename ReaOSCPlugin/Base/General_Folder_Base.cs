@@ -608,7 +608,9 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     // 根据之前的讨论，这些的按下逻辑将主要在 RunCommand 中通过 Logic_Manager_Base.ProcessDialPress 处理
                     // 因此，它们通常不需要在这里返回一个 encoder press action name，除非它们的按下也完全由 RunCommand(actionParameter) 驱动
                     // 例如，如果 ToggleDial 按下要发送一个特定的、与旋转无关的OSC消息，且该消息由 RunCommand(localId) 处理
-                    else if (dialConfig.ActionType == "ToggleDial" || dialConfig.ActionType == "2ModeTickDial")
+                    else if (dialConfig.ActionType == "ToggleDial" || 
+                             dialConfig.ActionType == "2ModeTickDial" ||
+                             dialConfig.ActionType == "ControlDial")
                     {
                         // 如果这些类型的旋钮按下确实需要一个由 RunCommand(localId) 处理的独立命令：
                         var localId = this.GetLocalDialId(dialConfig);
@@ -709,6 +711,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 case "ToggleDial":
                 case "2ModeTickDial":
                 case "TickDial":
+                case "ControlDial": // 【新增】处理ControlDial旋转
                     // 首先，我们需要从 localDialId 找到对应的全局 actionParameter，因为 Logic_Manager 使用全局参数作为键
                     // 这个查找逻辑可能比较复杂，因为 localDialId 是文件夹内部的，而 Logic_Manager 的键是全局唯一的。
                     // 一个简单的（但不完全健壮的）假设是 localDialId 就是全局参数的一部分，或者需要拼接。
@@ -740,8 +743,8 @@ namespace Loupedeck.ReaOSCPlugin.Base
                         // Logic_Manager_Base.ProcessDialAdjustment 内部应负责调用 CommandStateNeedsRefresh
                         // 这会触发 OnCommandStateNeedsRefresh, 进而调用 AdjustmentValueChanged
                         // 所以这里可能不需要直接调用 this.AdjustmentValueChanged(actionParameter);
-                        // 但如果Logic_Manager不保证刷新本旋钮，则需要调用。ToggleDial等状态变化会触发。ParameterDial的值变化需要本地刷新。
-                        if(dialConfig.ActionType == "ParameterDial")
+                        // 但如果Logic_Manager不保证刷新本旋钮，则需要调用。ToggleDial等状态变化会触发。ParameterDial和ControlDial的值变化需要本地刷新。
+                        if(dialConfig.ActionType == "ParameterDial" || dialConfig.ActionType == "ControlDial")
                         {
                             valueChanged = true;
                         }
@@ -768,7 +771,8 @@ namespace Loupedeck.ReaOSCPlugin.Base
                             PluginLog.Info($"[{this.DisplayName}] ParameterDial '{dialConfig.DisplayName}' (本地处理) 值变为索引 {newParamIndex}: '{dialConfig.Parameter[newParamIndex]}'.");
                             // 如果ParameterDial的值改变需要更新关联的ParameterButton，Logic_Manager会通过CommandStateNeedsRefresh处理
                         }
-                        else
+                        // ControlDial 的核心逻辑完全在 Logic_Manager_Base 中，如果找不到全局配置，则不应在本地处理
+                        else if (dialConfig.ActionType != "ControlDial") 
                         {
                             PluginLog.Warning($"[{this.DisplayName}] ApplyAdjustment: 未能在Logic_Manager中找到旋钮 '{dialConfig.DisplayName}' (Type: {dialConfig.ActionType}) 的全局配置，且无法本地处理。");
                         }
@@ -830,8 +834,11 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 }
                 
                 // 对于 ToggleDial, 2ModeTickDial，其按下逻辑由 Logic_Manager_Base.ProcessDialPress 处理
+                // 【新增】ControlDial 的按下逻辑也由 Logic_Manager_Base.ProcessDialPress 处理
                 // 需要将文件夹本地的 commandLocalIdToLookup 转换为 Logic_Manager 能识别的全局参数
-                if (dialConfigPressed.ActionType == "ToggleDial" || dialConfigPressed.ActionType == "2ModeTickDial")
+                if (dialConfigPressed.ActionType == "ToggleDial" || 
+                    dialConfigPressed.ActionType == "2ModeTickDial" ||
+                    dialConfigPressed.ActionType == "ControlDial")
                 {
                     // 尝试从 Logic_Manager 中找到此旋钮的全局注册项
                     var globalParamKvp = Logic_Manager_Base.Instance.GetAllConfigs().FirstOrDefault(kvp => 
@@ -845,16 +852,16 @@ namespace Loupedeck.ReaOSCPlugin.Base
                         String globalDialActionParameter = globalParamKvp.Key;
                         if (Logic_Manager_Base.Instance.ProcessDialPress(globalDialActionParameter))
                         {
-                            // ProcessDialPress 返回true通常表示状态已改变 (例如2ModeTickDial切换了模式)
+                            // ProcessDialPress 返回true通常表示状态已改变 (例如2ModeTickDial切换了模式, ControlDial被重置)
                             // 需要刷新此旋钮的图像
                             this.AdjustmentValueChanged(this.CreateAdjustmentName(commandLocalIdToLookup)); 
                         }
-                        PluginLog.Info($"[{this.DisplayName}] 已处理旋钮 '{dialConfigPressed.DisplayName}' (Type: {dialConfigPressed.ActionType}) 的按下事件，通过Logic_Manager。");
+                        PluginLog.Info($"[{this.DisplayName}] 已处理旋钮 '{dialConfigPressed.DisplayName}' (Type: {dialConfigPressed.ActionType}) 的按下事件，通过Logic_Manager。全球参数: {globalDialActionParameter}");
                         return; // 假设旋钮按下事件到此结束
                     }
                     else
                     {
-                        PluginLog.Warning($"[{this.DisplayName}] 未能在Logic_Manager中找到旋钮 '{dialConfigPressed.DisplayName}' (Type: {dialConfigPressed.ActionType}) 的全局配置以处理按下事件。");
+                        PluginLog.Warning($"[{this.DisplayName}] 未能在Logic_Manager中找到旋钮 '{dialConfigPressed.DisplayName}' (Type: {dialConfigPressed.ActionType}) 的全局配置以处理按下事件。Local ID: {commandLocalIdToLookup}");
                         // 如果找不到全局配置，可能意味着这个旋钮的按下没有在Logic_Manager中定义特定行为
                         // 代码会继续尝试匹配是否为列表项或静态按钮 (虽然通常旋钮的localId不会与之冲突)
                     }
@@ -962,11 +969,18 @@ namespace Loupedeck.ReaOSCPlugin.Base
             String localId = actionParameter; 
             const String commandPrefix = "plugin:command:"; 
             if (actionParameter.StartsWith(commandPrefix))
-            { localId = actionParameter.Substring(commandPrefix.Length); }
+            {
+                localId = actionParameter.Substring(commandPrefix.Length);
+            }
 
             if (localId.Equals(NavigateUpActionName))
             {
-                using(var bb = new BitmapBuilder(imageSize)) { bb.Clear(BitmapColor.Black); bb.DrawText("Up", BitmapColor.White, GetButtonFontSize("Up")); return bb.ToImage();}
+                using(var bb = new BitmapBuilder(imageSize))
+                {
+                    bb.Clear(BitmapColor.Black);
+                    bb.DrawText("Up", BitmapColor.White, GetButtonFontSize("Up"));
+                    return bb.ToImage();
+                }
             }
 
             ButtonConfig configToDraw = null;
@@ -976,16 +990,23 @@ namespace Loupedeck.ReaOSCPlugin.Base
             if (this._isButtonListDynamic)
             {
                 if (!this._allListItems.TryGetValue(localId, out configToDraw))
-                { return PluginImage.DrawElement(imageSize, null, "Itm?", isActive:true, preferIconOnlyForDial: false); }
+                {
+                    return PluginImage.DrawElement(imageSize, null, "Itm?", isActive:true, preferIconOnlyForDial: false);
+                }
             }
             else 
             {
                 isStaticButton = true;
                 if (!this._localIdToConfig_Buttons.TryGetValue(localId, out configToDraw) || 
                     !this._localIdToGlobalActionParameter_Buttons.TryGetValue(localId, out globalParamForState))
-                { return PluginImage.DrawElement(imageSize, null, "Btn?", isActive:true, preferIconOnlyForDial: false); }
+                {
+                    return PluginImage.DrawElement(imageSize, null, "Btn?", isActive:true, preferIconOnlyForDial: false);
+                }
             }
-            if (configToDraw == null) { return PluginImage.DrawElement(imageSize, null, "Err", isActive:true, preferIconOnlyForDial: false);}
+            if (configToDraw == null)
+            {
+                return PluginImage.DrawElement(imageSize, null, "Err", isActive:true, preferIconOnlyForDial: false);
+            }
 
             BitmapImage loadedIcon = PluginImage.TryLoadIcon(configToDraw, this.DisplayName);
             String mainTitleOverride = null; 
@@ -998,12 +1019,25 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 Boolean foundInDynamic = !isStaticButton && this._lastPressTimes.TryGetValue(localId, out pressTime);
                 Boolean foundInStaticTrigger = isStaticButton && configToDraw.ActionType == "TriggerButton" && this._lastTriggerPressTimes.TryGetValue(localId, out pressTime);
                 Boolean foundInStaticCombine = isStaticButton && configToDraw.ActionType == "CombineButton" && this._lastCombineButtonPressTimes.TryGetValue(localId, out pressTime);
-                if (foundInDynamic || foundInStaticTrigger || foundInStaticCombine) { if ((DateTime.Now - pressTime).TotalMilliseconds < 200) { isActive = true; } }
+                if (foundInDynamic || foundInStaticTrigger || foundInStaticCombine)
+                {
+                    if ((DateTime.Now - pressTime).TotalMilliseconds < 200)
+                    {
+                        isActive = true;
+                    }
+                }
             }
             else if (configToDraw.ActionType == "ToggleButton")
-            { if (isStaticButton && !String.IsNullOrEmpty(globalParamForState)) { isActive = Logic_Manager_Base.Instance.GetToggleState(globalParamForState); } }
+            {
+                if (isStaticButton && !String.IsNullOrEmpty(globalParamForState))
+                {
+                    isActive = Logic_Manager_Base.Instance.GetToggleState(globalParamForState);
+                }
+            }
             else if (configToDraw.ActionType == "ParameterButton" && isStaticButton)
-            { mainTitleOverride = this.DetermineParameterButtonTitle(configToDraw); }
+            {
+                mainTitleOverride = this.DetermineParameterButtonTitle(configToDraw);
+            }
             
             // 对于按钮，actualAuxText 将由 PluginImage.DrawElement 在文本模式下根据 config.Text 处理
             // 在图标模式下，按钮的辅助文本不显示
@@ -1012,10 +1046,24 @@ namespace Loupedeck.ReaOSCPlugin.Base
 
         public override BitmapImage GetAdjustmentImage(String actionParameter, PluginImageSize imageSize)
         {
-            if (String.IsNullOrEmpty(actionParameter)) { using (var bb = new BitmapBuilder(imageSize)) { bb.Clear(BitmapColor.Black); return bb.ToImage(); } }
+            if (String.IsNullOrEmpty(actionParameter))
+            {
+                using (var bb = new BitmapBuilder(imageSize))
+                {
+                    bb.Clear(BitmapColor.Black);
+                    return bb.ToImage();
+                }
+            }
             var localDialId = actionParameter; 
             var dialConfig = this._folderDialConfigs.FirstOrDefault(dc => this.GetLocalDialId(dc) == localDialId);
-            if (dialConfig == null || dialConfig.ActionType == "Placeholder") { using (var bb = new BitmapBuilder(imageSize)) { bb.Clear(BitmapColor.Black); return bb.ToImage(); } }
+            if (dialConfig == null || dialConfig.ActionType == "Placeholder")
+            {
+                using (var bb = new BitmapBuilder(imageSize))
+                {
+                    bb.Clear(BitmapColor.Black);
+                    return bb.ToImage();
+                }
+            }
             
             BitmapImage loadedIcon = PluginImage.TryLoadIcon(dialConfig, this.DisplayName);
             String mainTitleToDraw = dialConfig.ShowTitle?.Equals("No", StringComparison.OrdinalIgnoreCase) == true ? null : (dialConfig.Title ?? dialConfig.DisplayName);
@@ -1026,20 +1074,37 @@ namespace Loupedeck.ReaOSCPlugin.Base
 
             switch (dialConfig.ActionType)
             {
-                case "FilterDial": valueTextToDisplay = this._currentFilterValues.TryGetValue(dialConfig.DisplayName, out var val) ? val : "N/A"; break;
-                case "PageDial": valueTextToDisplay = $"{this._currentPage + 1} / {this._totalPages}"; break;
-                case "ParameterDial": valueTextToDisplay = this.DetermineParameterDialValue(dialConfig, localDialId); break;
+                case "FilterDial":
+                    valueTextToDisplay = this._currentFilterValues.TryGetValue(dialConfig.DisplayName, out var val) ? val : "N/A";
+                    break;
+                case "PageDial":
+                    valueTextToDisplay = $"{this._currentPage + 1} / {this._totalPages}";
+                    break;
+                case "ParameterDial":
+                    valueTextToDisplay = this.DetermineParameterDialValue(dialConfig, localDialId);
+                    break;
                 case "ToggleDial": 
                     if(globalParamForState != null)
                     {
                         isActiveStatus = Logic_Manager_Base.Instance.GetToggleState(globalParamForState); 
                     }
                     break;
-                case "2ModeTickDial": if(globalParamForState != null)
+                case "2ModeTickDial":
+                    if(globalParamForState != null)
                     {
                         currentModeStatus = Logic_Manager_Base.Instance.GetDialMode(globalParamForState);
                     }
-
+                    break;
+                case "ControlDial": // 【新增】为 ControlDial 获取显示值
+                    if (!String.IsNullOrEmpty(globalParamForState)) // 确保我们有全局参数来查询状态
+                    {
+                        valueTextToDisplay = Logic_Manager_Base.Instance.GetControlDialValue(globalParamForState).ToString();
+                    }
+                    else
+                    {
+                        PluginLog.Warning($"[{this.DisplayName}|GetAdjustmentImage] ControlDial '{dialConfig.DisplayName}' (localId: {localDialId}) 无法获取 globalParamForState 以查询值。");
+                        valueTextToDisplay = "ERR"; // 或其他错误指示
+                    }
                     break;
             }
             // 对于旋钮，actualAuxText 将由 PluginImage.DrawElement 在文本模式下根据 config.Text 处理
@@ -1050,7 +1115,14 @@ namespace Loupedeck.ReaOSCPlugin.Base
         public override BitmapImage GetButtonImage(PluginImageSize imageSize) // 文件夹入口按钮
         {
             if (this._entryConfig == null) 
-            { using (var bb = new BitmapBuilder(imageSize)) { bb.Clear(BitmapColor.Black); bb.DrawText(!String.IsNullOrEmpty(this.DisplayName) ? this.DisplayName : "Folder", BitmapColor.White, GetButtonFontSize(this.DisplayName)); return bb.ToImage(); } }
+            {
+                using (var bb = new BitmapBuilder(imageSize))
+                {
+                    bb.Clear(BitmapColor.Black);
+                    bb.DrawText(!String.IsNullOrEmpty(this.DisplayName) ? this.DisplayName : "Folder", BitmapColor.White, GetButtonFontSize(this.DisplayName));
+                    return bb.ToImage();
+                }
+            }
             BitmapImage loadedEntryIcon = PluginImage.TryLoadIcon(this._entryConfig, this.DisplayName);
             // 文件夹入口是按钮，preferIconOnlyForDial: false
             // actualAuxText 由 DrawElement 根据 config.Text 处理
@@ -1113,6 +1185,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 {
                     PluginLog.Info($"[{this.DisplayName}] OnCommandStateNeedsRefresh: 静态按钮 '{buttonConfig.DisplayName}' (localId: {localButtonId}, global: {globalActionParameterThatChanged}) 状态改变，触发UI刷新。");
                     this.ButtonActionNamesChanged(); // 通知SDK按钮可能需要重绘
+                    this.CommandImageChanged(localButtonId); // 【修改】明确通知此特定按钮的图像已改变
 
                     // 如果是ParameterButton，其源ParameterDial改变时，它需要刷新
                     // 这个检查也可以放在下面ParameterDial改变的部分，但这里更直接
@@ -1142,7 +1215,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     if (!String.IsNullOrEmpty(localDialId))
                     {
                         PluginLog.Info($"[{this.DisplayName}] OnCommandStateNeedsRefresh: 旋钮 '{dialConfig.DisplayName}' (localId: {localDialId}, global: {globalActionParameterThatChanged}) 状态改变，触发UI刷新。");
-                        this.AdjustmentValueChanged(this.CreateAdjustmentName(localDialId));
+                        this.AdjustmentValueChanged(localDialId); // 【修改】使用原始 localDialId 通知旋钮图像更新
 
                         // 如果是ParameterDial改变，需要检查是否有链接的ParameterButton在此文件夹内并刷新它们
                         if (dialConfig.ActionType == "ParameterDial")

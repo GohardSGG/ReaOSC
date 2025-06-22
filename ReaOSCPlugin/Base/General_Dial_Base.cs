@@ -23,7 +23,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
             foreach (var entry in this._logicManager.GetAllConfigs())
             {
                 var config = entry.Value;
-                if (config.ActionType == "TickDial" || config.ActionType == "ToggleDial" || config.ActionType == "2ModeTickDial")
+                if (config.ActionType == "TickDial" || config.ActionType == "ToggleDial" || config.ActionType == "2ModeTickDial" || config.ActionType == "ControlDial")
                 {
                     this.AddParameter(entry.Key, config.DisplayName, config.GroupName, $"旋钮调整: {config.DisplayName}");
                     if (config.ActionType == "TickDial") // TickDial仍需管理自己的lastEventTimes，用于加速度
@@ -56,9 +56,9 @@ namespace Loupedeck.ReaOSCPlugin.Base
             // 一个简单有效的方法是：如果当前类的设计是每个General_Dial_Base实例都注册了
             // 一批全局唯一的actionParameter（这是当前的设计），那么直接调用即可。
             var config = this._logicManager.GetConfig(actionParameterThatChanged);
-            if (config != null && (config.ActionType == "ToggleDial")) // 主要关心ToggleDial的外部状态更新
+            if (config != null && (config.ActionType == "ToggleDial" || config.ActionType == "2ModeTickDial" || config.ActionType == "ControlDial"))
             {
-                PluginLog.Info($"[GeneralDialBase] 接收到状态刷新请求 for '{actionParameterThatChanged}', 调用 ActionImageChanged。");
+                PluginLog.Info($"[GeneralDialBase] 接收到状态刷新请求 for '{actionParameterThatChanged}' (Type: {config.ActionType}), 调用 ActionImageChanged。");
                 this.ActionImageChanged(actionParameterThatChanged);
             }
         }
@@ -120,6 +120,11 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     // 标题会由PluginImage.DrawElement根据模式和配置决定，这里可以传递基础标题
                     mainTitleOverride = config.Title ?? config.DisplayName; 
                 }
+                else if (config.ActionType == "ControlDial") // 【新增】ControlDial 按下时的图像处理
+                {
+                    // 按下时，主要显示标题，值由LogicManager重置，刷新会由OnLogicManagerCommandStateNeedsRefresh触发
+                    mainTitleOverride = config.Title ?? config.DisplayName;
+                }
                 else // 其他旋钮类型，如TickDial，按下时可能只显示标题
                 {
                     mainTitleOverride = config.Title ?? config.DisplayName;
@@ -173,6 +178,11 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 else if (config.ActionType == "2ModeTickDial")
                 {
                     currentMode = this._logicManager.GetDialMode(actionParameter);
+                }
+                else if (config.ActionType == "ControlDial") // 【新增】为 ControlDial 获取并设置显示值
+                {
+                    valueTextForAdjustment = this._logicManager.GetControlDialValue(actionParameter).ToString();
+                    // ControlDial 通常不关心 isActive 或 currentMode 状态，除非有特定视觉需求
                 }
                 // 对于 ParameterDial, FilterDial, PageDial 等，它们的 valueText (如果有的话) 
                 // 是由 General_Folder_Base.GetAdjustmentImage 负责准备并传入 PluginImage.DrawElement 的。
