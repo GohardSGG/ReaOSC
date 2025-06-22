@@ -6,6 +6,7 @@ namespace Loupedeck.ReaOSCPlugin.Helpers
     using System;
     using System.Globalization; // For HexToBitmapColor
     using System.Linq; // For GetAutomatic...FontSize, if needed for word splitting
+    using System.IO; // 【确保 System.IO 的 using 存在】
 
     // 确保 Loupedeck 命名空间被正确引用，以便 BitmapImageHorizontalAlignment 等枚举能被找到
     using Loupedeck; 
@@ -16,7 +17,8 @@ namespace Loupedeck.ReaOSCPlugin.Helpers
     {
         /// <summary>
         /// 尝试加载与控件配置关联的图标。
-        /// 会先检查 ButtonImage 属性，然后尝试根据 DisplayName 推断 "DisplayName.png"。
+        /// 会先从外部指定目录加载PNG，然后回退到嵌入资源加载PNG。
+        /// 外部目录: %LocalAppData%\\Loupedeck\\Plugins\\ReaOSC\\Icon
         /// </summary>
         /// <param name="config">控件的配置。</param>
         /// <param name="contextDisplayName">可选，用于日志记录的上下文名称。</param>
@@ -28,38 +30,94 @@ namespace Loupedeck.ReaOSCPlugin.Helpers
                 PluginLog.Verbose($"[{contextDisplayName ?? "PluginImage"}|TryLoadIcon] 传入的 ButtonConfig 为空。");
                 return null;
             }
-            String imagePathToLoad = null;
+
+            String imagePathDeterminedByConfig = null;
             if (!String.IsNullOrEmpty(config.ButtonImage))
             {
-                imagePathToLoad = config.ButtonImage;
-                PluginLog.Verbose($"[{contextDisplayName ?? "PluginImage"}|TryLoadIcon] 尝试从 ButtonImage 字段 ('{config.ButtonImage}') 加载图标 for control '{config.DisplayName}'.");
+                imagePathDeterminedByConfig = config.ButtonImage;
             }
             else if (!String.IsNullOrEmpty(config.DisplayName))
             {
-                imagePathToLoad = $"{config.DisplayName.Replace(" ", "_")}.png";
-                PluginLog.Verbose($"[{contextDisplayName ?? "PluginImage"}|TryLoadIcon] ButtonImage为空，尝试根据 DisplayName ('{config.DisplayName}') 推断图标: '{imagePathToLoad}'.");
+                // DisplayName 可能包含特殊字符，替换空格为下划线以匹配常见图标命名
+                imagePathDeterminedByConfig = $"{config.DisplayName.Replace(" ", "_")}.png";
             }
-            if (String.IsNullOrEmpty(imagePathToLoad))
+
+            if (String.IsNullOrEmpty(imagePathDeterminedByConfig))
             {
-                PluginLog.Verbose($"[{contextDisplayName ?? "PluginImage"}|TryLoadIcon] 未能为控件 '{config.DisplayName}' 确定有效的图标路径。");
+                PluginLog.Verbose($"[{contextDisplayName ?? "PluginImage"}|TryLoadIcon] 未能为控件 '{config.DisplayName}' 确定有效的图标路径名称。");
                 return null;
             }
-            try
+
+            // 从 imagePathDeterminedByConfig 获取纯文件名，用于外部查找
+            String iconPureFileName = Path.GetFileName(imagePathDeterminedByConfig);
+
+            // 1. 尝试从外部目录加载
+            // 外部目录路径: %LocalAppData%\Loupedeck\Plugins\ReaOSC\Icon
+            String localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            String externalIconBasePath = Path.Combine(localAppData, "Loupedeck", "Plugins", "ReaOSC", "Icon");
+            String externalIconPath = Path.Combine(externalIconBasePath, iconPureFileName);
+
+            // 确保只尝试从外部加载 .png 文件
+            if (Path.GetExtension(externalIconPath).ToLowerInvariant() == ".png")
             {
-                BitmapImage icon = PluginResources.ReadImage(imagePathToLoad);
-                if (icon == null)
+                if (File.Exists(externalIconPath))
                 {
-                    PluginLog.Verbose($"[{contextDisplayName ?? "PluginImage"}|TryLoadIcon] PluginResources.ReadImage 为路径 '{imagePathToLoad}' 返回了null (图标文件不存在或格式不支持)。");
+                    try
+                    {
+                        BitmapImage externalIcon = BitmapImage.FromFile(externalIconPath);
+                        if (externalIcon != null)
+                        {
+                            PluginLog.Info($"[{contextDisplayName ?? "PluginImage"}|TryLoadIcon] 成功从外部目录 '{externalIconPath}' 加载图标 for control '{config.DisplayName}'.");
+                            return externalIcon;
+                        }
+                        else
+                        {
+                            PluginLog.Warning($"[{contextDisplayName ?? "PluginImage"}|TryLoadIcon] 从外部目录 '{externalIconPath}' 加载图标返回了null (文件存在但可能无法解析为图像)。");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        PluginLog.Warning(ex, $"[{contextDisplayName ?? "PluginImage"}|TryLoadIcon] 从外部目录 '{externalIconPath}' 加载图标时发生异常。");
+                    }
                 }
                 else
                 {
-                    PluginLog.Info($"[{contextDisplayName ?? "PluginImage"}|TryLoadIcon] 成功加载图标 '{imagePathToLoad}' for control '{config.DisplayName}'.");
+                    PluginLog.Verbose($"[{contextDisplayName ?? "PluginImage"}|TryLoadIcon] 外部PNG图标 '{externalIconPath}' 未找到。");
                 }
-                return icon;
+            }
+            else
+            {
+                PluginLog.Verbose($"[{contextDisplayName ?? "PluginImage"}|TryLoadIcon] 推断的外部图标路径 '{externalIconPath}' 不是PNG文件，跳过外部加载。");
+            }
+            
+            // 2. 回退到嵌入式资源加载
+            PluginLog.Info($"[{contextDisplayName ?? "PluginImage"}|TryLoadIcon] 准备从嵌入式资源加载图标 '{imagePathDeterminedByConfig}' for control '{config.DisplayName}'.");
+
+            // 确保只尝试加载 .png 文件作为嵌入资源
+            if (Path.GetExtension(imagePathDeterminedByConfig).ToLowerInvariant() != ".png")
+            {
+                PluginLog.Verbose($"[{contextDisplayName ?? "PluginImage"}|TryLoadIcon] 嵌入式资源路径 '{imagePathDeterminedByConfig}' 不是PNG，根据请求跳过加载。");
+                return null;
+            }
+
+            try
+            {
+                // PluginResources.ReadImage 内部可能仍有其对SVG等的处理，但我们已在此处过滤，仅传递PNG路径
+                BitmapImage embeddedIcon = PluginResources.ReadImage(imagePathDeterminedByConfig);
+                if (embeddedIcon == null)
+                {
+                    // PluginResources.ReadImage 内部已有日志，这里简单记录
+                    PluginLog.Verbose($"[{contextDisplayName ?? "PluginImage"}|TryLoadIcon] 从嵌入式资源加载 '{imagePathDeterminedByConfig}' 失败或未找到。");
+                }
+                else
+                {
+                    PluginLog.Info($"[{contextDisplayName ?? "PluginImage"}|TryLoadIcon] 成功从嵌入式资源加载图标 '{imagePathDeterminedByConfig}' for control '{config.DisplayName}'.");
+                }
+                return embeddedIcon;
             }
             catch (Exception ex)
             {
-                PluginLog.Warning(ex, $"[{contextDisplayName ?? "PluginImage"}|TryLoadIcon] 加载图标 '{imagePathToLoad}' 时发生异常 for control '{config.DisplayName}'.");
+                PluginLog.Warning(ex, $"[{contextDisplayName ?? "PluginImage"}|TryLoadIcon] 从嵌入式资源加载图标 '{imagePathDeterminedByConfig}' 时发生异常。");
                 return null;
             }
         }
