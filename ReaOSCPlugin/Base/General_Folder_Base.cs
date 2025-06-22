@@ -907,133 +907,115 @@ namespace Loupedeck.ReaOSCPlugin.Base
         // --- III. UI 绘制方法 ---
         public override BitmapImage GetCommandImage(string actionParameter, PluginImageSize imageSize)
         {
-            string localId = actionParameter; // SDK传入的通常已经是localId
+            string localId = actionParameter; 
             const string commandPrefix = "plugin:command:"; 
             if (actionParameter.StartsWith(commandPrefix))
-            {
-                localId = actionParameter.Substring(commandPrefix.Length);
-            }
+            { localId = actionParameter.Substring(commandPrefix.Length); }
 
-            // 处理 NavigateUpActionName (Loupedeck SDK 自动添加的返回上一级文件夹的按钮)
             if (localId.Equals(NavigateUpActionName))
             {
-                // 可以选择让基类处理，或者提供一个自定义的"向上"图标
-                using(var bb = new BitmapBuilder(imageSize))
-                {
-                    bb.Clear(BitmapColor.Black);
-                    // 简单绘制文字，也可以加载一个嵌入的"向上箭头"图标
-                    bb.DrawText("Up", BitmapColor.White, GetButtonFontSize("Up")); 
-                    return bb.ToImage();
-                }
+                using(var bb = new BitmapBuilder(imageSize)) { bb.Clear(BitmapColor.Black); bb.DrawText("Up", BitmapColor.White, GetButtonFontSize("Up")); return bb.ToImage();}
             }
 
             ButtonConfig configToDraw = null;
-            string globalParamForState = null; // 用于获取ToggleButton等的状态
+            string globalParamForState = null; 
             bool isStaticButton = false;
 
             if (this._isButtonListDynamic)
             {
-                // 对于动态列表项，localId 此时应为 CreateActionParameterForItem 生成的 "/GroupName/DisplayName" 格式
                 if (!this._allListItems.TryGetValue(localId, out configToDraw))
-                {
-                    PluginLog.Warning($"[{this.DisplayName}|GetCommandImage] 未在 _allListItems 中找到动态列表项配置 for localId/actionParameter '{localId}'.");
-                    return PluginImage.DrawElement(imageSize, null, "Itm?", isActive:true); 
-                }
+                { return PluginImage.DrawElement(imageSize, null, "Itm?", isActive:true, preferIconOnlyForDial: false); }
             }
-            else // 静态按钮列表
+            else 
             {
                 isStaticButton = true;
                 if (!this._localIdToConfig_Buttons.TryGetValue(localId, out configToDraw) || 
                     !this._localIdToGlobalActionParameter_Buttons.TryGetValue(localId, out globalParamForState))
-                {
-                    PluginLog.Warning($"[{this.DisplayName}|GetCommandImage] 未在 _localIdToConfig_Buttons 中找到静态按钮配置 for localId '{localId}'.");
-                    return PluginImage.DrawElement(imageSize, null, "Btn?", isActive:true); 
-                }
+                { return PluginImage.DrawElement(imageSize, null, "Btn?", isActive:true, preferIconOnlyForDial: false); }
             }
+            if (configToDraw == null) { return PluginImage.DrawElement(imageSize, null, "Err", isActive:true, preferIconOnlyForDial: false);}
 
-            if (configToDraw == null) // 双重检查，理论上不应发生
-            {
-                return PluginImage.DrawElement(imageSize, null, "Err", isActive:true);
-            }
-
-            // 准备 PluginImage.DrawElement 参数
-            BitmapImage customIcon = null;
-            string mainTitleOverride = null; // 通常让 PluginImage 内部处理标题
-            string valueText = null;       // 按钮通常不直接显示valueText
+            BitmapImage loadedIcon = PluginImage.TryLoadIcon(configToDraw, this.DisplayName);
+            string mainTitleOverride = null; 
             bool isActive = false;
-            int currentModeForDrawing = 0; // 按钮的模式通常不影响主要绘制，除非特定类型
+            int currentModeForDrawing = 0; 
 
-            // 1. 加载自定义图标 (如果配置了)
-            string imagePathToLoad = !String.IsNullOrEmpty(configToDraw.ButtonImage) ? configToDraw.ButtonImage : null;
-            if (string.IsNullOrEmpty(imagePathToLoad) && !string.IsNullOrEmpty(configToDraw.DisplayName)) // 如果没有明确指定ButtonImage，尝试根据DisplayName推断
-            {
-                imagePathToLoad = $"{Logic_Manager_Base.SanitizeOscPathSegment(configToDraw.DisplayName)}.png";
-            }
-
-            if (!string.IsNullOrEmpty(imagePathToLoad))
-            {
-                try
-                {
-                    customIcon = PluginResources.ReadImage(imagePathToLoad);
-                }
-                catch (Exception ex)
-                {
-                    PluginLog.Warning(ex, $"[{this.DisplayName}|GetCommandImage] 加载图标 '{imagePathToLoad}' 失败 for localId '{localId}'. 将只绘制文本。");
-                    customIcon = null;
-                }
-            }
-
-            // 2. 确定 isActive 状态
             if (configToDraw.ActionType == "TriggerButton" || configToDraw.ActionType == "CombineButton")
             {
-                DateTime pressTime = DateTime.MinValue; // 初始化 pressTime
+                DateTime pressTime = DateTime.MinValue; 
                 bool foundInDynamic = !isStaticButton && this._lastPressTimes.TryGetValue(localId, out pressTime);
-                // 如果 foundInDynamic 为 true，pressTime 已被赋值，后续 TryGetValue 的 out pressTime 会覆盖它
-                // 如果为 false，pressTime 仍为 MinValue，然后下一个 TryGetValue 会尝试赋值
                 bool foundInStaticTrigger = isStaticButton && configToDraw.ActionType == "TriggerButton" && this._lastTriggerPressTimes.TryGetValue(localId, out pressTime);
                 bool foundInStaticCombine = isStaticButton && configToDraw.ActionType == "CombineButton" && this._lastCombineButtonPressTimes.TryGetValue(localId, out pressTime);
-
-                if (foundInDynamic || foundInStaticTrigger || foundInStaticCombine)
-                {
-                    // 此时 pressTime 持有的是最后一个成功的 TryGetValue 的结果，或者如果都失败则是初始化的 MinValue
-                    // 但由于外层if判断，能进入此块，说明至少有一个为true，pressTime已被有效赋值。
-                    if ((DateTime.Now - pressTime).TotalMilliseconds < 200)
-                    {
-                        isActive = true; // 用于瞬时高亮
-                    }
-                }
+                if (foundInDynamic || foundInStaticTrigger || foundInStaticCombine) { if ((DateTime.Now - pressTime).TotalMilliseconds < 200) { isActive = true; } }
             }
             else if (configToDraw.ActionType == "ToggleButton")
-            {
-                if (isStaticButton && !string.IsNullOrEmpty(globalParamForState))
-                {
-                    isActive = Logic_Manager_Base.Instance.GetToggleState(globalParamForState);
-                }
-                // else: 动态列表中的ToggleButton，其状态可能也需要通过Logic_Manager或特定机制获取，这里暂时不处理
-                // 如果动态列表项也可以是ToggleButton并由LogicManager管理状态，那么ProcessUserAction时传递的actionParameter应该是全局的
-            }
-            // ParameterButton 的主标题会动态变化，isActive通常不直接影响其背景，更多是通过标题颜色或特定图标
+            { if (isStaticButton && !string.IsNullOrEmpty(globalParamForState)) { isActive = Logic_Manager_Base.Instance.GetToggleState(globalParamForState); } }
             else if (configToDraw.ActionType == "ParameterButton" && isStaticButton)
-            {
-                // ParameterButton 的显示标题由其源 ParameterDial 决定
-                // isActive状态可以设为false，除非有特定高亮逻辑
-                var sourceDialGlobalParam = this.FindSourceDialGlobalActionParameter(configToDraw, configToDraw.ParameterSourceDial);
-                mainTitleOverride = !string.IsNullOrEmpty(sourceDialGlobalParam)
-                    ? (Logic_Manager_Base.Instance.GetParameterDialSelectedTitle(sourceDialGlobalParam) ?? configToDraw.Title ?? configToDraw.DisplayName)
-                    : $"Err:{configToDraw.ParameterSourceDial?.Substring(0, Math.Min(configToDraw.ParameterSourceDial?.Length ?? 0, 4))}";
-            }
-            // 其他类型的按钮 (如 SelectModeButton) 的 isActive 状态和标题可能更复杂，依赖于模式等
-            // PluginImage.DrawElement 内部已有一些针对 SelectModeButton 的处理逻辑
+            { mainTitleOverride = this.DetermineParameterButtonTitle(configToDraw); }
+            
+            // 对于按钮，actualAuxText 将由 PluginImage.DrawElement 在文本模式下根据 config.Text 处理
+            // 在图标模式下，按钮的辅助文本不显示
+            return PluginImage.DrawElement(imageSize, configToDraw, mainTitleOverride, null, isActive, currentModeForDrawing, loadedIcon, false, null, false );
+        }
 
-            return PluginImage.DrawElement(
-                imageSize,
-                configToDraw,
-                mainTitleOverride, 
-                valueText,
-                isActive,
-                currentModeForDrawing,
-                customIcon
-            );
+        public override BitmapImage GetAdjustmentImage(string actionParameter, PluginImageSize imageSize)
+        {
+            if (string.IsNullOrEmpty(actionParameter)) { using (var bb = new BitmapBuilder(imageSize)) { bb.Clear(BitmapColor.Black); return bb.ToImage(); } }
+            var localDialId = actionParameter; 
+            var dialConfig = this._folderDialConfigs.FirstOrDefault(dc => this.GetLocalDialId(dc) == localDialId);
+            if (dialConfig == null || dialConfig.ActionType == "Placeholder") { using (var bb = new BitmapBuilder(imageSize)) { bb.Clear(BitmapColor.Black); return bb.ToImage(); } }
+            
+            BitmapImage loadedIcon = PluginImage.TryLoadIcon(dialConfig, this.DisplayName);
+            string mainTitleToDraw = dialConfig.ShowTitle?.Equals("No", StringComparison.OrdinalIgnoreCase) == true ? null : (dialConfig.Title ?? dialConfig.DisplayName);
+            string valueTextToDisplay = null; 
+            bool isActiveStatus = false; 
+            int currentModeStatus = 0;    
+            string globalParamForState = GetGlobalParamForDialState(dialConfig);
+
+            switch (dialConfig.ActionType)
+            {
+                case "FilterDial": valueTextToDisplay = this._currentFilterValues.TryGetValue(dialConfig.DisplayName, out var val) ? val : "N/A"; break;
+                case "PageDial": valueTextToDisplay = $"{this._currentPage + 1} / {this._totalPages}"; break;
+                case "ParameterDial": valueTextToDisplay = this.DetermineParameterDialValue(dialConfig, localDialId); break;
+                case "ToggleDial": if(globalParamForState != null) isActiveStatus = Logic_Manager_Base.Instance.GetToggleState(globalParamForState); break;
+                case "2ModeTickDial": if(globalParamForState != null) currentModeStatus = Logic_Manager_Base.Instance.GetDialMode(globalParamForState); break;
+            }
+            // 对于旋钮，actualAuxText 将由 PluginImage.DrawElement 在文本模式下根据 config.Text 处理
+            // 在图标模式下 (preferIconOnlyForDial=true)，旋钮不显示任何文本
+            return PluginImage.DrawElement(imageSize, dialConfig, mainTitleToDraw, valueTextToDisplay, isActiveStatus, currentModeStatus, loadedIcon, false, null, true);
+        }
+
+        public override BitmapImage GetButtonImage(PluginImageSize imageSize) // 文件夹入口按钮
+        {
+            if (this._entryConfig == null) 
+            { using (var bb = new BitmapBuilder(imageSize)) { bb.Clear(BitmapColor.Black); bb.DrawText((!string.IsNullOrEmpty(this.DisplayName) ? this.DisplayName : "Folder"), BitmapColor.White, GetButtonFontSize(this.DisplayName)); return bb.ToImage(); } }
+            BitmapImage loadedEntryIcon = PluginImage.TryLoadIcon(this._entryConfig, this.DisplayName);
+            // 文件夹入口是按钮，preferIconOnlyForDial: false
+            // actualAuxText 由 DrawElement 根据 config.Text 处理
+            return PluginImage.DrawElement(imageSize, this._entryConfig, null, null, false, 0, loadedEntryIcon, false, null, false);
+        }
+
+        private string DetermineParameterButtonTitle(ButtonConfig paramButtonConfig)
+        {
+            var sourceDialGlobalParam = this.FindSourceDialGlobalActionParameter(paramButtonConfig, paramButtonConfig.ParameterSourceDial);
+            return !string.IsNullOrEmpty(sourceDialGlobalParam)
+                ? (Logic_Manager_Base.Instance.GetParameterDialSelectedTitle(sourceDialGlobalParam) ?? paramButtonConfig.Title ?? paramButtonConfig.DisplayName)
+                : $"Err:{paramButtonConfig.ParameterSourceDial?.Substring(0, Math.Min(paramButtonConfig.ParameterSourceDial?.Length ?? 0, 4))}";
+        }
+        private string DetermineParameterDialValue(ButtonConfig dialCfg, string localDialId)
+        {
+            if (this._parameterDialCurrentIndexes.TryGetValue(localDialId, out var currentIndex) && 
+                dialCfg.Parameter != null && currentIndex >= 0 && currentIndex < dialCfg.Parameter.Count)
+            { return dialCfg.Parameter[currentIndex]; }
+            return dialCfg.Parameter?.FirstOrDefault() ?? "N/A"; 
+        }
+        private string GetGlobalParamForDialState(ButtonConfig dialCfg)
+        {
+             var kvp = Logic_Manager_Base.Instance.GetAllConfigs().FirstOrDefault(c => 
+                (c.Value.GroupName == this.DisplayName || c.Value.GroupName == dialCfg.GroupName) && 
+                c.Value.DisplayName == dialCfg.DisplayName && 
+                c.Value.ActionType == dialCfg.ActionType );
+            return !EqualityComparer<KeyValuePair<string, ButtonConfig>>.Default.Equals(kvp, default(KeyValuePair<string, ButtonConfig>)) ? kvp.Key : null;
         }
 
         // 辅助方法，用于根据标题长度自动获取按钮的字体大小 (如果PluginImage需要，但它内部有自己的)
@@ -1118,98 +1100,6 @@ namespace Loupedeck.ReaOSCPlugin.Base
             // PluginLog.Verbose($"[{this.DisplayName}] OnCommandStateNeedsRefresh: globalActionParameter '{globalActionParameterThatChanged}' 与当前文件夹管理的任何已知项不直接匹配。");
         }
 
-        public override BitmapImage GetAdjustmentImage(string actionParameter, PluginImageSize imageSize)
-        {
-            if (string.IsNullOrEmpty(actionParameter))
-            {
-                PluginLog.Verbose($"[{this.DisplayName}|GetAdjustmentImage] actionParameter 为空，绘制空白图像。");
-                using (var bb = new BitmapBuilder(imageSize)) { bb.Clear(BitmapColor.Black); return bb.ToImage(); }
-            }
-
-            var localDialId = actionParameter; // SDK 传入的就是 localId
-            var dialConfig = this._folderDialConfigs.FirstOrDefault(dc => this.GetLocalDialId(dc) == localDialId);
-
-            if (dialConfig == null) 
-            {
-                PluginLog.Verbose($"[{this.DisplayName}|GetAdjustmentImage] 未找到旋钮配置 for localId: '{localDialId}'. 绘制空白图像。");
-                using (var bb = new BitmapBuilder(imageSize)) { bb.Clear(BitmapColor.Black); return bb.ToImage(); }
-            }
-
-            if (dialConfig.ActionType == "Placeholder")
-            {
-                PluginLog.Verbose($"[{this.DisplayName}|GetAdjustmentImage] 配置 for localId: '{localDialId}' 是 Placeholder 类型。绘制空白图像。");
-                using (var bb = new BitmapBuilder(imageSize)) { bb.Clear(BitmapColor.Black); return bb.ToImage(); }
-            }
-            
-            string mainTitleToDraw = dialConfig.Title ?? dialConfig.DisplayName;
-            // 如果 ShowTitle 配置为 "No"，则不显示主标题，让valueText占据主要位置 (如果valueText存在)
-            if (dialConfig.ShowTitle?.Equals("No", StringComparison.OrdinalIgnoreCase) == true)
-            {
-                mainTitleToDraw = null; 
-            }
-
-            string valueTextToDisplay = null; 
-            bool isActiveStatus = false; 
-            int currentModeStatus = 0;    
-            
-            // 尝试获取此旋钮在LogicManager中注册的全局参数 (如果它需要从LogicManager获取状态)
-            string globalParamForState = null;
-            var globalParamKvp = Logic_Manager_Base.Instance.GetAllConfigs().FirstOrDefault(kvp => 
-                (kvp.Value.GroupName == this.DisplayName || kvp.Value.GroupName == dialConfig.GroupName) && 
-                kvp.Value.DisplayName == dialConfig.DisplayName && 
-                kvp.Value.ActionType == dialConfig.ActionType
-            );
-            if (!EqualityComparer<KeyValuePair<string, ButtonConfig>>.Default.Equals(globalParamKvp, default(KeyValuePair<string, ButtonConfig>)))
-            {
-                globalParamForState = globalParamKvp.Key;
-            }
-
-            switch (dialConfig.ActionType)
-            {
-                case "FilterDial":
-                    valueTextToDisplay = this._currentFilterValues.TryGetValue(dialConfig.DisplayName, out var val) ? val : "N/A";
-                    break;
-                case "PageDial":
-                    valueTextToDisplay = $"{this._currentPage + 1} / {this._totalPages}";
-                    break;
-                case "ParameterDial":
-                    if (this._parameterDialCurrentIndexes.TryGetValue(localDialId, out var currentIndex) && 
-                        dialConfig.Parameter != null && currentIndex >= 0 && currentIndex < dialConfig.Parameter.Count)
-                    {
-                        valueTextToDisplay = dialConfig.Parameter[currentIndex];
-                    }
-                    else
-                    {
-                        valueTextToDisplay = dialConfig.Parameter?.FirstOrDefault() ?? "N/A"; // Fallback
-                    }
-                    break;
-                case "ToggleDial":
-                    if(globalParamForState != null) isActiveStatus = Logic_Manager_Base.Instance.GetToggleState(globalParamForState);
-                    else PluginLog.Warning($"[{this.DisplayName}|GetAdjustmentImage] ToggleDial '{dialConfig.DisplayName}' 未在LogicManager中找到全局状态。");
-                    // ToggleDial 通常不显示valueText，而是通过isActive状态改变背景/标题颜色
-                    break;
-                case "2ModeTickDial":
-                    if(globalParamForState != null) currentModeStatus = Logic_Manager_Base.Instance.GetDialMode(globalParamForState);
-                    else PluginLog.Warning($"[{this.DisplayName}|GetAdjustmentImage] 2ModeTickDial '{dialConfig.DisplayName}' 未在LogicManager中找到全局状态。");
-                    // 2ModeTickDial 的标题和颜色由 PluginImage.DrawElement 根据 currentMode 处理
-                    break;
-                // NavigationDial, TickDial 等类型会使用默认的 mainTitleToDraw 和空的 valueTextToDisplay
-                // PluginImage.DrawElement 会根据 dialConfig.ShowTitle 和 valueTextToDisplay 是否为空来决定如何绘制
-            }
-            
-            return PluginImage.DrawElement(
-                imageSize,
-                dialConfig, 
-                mainTitleToDraw,    // 传递处理过的标题
-                valueTextToDisplay, // 传递要显示的值
-                isActiveStatus,     // 传递 ToggleDial 的状态
-                currentModeStatus,  // 传递 2ModeTickDial 的模式
-                null,               // customIcon - 旋钮通常无自定义图标
-                forceTextOnly: true, // 旋钮通常强制纯文本显示
-                actualAuxText: null // 旋钮通常无辅助文本
-            );
-        }
-
         public override string GetCommandDisplayName(string actionParameter, PluginImageSize imageSize)
         {
             string localId = actionParameter;
@@ -1262,55 +1152,6 @@ namespace Loupedeck.ReaOSCPlugin.Base
         public override string GetAdjustmentDisplayName(string actionParameter, PluginImageSize imageSize) => null; // 旋钮名称直接绘制在图像上
 
         public override string GetAdjustmentValue(string actionParameter) => null; // 旋钮值直接绘制在图像上
-
-        public override BitmapImage GetButtonImage(PluginImageSize imageSize)
-        {
-            if (this._entryConfig == null) 
-            {
-                PluginLog.Warning($"[{this.DisplayName ?? "UnknownFolder"}|GetButtonImage] 文件夹入口配置 (_entryConfig) 为空。绘制默认文本图像。");
-                // 提供一个默认的文件夹入口图像，如果_entryConfig未加载
-                using (var bb = new BitmapBuilder(imageSize))
-                {
-                    bb.Clear(BitmapColor.Black);
-                    // 使用文件夹自身的DisplayName (如果可用)，否则使用一个通用占位符
-                    var title = !string.IsNullOrEmpty(this.DisplayName) ? this.DisplayName : "Folder";
-                    bb.DrawText(title, BitmapColor.White, GetButtonFontSize(title)); 
-                    return bb.ToImage();
-                }
-            }
-            
-            // 使用 PluginImage.DrawElement 绘制文件夹入口按钮
-            // 通常，文件夹入口按钮不显示动态值 (valueText = null),
-            // isActive 和 currentMode 通常也为 false/0，除非有特殊设计。
-            // customIcon 可以通过 _entryConfig.ButtonImage 加载 (如果 PluginImage.DrawElement 支持的话，或在这里预加载)
-            // PluginImage.DrawElement 内部会处理 _entryConfig 的 Title, DisplayName, BackgroundColor, TitleColor, Text 等属性。
-
-            BitmapImage entryIcon = null;
-            if (!string.IsNullOrEmpty(this._entryConfig.ButtonImage))
-            {
-                try 
-                {
-                    entryIcon = PluginResources.ReadImage(this._entryConfig.ButtonImage);
-                }
-                catch (Exception ex)
-                {
-                    PluginLog.Warning(ex, $"[{this.DisplayName}|GetButtonImage] 加载文件夹入口图标 '{this._entryConfig.ButtonImage}' 失败。");
-                    entryIcon = null;
-                }
-            }
-
-            return PluginImage.DrawElement(
-                imageSize,
-                this._entryConfig,
-                mainTitleOverride: null, // PluginImage会使用_entryConfig.Title或DisplayName
-                valueText: null,         
-                isActive: false,         
-                currentMode: 0,          
-                customIcon: entryIcon, // 传递预加载的图标
-                forceTextOnly: false,
-                actualAuxText: null      // PluginImage会使用_entryConfig.Text
-            );
-        }
 
         // 从旧 Dynamic_Folder_Base 迁移，用于 ParameterButton 查找其数据源 ParameterDial
         private string FindSourceDialGlobalActionParameter(ButtonConfig parameterButtonConfig, string sourceDialDisplayNameFromButtonConfig)

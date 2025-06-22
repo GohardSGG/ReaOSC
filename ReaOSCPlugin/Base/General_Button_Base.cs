@@ -236,115 +236,71 @@ namespace Loupedeck.ReaOSCPlugin.Base
             if (config == null)
             {
                 PluginLog.Warning($"[GeneralButtonBase|GetCommandImage] Config not found for actionParameter: {actionParameter}. Returning default image.");
-                // 返回一个由 PluginImage 生成的默认错误图像，而不是 base.GetCommandImage
-                return PluginImage.DrawElement(imageSize, null); // PluginImage 会处理 config 为 null 的情况
+                return PluginImage.DrawElement(imageSize, null, preferIconOnlyForDial: false);
             }
 
             try
             {
-                BitmapImage customIcon = null;
-                // 1. 图标加载逻辑 (统一)
-                string imagePathToLoad = !String.IsNullOrEmpty(config.ButtonImage) ? config.ButtonImage : null;
-                if (string.IsNullOrEmpty(imagePathToLoad))
-                {
-                    // 尝试根据 DisplayName 推断: xxx.png (严格匹配)
-                    // 注意: actionParameter 是 /GroupName/DisplayName 格式，需要提取DisplayName部分
-                    var displayNameFromActionParam = actionParameter.Split('/').LastOrDefault();
-                    if (!string.IsNullOrEmpty(displayNameFromActionParam) && 
-                        Logic_Manager_Base.SanitizeOscPathSegment(displayNameFromActionParam) == Logic_Manager_Base.SanitizeOscPathSegment(config.DisplayName)) //确保比较的是处理过的名字
-                    {
-                        imagePathToLoad = $"{Logic_Manager_Base.SanitizeOscPathSegment(config.DisplayName)}.png";
-                    }
-                }
+                BitmapImage loadedIcon = PluginImage.TryLoadIcon(config, "GeneralButtonBase");
 
-                if (!string.IsNullOrEmpty(imagePathToLoad))
-                {
-                    try
-                    {
-                        customIcon = PluginResources.ReadImage(imagePathToLoad);
-                    }
-                    catch (Exception ex)
-                    {
-                        PluginLog.Error(ex, $"[GeneralButtonBase|GetCommandImage] Failed to load icon '{imagePathToLoad}' for action '{actionParameter}'. Will draw text only.");
-                        customIcon = null;
-                    }
-                }
-
-                // 2. 确定状态和动态文本
+                // 准备 PluginImage.DrawElement 的其他参数 (大部分与之前 GetCommandImage 中手动绘制前的准备逻辑一致)
                 bool isActive = false;
                 string mainTitleOverride = null;
-                string valueText = null; // 用于可能的次要文本，如模式显示
-                int currentModeForDrawing = 0; // 对于按钮，模式主要影响 isActive 或 mainTitle
-                string actualAuxTextToDraw = config.Text; // Default to config.Text
+                string valueText = null; // 按钮通常不直接显示 valueText
+                int currentModeForDrawing = 0; 
+                string actualAuxTextToDraw = config.Text; // PluginImage.DrawElement 在图标模式下不绘制此项
 
-                // 1. Determine mainTitleOverride based on ModeName and Titles array first
+                // 确定 mainTitleOverride (基于模式或默认)
                 if (!String.IsNullOrEmpty(config.ModeName) && config.Titles != null && config.Titles.Any())
                 {
                     var modeIndex = this._logicManager.GetCurrentModeIndex(config.ModeName);
                     if (modeIndex != -1 && config.Titles.Count > modeIndex && !String.IsNullOrEmpty(config.Titles[modeIndex]))
-                    {
-                        mainTitleOverride = config.Titles[modeIndex];
-                    }
+                    { mainTitleOverride = config.Titles[modeIndex]; }
                     else 
-                    {
-                        mainTitleOverride = config.Title ?? config.DisplayName; // Fallback to default title
-                    }
+                    { mainTitleOverride = config.Title ?? config.DisplayName; }
                 }
                 else
-                {
-                    mainTitleOverride = config.Title ?? config.DisplayName; // Not mode-controlled title or no Titles array
-                }
+                { mainTitleOverride = config.Title ?? config.DisplayName; }
 
-                // 2. Determine isActive and potentially update actualAuxTextToDraw based on ActionType and ModeName
+                // 确定 isActive 和 actualAuxTextToDraw (基于 ActionType 和模式)
                 if (config.ActionType == "SelectModeButton")
                 {
-                    // For SelectModeButton, mainTitleOverride is always the current mode string.
                     mainTitleOverride = this._logicManager.GetCurrentModeString(config.DisplayName) ?? config.Modes?.FirstOrDefault() ?? config.DisplayName;
                     isActive = (config.Modes?.IndexOf(this._logicManager.GetCurrentModeString(config.DisplayName) ?? "") ?? 0) > 0;
-                    if (config.Text == "{mode}")
-                    {
-                        actualAuxTextToDraw = mainTitleOverride; 
-                    }
+                    if (config.Text == "{mode}") { actualAuxTextToDraw = mainTitleOverride; }
                 }
                 else if (config.ActionType == "TriggerButton")
                 {
                     isActive = this._triggerTemporaryActiveStates.TryGetValue(actionParameter, out var tempState) && tempState;
-                    // mainTitleOverride is already set based on mode/titles or default
                     if (!String.IsNullOrEmpty(config.ModeName) && config.Text == "{mode}")
-                    {
-                        actualAuxTextToDraw = this._logicManager.GetCurrentModeString(config.ModeName) ?? "";
-                    }
+                    { actualAuxTextToDraw = this._logicManager.GetCurrentModeString(config.ModeName) ?? ""; }
                 }
                 else if (config.ActionType == "ToggleButton")
                 {
                     isActive = this._logicManager.GetToggleState(actionParameter);
-                    // mainTitleOverride is already set based on mode/titles or default
                     if (!String.IsNullOrEmpty(config.ModeName) && config.Text == "{mode}")
-                    {
-                        actualAuxTextToDraw = this._logicManager.GetCurrentModeString(config.ModeName) ?? "";
-                    }
+                    { actualAuxTextToDraw = this._logicManager.GetCurrentModeString(config.ModeName) ?? ""; }
                 }
-                // else: For other action types, mainTitleOverride and actualAuxTextToDraw are already set correctly
-                // based on the initial mode/titles check and default config.Text handling.
+                // ParameterButton 的 mainTitleOverride 由 General_Folder_Base.GetCommandImage 处理，此处不直接覆盖
+                // 对于 General_Button_Base，如果它要独立支持 ParameterButton，需要类似逻辑，但当前它不直接处理此类型按钮的标题
                 
-                // 调用 PluginImage.DrawElement
                 return PluginImage.DrawElement(
                     imageSize,
                     config,
                     mainTitleOverride,
-                    valueText, // 传递 valueText, PluginImage 会处理其绘制
+                    valueText, 
                     isActive,
-                    currentModeForDrawing, // 对于按钮，模式通常不直接改变背景/前景，而是通过isActive或title
-                    customIcon,
-                    false, // forceTextOnly, 默认不强制
-                    actualAuxTextToDraw // Pass the resolved text
+                    currentModeForDrawing, 
+                    loadedIcon, // 使用加载的图标
+                    false, // forceTextOnly
+                    actualAuxTextToDraw, // PluginImage.DrawElement 在按钮图标模式下不绘制它
+                    preferIconOnlyForDial: false // 按钮遵循图标+文字规则
                 );
             }
             catch (Exception ex)
             {
                 PluginLog.Error(ex, $"[GeneralButtonBase|GetCommandImage] Unhandled exception for action '{actionParameter}'.");
-                // 返回一个由 PluginImage 生成的错误图像
-                return PluginImage.DrawElement(imageSize, config, "ERR!", isActive:true, actualAuxText: config?.Text); // config可能为null，所以传一个简单的错误提示
+                return PluginImage.DrawElement(imageSize, config, "ERR!", isActive:true, preferIconOnlyForDial: false);
             }
         }
 
@@ -381,10 +337,5 @@ namespace Loupedeck.ReaOSCPlugin.Base
             PluginLog.Info("[GeneralButtonBase] Disposed.");
         }
 
-        #region UI辅助方法 
-        // 【移除】GetAutomaticTitleFontSize 和 HexToBitmapColor，因为它们已移至 PluginImage.cs
-        // private int GetAutomaticTitleFontSize(String title) { ... }
-        // private static BitmapColor HexToBitmapColor(string hexColor) { ... }
-        #endregion
     }
 }

@@ -316,9 +316,113 @@
     "Text": "Track",
     "Content": {
       "Buttons": [
-      
+        {
+          "ActionType": "ToggleButton",
+          "DisplayName": "Phase",
+          "Title": "Phase"
+        },
+        {
+          "ActionType": "ToggleButton",
+          "DisplayName": "Send Master",
+          "Title": "Master",
+          "OscAddress": "Send/Master",
+          "Text": "Send",
+          "TextColor": "#88E2FF"
+        },
+        {
+          "ActionType": "ToggleButton",
+          "DisplayName": "Offset Unit",
+          "Title": "Sample",
+          "OscAddress": "Offset/Unit",
+          "Text": "/ MS",
+          "TextColor": "#88E2FF"
+        }
+
       ],
       "Dials": [
+        {
+          "ActionType": "ParameterDial",
+          "DisplayName": "Channel",
+          "ShowTitle": "Yes",
+          "Parameter": [
+            "2",
+            "4",
+            "6",
+            "8",
+            "10",
+            "12",
+            "14",
+            "16",
+            "18",
+            "20",
+            "22",
+            "24",
+            "32",
+            "48",
+            "64",
+            "96",
+            "128"
+          ]
+        },
+        {
+          "ActionType": "ParameterDial",
+          "DisplayName": "Width",
+          "ShowTitle": "Yes",
+          "Parameter": [
+            true,
+            "0",
+            "100"
+          ]
+        },
+        {
+          "ActionType": "ParameterDial",
+          "DisplayName": "Pan",
+          "ShowTitle": "Yes",
+          "Parameter": [
+            true,
+            "-100",
+            "100"
+          ]
+        },
+        {
+          "ActionType": "ParameterDial",
+          "DisplayName": "Bus",
+          "ShowTitle": "Yes",
+          "Parameter": [
+            "2",
+            "4",
+            "6",
+            "8",
+            "10",
+            "12",
+            "14",
+            "16",
+            "18",
+            "20",
+            "22",
+            "24",
+            "32",
+            "48",
+            "64",
+            "96",
+            "128"
+          ]
+        },
+        {
+          "ActionType": "ParameterDial",
+          "DisplayName": "Offset",
+          "ShowTitle": "Yes",
+          "Parameter": [
+            true,
+            "-256",
+            "256"
+          ]
+        },
+        {
+          "ActionType": "NavigationDial",
+          "DisplayName": "Back",
+          "Title": "Back"
+        }
       ]
     }
   },

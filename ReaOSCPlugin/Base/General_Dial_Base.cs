@@ -82,7 +82,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
             }
         }
 
-        protected override string GetAdjustmentValue(string actionParameter) => null; // 【无改动】
+        protected override string GetAdjustmentValue(string actionParameter) => null; // 【无改动】值通常不单独显示，而是绘制在图像中
 
         protected override BitmapImage GetCommandImage(string actionParameter, PluginImageSize imageSize)
         {
@@ -90,87 +90,106 @@ namespace Loupedeck.ReaOSCPlugin.Base
             if (config == null)
             {
                 PluginLog.Warning($"[GeneralDialBase|GetCommandImage] Config not found for actionParameter: {actionParameter}. Returning default image.");
-                return PluginImage.DrawElement(imageSize, null); 
+                return PluginImage.DrawElement(imageSize, null, preferIconOnlyForDial: true); 
             }
 
             try
             {
-                BitmapImage customIcon = null;
-                // 1. 图标加载逻辑 (统一) - 参照 General_Button_Base
-                string imagePathToLoad = !String.IsNullOrEmpty(config.ButtonImage) ? config.ButtonImage : null;
-                if (string.IsNullOrEmpty(imagePathToLoad))
-                {
-                    var displayNameFromActionParam = actionParameter.Split('/').LastOrDefault(); 
-                    // Extract the part after the last '/', which should be DisplayName or DisplayName + "/DialAction"
-                    var namePartToMatch = displayNameFromActionParam;
-                    if (namePartToMatch.EndsWith("/DialAction"))
-                    {
-                        namePartToMatch = namePartToMatch.Substring(0, namePartToMatch.Length - "/DialAction".Length);
-                    }
+                BitmapImage loadedIcon = PluginImage.TryLoadIcon(config, "GeneralDialBase_Press"); // Context for press
 
-                    if (!string.IsNullOrEmpty(namePartToMatch) &&
-                        Logic_Manager_Base.SanitizeOscPathSegment(namePartToMatch) == Logic_Manager_Base.SanitizeOscPathSegment(config.DisplayName))
-                    {
-                        imagePathToLoad = $"{Logic_Manager_Base.SanitizeOscPathSegment(config.DisplayName)}.png";
-                    }
-                }
-
-                if (!string.IsNullOrEmpty(imagePathToLoad))
-                {
-                    try
-                    {
-                        customIcon = PluginResources.ReadImage(imagePathToLoad);
-                    }
-                    catch (Exception ex)
-                    {
-                        PluginLog.Error(ex, $"[GeneralDialBase|GetCommandImage] Failed to load icon '{imagePathToLoad}' for action '{actionParameter}'. Will draw text only.");
-                        customIcon = null;
-                    }
-                }
-
-                // 2. 确定状态和动态文本
-                bool isActive = false; // 主要用于ToggleDial
+                bool isActive = false; 
                 string mainTitleOverride = null;
-                string valueText = null; // 用于显示如参数值等
-                int currentMode = 0;    // 主要用于2ModeTickDial
+                string valueText = null; // 旋钮按下通常不显示值文本
+                int currentMode = 0;    
 
                 if (config.ActionType == "ToggleDial")
                 {
-                    isActive = this._logicManager.GetToggleState(actionParameter);
+                    isActive = this._logicManager.GetToggleState(actionParameter); // 获取ToggleDial的当前状态
                     mainTitleOverride = config.Title ?? config.DisplayName;
                 }
                 else if (config.ActionType == "2ModeTickDial")
                 {
-                    currentMode = this._logicManager.GetDialMode(actionParameter);
-                    // mainTitleOverride 将在 PluginImage.DrawElement 中根据 currentMode 和 config 确定
-                    // 所以这里不需要特别设置 mainTitleOverride，除非有特定逻辑
-                    mainTitleOverride = config.Title ?? config.DisplayName; // 基准标题
+                    currentMode = this._logicManager.GetDialMode(actionParameter); // 获取2ModeTickDial的当前模式
+                    // 标题会由PluginImage.DrawElement根据模式和配置决定，这里可以传递基础标题
+                    mainTitleOverride = config.Title ?? config.DisplayName; 
                 }
-                // ParameterDial 通常在 Dynamic_Folder_Base 中处理其特定显示逻辑
-                // 但如果 General_Dial_Base 需要支持 ParameterDial 类型的独立旋钮，则在这里添加
-                // else if (config.ActionType == "ParameterDial") { ... }
-                else // TickDial 及其他
+                else // 其他旋钮类型，如TickDial，按下时可能只显示标题
                 {
                     mainTitleOverride = config.Title ?? config.DisplayName;
                 }
-
-                // 如果有 config.Text, 它会被 PluginImage.DrawElement 处理
-
+                
                 return PluginImage.DrawElement(
                     imageSize,
                     config,
                     mainTitleOverride,
-                    valueText,         // 传递给 PluginImage，如果以后有值显示需求
-                    isActive,          // 对于 ToggleDial
-                    currentMode,       // 对于 2ModeTickDial
-                    customIcon,
-                    false
+                    valueText, // 通常为null
+                    isActive,          
+                    currentMode,       
+                    loadedIcon, 
+                    false, // forceTextOnly
+                    config.Text, // 辅助文本，在无图标或非纯图标模式下可能显示
+                    preferIconOnlyForDial: true // 对于旋钮（包括按下），如果图标存在，则只显示图标
                 );
             }
             catch (Exception ex)
             {
                 PluginLog.Error(ex, $"[GeneralDialBase|GetCommandImage] Unhandled exception for action '{actionParameter}'.");
-                return PluginImage.DrawElement(imageSize, config, "ERR!", isActive: true); 
+                return PluginImage.DrawElement(imageSize, config, "ERR!", isActive: true, preferIconOnlyForDial: true);
+            }
+        }
+
+        // 【新增】重写 GetAdjustmentImage 以实现图标优先逻辑
+        protected override BitmapImage GetAdjustmentImage(string actionParameter, PluginImageSize imageSize)
+        {
+            var config = this._logicManager.GetConfig(actionParameter);
+            if (config == null)
+            {
+                PluginLog.Warning($"[GeneralDialBase|GetAdjustmentImage] Config not found for actionParameter: {actionParameter}. Returning default image.");
+                return PluginImage.DrawElement(imageSize, null, preferIconOnlyForDial: true); 
+            }
+
+            try
+            {
+                BitmapImage loadedIcon = PluginImage.TryLoadIcon(config, "GeneralDialBase_Adjustment");
+
+                bool isActive = false; 
+                int currentMode = 0;   
+                string valueTextForAdjustment = null; 
+                // mainTitleOverride 会在 PluginImage.DrawElement 中根据 config.Title/DisplayName 和 preferIconOnlyForDial 确定
+                // 如果是纯图标模式，标题会被忽略；如果是文本模式，会使用config的标题。
+                string mainTitleOverride = config.Title ?? config.DisplayName; // 供文本模式使用
+
+                if (config.ActionType == "ToggleDial")
+                {
+                    isActive = this._logicManager.GetToggleState(actionParameter); 
+                }
+                else if (config.ActionType == "2ModeTickDial")
+                {
+                    currentMode = this._logicManager.GetDialMode(actionParameter);
+                }
+                // 对于 ParameterDial, FilterDial, PageDial 等，它们的 valueText (如果有的话) 
+                // 是由 General_Folder_Base.GetAdjustmentImage 负责准备并传入 PluginImage.DrawElement 的。
+                // General_Dial_Base 通常不直接处理这些特定类型的 valueText。
+                // 如果 General_Dial_Base 要独立支持这些，需要在这里添加获取valueText的逻辑。
+                // 当前 PluginImage.DrawElement 在文本模式下，会自己根据 dialConfig.ActionType 和传入的 valueText 决定如何显示。
+
+                return PluginImage.DrawElement(
+                    imageSize,
+                    config,
+                    mainTitleOverride, // 供文本模式使用，图标模式下通常被忽略（除非按钮模式）
+                    valueTextForAdjustment, // 通常为null，除非此基类直接处理带值的旋钮
+                    isActive,          
+                    currentMode,       
+                    loadedIcon, 
+                    false, // forceTextOnly
+                    config.Text, // 辅助文本，在无图标或非纯图标模式下可能显示
+                    preferIconOnlyForDial: true // 对于旋钮，如果图标存在，则只显示图标
+                );
+            }
+            catch (Exception ex)
+            {
+                PluginLog.Error(ex, $"[GeneralDialBase|GetAdjustmentImage] Unhandled exception for action '{actionParameter}'.");
+                return PluginImage.DrawElement(imageSize, config, "ERR!", isActive: true, preferIconOnlyForDial: true);
             }
         }
 
