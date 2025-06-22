@@ -111,7 +111,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
             this._triggerResetTimers[actionParameter] = timer;
         }
 
-        private void OnModeButtonOscStateChanged(Object sender, OSCStateManager.StateChangedEventArgs e, ButtonConfig config, String actionParameter)
+        private void OnModeButtonOscStateChanged(Object _, OSCStateManager.StateChangedEventArgs e, ButtonConfig config, String actionParameter)
         {
             var modeIndex = this._logicManager.GetCurrentModeIndex(config.ModeName);
             String expectedAddress = null;

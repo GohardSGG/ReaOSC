@@ -39,7 +39,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
 
 
         // --- 来自旧 Dynamic_Folder_Base (并引入/整合) ---
-        private Boolean _isButtonListDynamic; // 标记按钮列表是静态还是动态
+        private readonly Boolean _isButtonListDynamic; // 标记按钮列表是静态还是动态
 
         // 静态按钮管理 (源自旧 Dynamic_Folder_Base)
         private readonly List<String> _localButtonIds = new List<String>();

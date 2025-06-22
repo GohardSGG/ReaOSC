@@ -174,7 +174,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
 
             // 为每个配置文件调用新的加载方法，该方法会自动处理外部覆盖和内部回退
             var generalConfigs = this.LoadConfigFile<Dictionary<String, List<ButtonConfig>>>("General/General_List.json");
-            this.ProcessGroupedConfigs(generalConfigs, isFx: false);
+            this.ProcessGroupedConfigs(generalConfigs);
             
             var dynamicFolderDefs = this.LoadConfigFile<List<ButtonConfig>>("Dynamic/Dynamic_List.json");
             this.ProcessDynamicFolderDefs(dynamicFolderDefs);
@@ -321,20 +321,20 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 folderEntriesToRegister.Add(folderEntryForRegistration);
             }
             // Register the folder entries themselves (not their internal content)
-            this.RegisterConfigs(folderEntriesToRegister, isFx: false, isDynamicFolderEntry: true, defaultGroupName: "Dynamic");
+            this.RegisterConfigs(folderEntriesToRegister, isDynamicFolderEntry: true, defaultGroupName: "Dynamic");
         }
 
         private T LoadAndDeserialize<T>(Assembly assembly, String resourceName) where T : class { try { using (var stream = assembly.GetManifestResourceStream(resourceName)) { if (stream == null) { PluginLog.Info($"[LogicManager] 内嵌资源 '{resourceName}' 未找到或加载失败。"); return null; } using (var reader = new StreamReader(stream)) { return JsonConvert.DeserializeObject<T>(reader.ReadToEnd()); } } } catch (Exception ex) { PluginLog.Error(ex, $"[LogicManager] 读取或解析内嵌资源 '{resourceName}' 失败。"); return null; } }
-        private void ProcessGroupedConfigs(Dictionary<String, List<ButtonConfig>> groupedConfigs, Boolean isFx) { if (groupedConfigs == null) { return; } foreach (var group in groupedConfigs) { var configs = group.Value.Select(config => { config.GroupName = group.Key; return config; }).ToList(); this.RegisterConfigs(configs, isFx); } }
+        private void ProcessGroupedConfigs(Dictionary<String, List<ButtonConfig>> groupedConfigs) { if (groupedConfigs == null) { return; } foreach (var group in groupedConfigs) { var configs = group.Value.Select(config => { config.GroupName = group.Key; return config; }).ToList(); this.RegisterConfigs(configs); } }
         private void ProcessFolderContentConfigs(FolderContentConfig folderContent, String folderDisplayNameAsDefaultGroupName) 
         { 
             if (folderContent == null) { return; } 
             // Pass the folder's DisplayName as the default GroupName for its buttons and dials
-            this.RegisterConfigs(folderContent.Buttons, isFx: false, isDynamicFolderEntry: false, defaultGroupName: folderDisplayNameAsDefaultGroupName); 
-            this.RegisterConfigs(folderContent.Dials, isFx: false, isDynamicFolderEntry: false, defaultGroupName: folderDisplayNameAsDefaultGroupName); 
+            this.RegisterConfigs(folderContent.Buttons, isDynamicFolderEntry: false, defaultGroupName: folderDisplayNameAsDefaultGroupName); 
+            this.RegisterConfigs(folderContent.Dials, isDynamicFolderEntry: false, defaultGroupName: folderDisplayNameAsDefaultGroupName); 
         }
 
-        private void RegisterConfigs(List<ButtonConfig> configs, Boolean isFx, Boolean isDynamicFolderEntry = false, String defaultGroupName = null)
+        private void RegisterConfigs(List<ButtonConfig> configs, Boolean isDynamicFolderEntry = false, String defaultGroupName = null)
         {
             if (configs == null)
             {
