@@ -15,6 +15,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
         private readonly Dictionary<String, DateTime> _lastEventTimes = new Dictionary<String, DateTime>();
         private readonly Logic_Manager_Base _logicManager = Logic_Manager_Base.Instance; // 【新增】方便引用
 
+        [Obsolete]
         public General_Dial_Base() : base(hasReset: true)
         {
             this._logicManager.Initialize();

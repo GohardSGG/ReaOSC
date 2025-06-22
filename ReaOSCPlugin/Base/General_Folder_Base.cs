@@ -505,6 +505,8 @@ namespace Loupedeck.ReaOSCPlugin.Base
 
         // --- 核心Loupedeck SDK方法重写 ---
 
+        [Obsolete]
+
         public override IEnumerable<String> GetButtonPressActionNames()
         {
             if (this._isButtonListDynamic)
@@ -524,6 +526,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
             }
         }
 
+        [Obsolete]
         public override IEnumerable<String> GetEncoderRotateActionNames()
         {
             var rotateActionNames = new String[6]; // 设备通常有6个旋钮

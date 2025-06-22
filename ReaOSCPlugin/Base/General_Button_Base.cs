@@ -24,6 +24,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
         private readonly Dictionary<String, Boolean> _triggerTemporaryActiveStates = new Dictionary<String, Boolean>();
         private readonly Dictionary<String, Timer> _triggerResetTimers = new Dictionary<String, Timer>();
 
+        [Obsolete]
         public General_Button_Base()
         {
             this._logicManager.Initialize();
