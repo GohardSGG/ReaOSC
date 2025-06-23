@@ -332,6 +332,21 @@
           "ActiveColor": "#FF8F15"
         },
         {
+          "ActionType": "Placeholder"
+        },
+        {
+          "ActionType": "Placeholder"
+        },
+        {
+          "ActionType": "Placeholder"
+        },
+        {
+          "ActionType": "Placeholder"
+        },
+        {
+          "ActionType": "Placeholder"
+        },
+        {
           "ActionType": "ToggleButton",
           "DisplayName": "Offset Unit",
           "Title": "Sample",

@@ -40,6 +40,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
 
         // --- 来自旧 Dynamic_Folder_Base (并引入/整合) ---
         private readonly Boolean _isButtonListDynamic; // 标记按钮列表是静态还是动态
+        private List<ButtonConfig> _rawStaticButtonConfigs = new List<ButtonConfig>(); // 【新增】存储原始静态按钮配置
 
         // 静态按钮管理 (源自旧 Dynamic_Folder_Base)
         private readonly List<String> _localButtonIds = new List<String>();
@@ -109,8 +110,10 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 }
                 else // 静态按钮列表
                 {
-                    this.PopulateStaticButtonMappings(folderContentConfig.Buttons); 
-                    if (folderContentConfig.Buttons == null || !folderContentConfig.Buttons.Any())
+                    // 【修改】存储原始静态按钮配置，并传递给 PopulateStaticButtonMappings
+                    this._rawStaticButtonConfigs = folderContentConfig.Buttons ?? new List<ButtonConfig>();
+                    this.PopulateStaticButtonMappings(this._rawStaticButtonConfigs); 
+                    if (this._rawStaticButtonConfigs == null || !this._rawStaticButtonConfigs.Any())
                     {
                         PluginLog.Info($"[{this.DisplayName}] Constructor: 配置为静态按钮列表，但按钮列表为空。");
                     }
@@ -522,7 +525,6 @@ namespace Loupedeck.ReaOSCPlugin.Base
         // --- 核心Loupedeck SDK方法重写 ---
 
         [Obsolete]
-
         public override IEnumerable<String> GetButtonPressActionNames()
         {
             if (this._isButtonListDynamic)
@@ -537,8 +539,55 @@ namespace Loupedeck.ReaOSCPlugin.Base
             }
             else
             {
-                // 对于静态按钮列表，返回 _localButtonIds 中的所有项
-                return this._localButtonIds.Select(id => this.CreateCommandName(id)).ToList();
+                // 【修改】对于静态按钮列表，遍历原始配置以支持 Placeholder
+                var staticButtonActionNames = new List<String>();
+                foreach (var buttonConfig in this._rawStaticButtonConfigs)
+                {
+                    if (buttonConfig.ActionType == "Placeholder")
+                    {
+                        staticButtonActionNames.Add(null); // Placeholder 为 null
+                    }
+                    else
+                    {
+                        // 对于非 Placeholder 按钮，需要找到它在 PopulateStaticButtonMappings 中生成的 localId
+                        // PopulateStaticButtonMappings 应该已经用 GroupName 和 DisplayName 填充了 _localIdToConfig_Buttons
+                        // 我们可以反向查找，或者确保 _localButtonIds 的顺序与 _rawStaticButtonConfigs 中非占位符的顺序一致
+                        // 为了简单和鲁棒性，我们重新构建 localId 的方式与 PopulateStaticButtonMappings 一致
+                        var loadedConfig = this._localIdToConfig_Buttons.Values.FirstOrDefault(
+                            cfg => cfg.DisplayName == buttonConfig.DisplayName && 
+                                   cfg.GroupName == (buttonConfig.GroupName ?? this.DisplayName)
+                        );
+
+                        if (loadedConfig != null)
+                        {
+                            // PopulateStaticButtonMappings 中 localId 的生成方式是 "{GroupName}{DisplayName}".Replace(" ", "")
+                            // 但我们应该从 _localIdToGlobalActionParameter_Buttons 的键中获取正确的 localId，因为那里存储的是准确的
+                            var localIdEntry = this._localIdToGlobalActionParameter_Buttons.FirstOrDefault(
+                                kvp => kvp.Value == Logic_Manager_Base.Instance.GetAllConfigs().FirstOrDefault(
+                                    x => x.Value.DisplayName == buttonConfig.DisplayName && 
+                                         x.Value.GroupName == (buttonConfig.GroupName ?? this.DisplayName) &&
+                                         x.Value.ActionType == buttonConfig.ActionType //确保ActionType也匹配，以防同名不同类型
+                                ).Key
+                            );
+
+                            if (!String.IsNullOrEmpty(localIdEntry.Key))
+                            {
+                                staticButtonActionNames.Add(this.CreateCommandName(localIdEntry.Key));
+                            }
+                            else
+                            {
+                                PluginLog.Warning($"[{this.DisplayName}] GetButtonPressActionNames: 未能为静态按钮 '{buttonConfig.DisplayName}' (Group: '{buttonConfig.GroupName ?? this.DisplayName}') 找到有效的 localId。将视为空白。");
+                                staticButtonActionNames.Add(null); // 如果找不到，也视为空白
+                            }
+                        }
+                        else
+                        {
+                            PluginLog.Warning($"[{this.DisplayName}] GetButtonPressActionNames: 未能从_localIdToConfig_Buttons中为静态按钮 '{buttonConfig.DisplayName}' (Group: '{buttonConfig.GroupName ?? this.DisplayName}') 找到加载的配置。将视为空白。");
+                            staticButtonActionNames.Add(null); // 如果找不到配置，视为空白
+                        }
+                    }
+                }
+                return staticButtonActionNames;
             }
         }
 

@@ -609,10 +609,38 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     if (itemConfig != null && !String.IsNullOrEmpty(dynamicFolderDisplayName)) // 表明是来自文件夹的动态列表项
                     {
                         // 构建特定格式的OSC地址: /FolderName/Add/TopGroup/ItemName
-                        var folderNamePart = SanitizeOscPathSegment(dynamicFolderDisplayName);
-                        var topGroupPart = SanitizeOscPathSegment(itemConfig.GroupName); // itemConfig.GroupName 是数据源JSON中的父级键
-                        var itemNamePart = SanitizeOscPathSegment(itemConfig.DisplayName);
-                        oscAddressToSend = $"/{folderNamePart}/Add/{topGroupPart}/{itemNamePart}".Replace("//", "/");
+                        var folderNamePart = FormatTopLevelOscPathSegment(dynamicFolderDisplayName); // 使用新方法处理文件夹名
+                        var topGroupPart = SanitizeOscPathSegment(itemConfig.GroupName);    // 使用标准方法处理组名
+                        var itemNamePart = SanitizeOscPathSegment(itemConfig.DisplayName);  // 使用标准方法处理项名
+                        
+                        // 确保拼接后不会因为空部件导致太多斜杠
+                        List<String> pathParts = new List<String>();
+                        if (!String.IsNullOrEmpty(folderNamePart))
+                        {
+                            pathParts.Add(folderNamePart);
+                        }
+
+
+                        pathParts.Add("Add"); // "Add" 是固定部分
+                        if (!String.IsNullOrEmpty(topGroupPart))
+                        {
+                            pathParts.Add(topGroupPart);
+                        }
+
+
+                        if (!String.IsNullOrEmpty(itemNamePart))
+                        {
+                            pathParts.Add(itemNamePart);
+                        }
+
+
+                        oscAddressToSend = "/" + String.Join("/", pathParts);
+                        oscAddressToSend = oscAddressToSend.Replace("//", "/").TrimEnd('/');
+                        if (String.IsNullOrEmpty(oscAddressToSend) || oscAddressToSend == "/") 
+                        { 
+                            PluginLog.Warning($"[LogicManager] ProcessUserAction: Generated OSC address for dynamic item '{itemConfig.DisplayName}' in folder '{dynamicFolderDisplayName}' was empty or just '/'. Check config.");
+                            oscAddressToSend = ""; //设置为空以防止发送无效OSC
+                        }
                     }
                     else // 普通的、已注册的 TriggerButton
                     {
@@ -1015,52 +1043,69 @@ namespace Loupedeck.ReaOSCPlugin.Base
 
         #region OSC地址和路径片段处理辅助方法
         public static String SanitizeOscPathSegment(String segment) { if (String.IsNullOrEmpty(segment)) { return ""; } var sanitized = segment.Replace(" ", "_"); sanitized = Regex.Replace(sanitized, @"[^\w_/-]", ""); return sanitized.Trim('/'); }
-        public static String SanitizeOscAddress(String address) { if (String.IsNullOrEmpty(address)) { return "/"; } var sanitized = address.Replace(" ", "_"); sanitized = Regex.Replace(sanitized, @"[^\w_/-]", ""); if (!sanitized.StartsWith("/")) { sanitized = "/" + sanitized; } return sanitized.Replace("//", "/"); }
+        
+        // 【新增】专门处理第一级 OSC 路径片段的方法
+        // 例如 "My Awesome Folder" -> "My/Awesome/Folder"
+        public static String FormatTopLevelOscPathSegment(String segment)
+        {
+            if (String.IsNullOrEmpty(segment)) { return ""; }
+            var parts = segment.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            // 对每个词块应用标准 SanitizeOscPathSegment 清理
+            // SanitizeOscPathSegment 会处理掉部分内的空格（虽然这里通常不应该有，因为已经按空格分割了）和特殊字符
+            var cleanedParts = parts.Select(p => SanitizeOscPathSegment(p.Trim())) 
+                                    .Where(p => !String.IsNullOrEmpty(p));
+            return String.Join("/", cleanedParts);
+        }
+        
+        public static String SanitizeOscAddress(String address) { 
+            if (String.IsNullOrEmpty(address)) { return "/"; } 
+            // 对于一个完整的、可能是多段的地址，其内部的原始空格（如果存在且未被片段处理替换掉）应转为下划线
+            var sanitized = address.Replace(" ", "_"); 
+            sanitized = Regex.Replace(sanitized, @"[^\w_/-]", ""); 
+            if (!sanitized.StartsWith("/")) 
+            { 
+                sanitized = "/" + sanitized; 
+            } 
+            var final = sanitized.Replace("//", "/").TrimEnd('/');
+            return String.IsNullOrEmpty(final) ? "/" : final; // 确保空字符串结果也返回 "/"
+        }
 
         // 【修正OSC地址规则】DetermineOscAddressForAction的第二个参数明确为jsonGroupNameForOsc
         private String DetermineOscAddressForAction(ButtonConfig config, String jsonGroupNameForOsc, String explicitOscAddressField = null)
         {
-            String basePath = SanitizeOscPathSegment(jsonGroupNameForOsc);
-            String actionPath;
+            // 1. 处理 OSC 地址的"根"或"前缀"部分, 这通常来自 jsonGroupNameForOsc (文件夹名或控件组名)
+            //    根据新规则，这一部分如果包含空格，空格会变成路径分隔符 '/'
+            String basePart = FormatTopLevelOscPathSegment(jsonGroupNameForOsc);
 
-            if (!String.IsNullOrEmpty(explicitOscAddressField))
-            { actionPath = explicitOscAddressField; } // explicitOscAddressField 可能已经是完整路径或片段
-            else if (!String.IsNullOrEmpty(config.OscAddress))
-            { actionPath = config.OscAddress; } // config.OscAddress 可能是完整路径或片段
+            // 2. 处理 OSC 地址的"具体动作"或"名称"部分
+            String actionSpecificSource = explicitOscAddressField ?? config.OscAddress ?? config.Title ?? config.DisplayName;
+
+            if (String.IsNullOrEmpty(actionSpecificSource)) 
+            {
+                // 如果没有任何可用的次级路径源，则仅使用 basePart (如果存在)
+                return String.IsNullOrEmpty(basePart) ? "/" : $"/{basePart}".Replace("//", "/").TrimEnd('/');
+            }
+
+            // 如果 actionSpecificSource 是绝对路径 (以 "/" 开头)，则它覆盖 basePart
+            if (actionSpecificSource.StartsWith("/"))
+            {
+                // 对绝对路径进行标准清理 (所有内部空格变下划线)
+                return SanitizeOscAddress(actionSpecificSource); 
+            }
+
+            // 如果 actionSpecificSource 是相对路径片段，对其进行标准清理 (内部空格变下划线)
+            String actionSpecificPart = SanitizeOscPathSegment(actionSpecificSource);
+
+            // 3. 组合路径
+            if (String.IsNullOrEmpty(basePart) || basePart == "/") // 如果没有有效 basePath
+            {
+                var finalAddressNoBase = $"/{actionSpecificPart}".Replace("//", "/").TrimEnd('/');
+                return String.IsNullOrEmpty(finalAddressNoBase) ? "/" : finalAddressNoBase;
+            }
             else
-            { actionPath = config.DisplayName; }
-
-            // Sanitize actionPath only if it's not meant to be an absolute path override
-            // If actionPath starts with '/', treat it as an absolute path that overrides basePath.
-            var sanitizedActionPath = SanitizeOscPathSegment(actionPath); // Sanitize after check
-
-            if (actionPath.StartsWith("/"))
             {
-                return SanitizeOscAddress(actionPath); // actionPath已经是完整路径, 清理并返回
-            }
-
-            if (String.IsNullOrEmpty(basePath) || basePath == "/") // 如果 basePath 为空或仅为根
-            {
-                // 如果 actionPath 是 DisplayName (例如 ControlDial 且 OscAddress 未定义)，我们要确保它不被 SanitizeOscPathSegment 进一步处理 (因为它已经是合适的片段)
-                // 但如果 actionPath 本身包含斜杠 (例如用户定义的 OscAddress)，则 SanitizeOscPathSegment 可能仍然需要。
-                // 这里的逻辑是：如果原始actionPath (未经过SanitizeOscPathSegment的) 包含斜杠，则它可能已经是相对路径或绝对路径的一部分
-                if (actionPath.Contains("/")) 
-                {
-                    return $"/{sanitizedActionPath}".Replace("//", "/");
-                }
-                else // 如果原始actionPath不含斜杠，则它是纯粹的名称，应该直接附加
-                {
-                     return $"/{actionPath}".Replace("//", "/"); // 使用原始 actionPath
-                }
-            }
-            // 如果 basePath 存在，且 actionPath 不以斜杠开头
-            if (actionPath.Contains("/")) // 如果 actionPath 包含斜杠，它可能是多段路径
-            {
-                 return $"/{basePath}/{sanitizedActionPath}".Replace("//", "/");
-            }
-            else // 如果 actionPath 不含斜杠，它是纯粹的名称
-            {
-                 return $"/{basePath}/{actionPath}".Replace("//", "/"); // 使用原始 actionPath
+                var finalAddressWithBase = $"/{basePart}/{actionSpecificPart}".Replace("//", "/").TrimEnd('/');
+                return String.IsNullOrEmpty(finalAddressWithBase) ? "/" : finalAddressWithBase;
             }
         }
         #endregion
