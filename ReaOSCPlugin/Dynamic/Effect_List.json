@@ -87,76 +87,76 @@
   ],
   "FabFilter": [
     {
-      "DisplayName": "Add Pro-C 2",
+      "DisplayName": "Pro-C 2",
       "Title": "C",
       "Text": "2",
       "TextColor": "#FF0000",
       "TextX": 55
     },
     {
-      "DisplayName": "Add Pro-DS",
+      "DisplayName": "Pro-DS",
       "Title": "DS",
       "TitleColor": "#FFFF00"
     },
     {
-      "DisplayName": "Add Pro-G",
+      "DisplayName": "Pro-G",
       "Title": "G"
     },
     {
-      "DisplayName": "Add Pro-L 2",
+      "DisplayName": "Pro-L 2",
       "Title": "L",
       "Text": "2",
       "TextColor": "#FF0000",
       "TextX": 55
     },
     {
-      "DisplayName": "Add Pro-MB",
+      "DisplayName": "Pro-MB",
       "Title": "MB"
     },
     {
-      "DisplayName": "Add Pro-Q 3",
+      "DisplayName": "Pro-Q 3",
       "Title": "Q",
       "Text": "3",
       "TextColor": "#3370FF",
       "TextX": 55
     },
     {
-      "DisplayName": "Add Pro-Q 4",
+      "DisplayName": "Pro-Q 4",
       "Title": "Q",
       "Text": "4",
       "TextColor": "#33FFFF",
       "TextX": 55
     },
     {
-      "DisplayName": "Add Pro-R 2",
+      "DisplayName": "Pro-R 2",
       "Title": "R",
       "Text": "2",
       "TextColor": "#FF0000",
       "TextX": 55
     },
     {
-      "DisplayName": "Add Saturn 2",
+      "DisplayName": "Saturn 2",
       "Title": "Saturn",
       "Text": "2",
       "TextColor": "#FF0000",
       "TextX": 55
     },
     {
-      "DisplayName": "Add Timeless 3",
+      "DisplayName": "Timeless 3",
       "Title": "Time",
       "Text": "3",
       "TextColor": "#3370FF",
       "TextX": 55
     },
     {
-      "DisplayName": "Add Twin 3",
+      "DisplayName": "Twin 3",
       "Title": "Twin",
       "Text": "3",
       "TextColor": "#3370FF",
       "TextX": 55
     },
     {
-      "DisplayName": "Add Volcano 3",
+      "DisplayName": "Volcano 3",
       "Title": "Volcano",
       "Text": "3",
       "TextColor": "#3370FF",

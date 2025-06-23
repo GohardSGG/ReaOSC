@@ -20,7 +20,7 @@
           "GroupName": "Insert",
           "DisplayName": "Insert Aux Track",
           "Title": "Aux",
-          "OscAddress": "Aux Track",
+          "OscAddress": "Track/Aux",
           "Text": "Insert",
           "TextColor": "#88E2FF"
         },
@@ -29,7 +29,7 @@
           "GroupName": "Insert",
           "DisplayName": "Insert Bus Track",
           "Title": "Bus",
-          "OscAddress": "Bus Track",
+          "OscAddress": "Track/Bus",
           "Text": "Insert",
           "TextColor": "#88E2FF"
         },
@@ -38,7 +38,7 @@
           "GroupName": "Insert",
           "DisplayName": "Insert VCA Track",
           "Title": "VCA",
-          "OscAddress": "VCA Track",
+          "OscAddress": "Track/VCA",
           "Text": "Insert",
           "TextColor": "#88E2FF"
         }

@@ -101,6 +101,9 @@ namespace Loupedeck.ReaOSCPlugin.Base
         // === 【新增】用于 ControlDial 指定默认值 ===
         public String ParameterDefault { get; set; }
 
+        // 【新增】标志位，指示当此按钮在动态文件夹内且定义了GroupName时，是否应将其GroupName作为OSC地址的根
+        public bool UseOwnGroupAsRoot { get; set; } = false;
+
         // === 【新增】用于捕获JSON中未明确定义的其他属性 ===
         // Newtonsoft.Json.JsonExtensionDataAttribute 标签可以自动捕获额外数据到字典
         // 但更推荐的方式是如果明确知道有哪些额外属性，就定义它们，或者在解析时手动处理。
@@ -174,7 +177,28 @@ namespace Loupedeck.ReaOSCPlugin.Base
 
         #region 模式管理
         public void RegisterModeGroup(ButtonConfig config) { var modeName = config.DisplayName; var modes = config.Modes; if (String.IsNullOrEmpty(modeName) || modes == null || modes.Count == 0) { return; } if (!this._modeOptions.ContainsKey(modeName)) { this._modeOptions[modeName] = modes; this._currentModes[modeName] = 0; this._modeChangedEvents[modeName] = null; PluginLog.Info($"[LogicManager][Mode] 模式组 '{modeName}' 已注册，包含模式: {String.Join(", ", modes)}"); } }
-        public void ToggleMode(String modeName) { if (this._currentModes.TryGetValue(modeName, out _) && this._modeOptions.TryGetValue(modeName, out var options)) { this._currentModes[modeName] = (this._currentModes[modeName] + 1) % options.Count; this._modeChangedEvents[modeName]?.Invoke(); PluginLog.Info($"[LogicManager][Mode] 模式组 '{modeName}' 已切换到: {this.GetCurrentModeString(modeName)}"); this.CommandStateNeedsRefresh?.Invoke(this, this.GetActionParameterForModeController(modeName)); } }
+        public void ToggleMode(String modeName) 
+        { 
+            if (this._currentModes.TryGetValue(modeName, out _) && this._modeOptions.TryGetValue(modeName, out var options)) 
+            { 
+                this._currentModes[modeName] = (this._currentModes[modeName] + 1) % options.Count; 
+                this._modeChangedEvents[modeName]?.Invoke(); 
+
+                // 【新增的全局刷新逻辑应在此处】
+                foreach (var kvp in this._allConfigs)
+                {
+                    if (kvp.Value != null && kvp.Value.ModeName == modeName)
+                    {
+                        PluginLog.Info($"[LogicManager|ToggleMode] 模式组 '{modeName}' 已改变，触发依赖项 '{kvp.Key}' (Display: {kvp.Value.DisplayName}) 的状态刷新。");
+                        this.CommandStateNeedsRefresh?.Invoke(this, kvp.Key);
+                    }
+                }
+                // 【全局刷新逻辑结束】
+
+                PluginLog.Info($"[LogicManager][Mode] 模式组 '{modeName}' 已切换到: {this.GetCurrentModeString(modeName)}"); 
+                this.CommandStateNeedsRefresh?.Invoke(this, this.GetActionParameterForModeController(modeName)); 
+            } 
+        }
         private String GetActionParameterForModeController(String modeName) => this._allConfigs.FirstOrDefault(kvp => kvp.Value.ActionType == "SelectModeButton" && kvp.Value.DisplayName == modeName).Key;
         public String GetCurrentModeString(String modeName) { if (this._currentModes.TryGetValue(modeName, out var currentIndex) && this._modeOptions.TryGetValue(modeName, out var options) && currentIndex >= 0 && currentIndex < options.Count) { return options[currentIndex]; } return String.Empty; }
         public Int32 GetCurrentModeIndex(String modeName) => this._currentModes.TryGetValue(modeName, out var currentIndex) ? currentIndex : -1;
@@ -349,6 +373,24 @@ namespace Loupedeck.ReaOSCPlugin.Base
         private void ProcessFolderContentConfigs(FolderContentConfig folderContent, String folderDisplayNameAsDefaultGroupName) 
         { 
             if (folderContent == null) { return; } 
+
+            // 【新增】在注册前，为直接在 Content.Buttons 中定义且拥有显式 GroupName 的按钮设置 UseOwnGroupAsRoot
+            if (folderContent.Buttons != null)
+            {
+                foreach (var buttonCfgInContent in folderContent.Buttons)
+                {
+                    // 检查 GroupName 是否在 JSON 中明确提供，而不是依赖后续的默认值
+                    // 这里的 buttonCfgInContent.GroupName 是从 JSON 直接反序列化得到的值
+                    if (!String.IsNullOrEmpty(buttonCfgInContent.GroupName))
+                    {
+                        buttonCfgInContent.UseOwnGroupAsRoot = true;
+                        PluginLog.Info($"[LogicManager|ProcessFolderContentConfigs] Button '{buttonCfgInContent.DisplayName}' in folder '{folderDisplayNameAsDefaultGroupName}' has explicit GroupName '{buttonCfgInContent.GroupName}'. Setting UseOwnGroupAsRoot=true.");
+                    }
+                    // 如果 buttonCfgInContent.GroupName 为空，则其 UseOwnGroupAsRoot 保持默认的 false
+                    // RegisterConfigs 稍后可能会为其设置一个默认的 GroupName (folderDisplayNameAsDefaultGroupName)
+                }
+            }
+
             // Pass the folder's DisplayName as the default GroupName for its buttons and dials
             this.RegisterConfigs(folderContent.Buttons, isDynamicFolderEntry: false, defaultGroupName: folderDisplayNameAsDefaultGroupName); 
             this.RegisterConfigs(folderContent.Dials, isDynamicFolderEntry: false, defaultGroupName: folderDisplayNameAsDefaultGroupName); 
@@ -581,7 +623,6 @@ namespace Loupedeck.ReaOSCPlugin.Base
 
         public Boolean ProcessUserAction(String actionParameter, String dynamicFolderDisplayName = null, ButtonConfig itemConfig = null)
         {
-            // 优先使用传入的 itemConfig，如果为null，则尝试从 _allConfigs 中获取
             var config = itemConfig ?? this.GetConfig(actionParameter);
             
             if (config == null)
@@ -592,91 +633,139 @@ namespace Loupedeck.ReaOSCPlugin.Base
 
             Boolean needsUiRefresh = false;
             String oscAddressToSend = null;
-            Single oscValueToSend = 1.0f; // Single for float
+            Single oscValueToSend = 1.0f; 
             Boolean sendOsc = false;
+            // String finalOscSegmentForAction = null; //不再需要，GetResolvedOscAddress会处理
 
             switch (config.ActionType)
             {
                 case "ToggleButton":
-                    // 对于ToggleButton，其 actionParameter 应该是全局注册的 Key
                     this.SetToggleState(actionParameter, !this.GetToggleState(actionParameter)); 
-                    oscAddressToSend = this.DetermineOscAddressForAction(config, config.GroupName); // 使用按钮自己的GroupName
                     oscValueToSend = this.GetToggleState(actionParameter) ? 1.0f : 0.0f;
-                    sendOsc = true;
+                    sendOsc = true; 
+
+                    string toggleButtonOscTemplate = null;
+                    if (!String.IsNullOrEmpty(config.ModeName) && config.OscAddresses != null && config.OscAddresses.Any())
+                    {
+                        var currentModeIndex = this.GetCurrentModeIndex(config.ModeName);
+                        if (currentModeIndex >= 0 && currentModeIndex < config.OscAddresses.Count && !String.IsNullOrEmpty(config.OscAddresses[currentModeIndex]))
+                        {
+                            toggleButtonOscTemplate = config.OscAddresses[currentModeIndex];
+                            PluginLog.Info($"[LogicManager|ProcessUserAction] ToggleButton '{config.DisplayName}' with ModeName '{config.ModeName}', using template from OscAddresses[{currentModeIndex}]: '{toggleButtonOscTemplate}'");
+                        }
+                        else
+                        {
+                            toggleButtonOscTemplate = config.OscAddress; // 回退到通用 OscAddress
+                            PluginLog.Info($"[LogicManager|ProcessUserAction] ToggleButton '{config.DisplayName}' with ModeName '{config.ModeName}', mode index invalid or OscAddresses template empty. Falling back to config.OscAddress: '{toggleButtonOscTemplate ?? "null"}'");
+                        }
+                    }
+                    else
+                    {
+                        toggleButtonOscTemplate = config.OscAddress; // 普通ToggleButton或无有效模式特定地址
+                         PluginLog.Info($"[LogicManager|ProcessUserAction] ToggleButton '{config.DisplayName}' (no ModeName or no OscAddresses). Using config.OscAddress: '{toggleButtonOscTemplate ?? "null"}'");
+                    }
+                    
+                    oscAddressToSend = this.GetResolvedOscAddress(config, toggleButtonOscTemplate);
+                    PluginLog.Info($"[LogicManager|ProcessUserAction] ToggleButton '{config.DisplayName}', resolved OSC address: '{oscAddressToSend}'");
                     break;
 
                 case "TriggerButton":
-                    if (itemConfig != null && !String.IsNullOrEmpty(dynamicFolderDisplayName)) // 表明是来自文件夹的动态列表项
+                    if (itemConfig != null && !String.IsNullOrEmpty(dynamicFolderDisplayName)) // 动态文件夹列表项的特殊处理
                     {
-                        // 构建特定格式的OSC地址: /FolderName/Add/TopGroup/ItemName
-                        var folderNamePart = FormatTopLevelOscPathSegment(dynamicFolderDisplayName); // 使用新方法处理文件夹名
-                        var topGroupPart = SanitizeOscPathSegment(itemConfig.GroupName);    // 使用标准方法处理组名
-                        var itemNamePart = SanitizeOscPathSegment(itemConfig.DisplayName);  // 使用标准方法处理项名
+                        // 确定动作特定部分的模板，新优先级：OscAddress > DisplayName > Title
+                        string actionSegmentTemplate = itemConfig.OscAddress;
+                        if (String.IsNullOrEmpty(actionSegmentTemplate))
+                        {
+                            actionSegmentTemplate = itemConfig.DisplayName; 
+                        }
+                        if (String.IsNullOrEmpty(actionSegmentTemplate))
+                        {
+                            actionSegmentTemplate = itemConfig.Title; 
+                        }
+
+                        if (itemConfig.UseOwnGroupAsRoot && !String.IsNullOrEmpty(itemConfig.GroupName))
+                        {
+                            // 情况1: 按钮有自己的 GroupName 且应作为根 (通常是直接在 Content.Buttons 中定义的)
+                            // GetResolvedOscAddress 将使用 itemConfig.GroupName 作为 basePart
+                            oscAddressToSend = this.GetResolvedOscAddress(itemConfig, actionSegmentTemplate);
+                            PluginLog.Info($"[LogicManager|ProcessUserAction] Dynamic TriggerButton '{itemConfig.DisplayName}' (Folder: '{dynamicFolderDisplayName}') uses OwnGroup '{itemConfig.GroupName}' as root. Template: '{actionSegmentTemplate ?? "null"}'. Resolved OSC: '{oscAddressToSend}'");
+                        }
+                        else
+                        {
+                            // 情况2: 按钮 GroupName 是派生的或不作为根 (通常是 _List.json 加载的项，或 Content.Buttons 中无 GroupName 的项)
+                            string folderPart = FormatTopLevelOscPathSegment(dynamicFolderDisplayName);
+                            string itemGroupPart = SanitizeOscPathSegment(itemConfig.GroupName); // 按钮自己的 GroupName (可能是派生的或默认的)
+                            string resolvedActionSegment = ResolveTextWithMode(itemConfig, actionSegmentTemplate); // 解析模板中的{mode}
+
+                            if (!String.IsNullOrEmpty(resolvedActionSegment) && resolvedActionSegment.StartsWith("/"))
+                            {
+                                oscAddressToSend = SanitizeOscAddress(resolvedActionSegment);
+                                PluginLog.Info($"[LogicManager|ProcessUserAction] Dynamic TriggerButton '{itemConfig.DisplayName}' (Folder: '{dynamicFolderDisplayName}', ItemGroup: '{itemConfig.GroupName ?? "null"}') used ABSOLUTE path from its template: '{oscAddressToSend}'");
+                            }
+                            else
+                            {
+                                List<String> pathParts = new List<String>();
+                                if (!String.IsNullOrEmpty(folderPart) && folderPart != "/") pathParts.Add(folderPart);
+                                if (!String.IsNullOrEmpty(itemGroupPart) && itemGroupPart != "/") pathParts.Add(itemGroupPart);
+                                
+                                string sanitizedActionSegmentForPath = SanitizeOscPathSegment(resolvedActionSegment);
+                                if (!String.IsNullOrEmpty(sanitizedActionSegmentForPath) && sanitizedActionSegmentForPath != "/") pathParts.Add(sanitizedActionSegmentForPath);
+
+                                if (pathParts.Any())
+                                {
+                                    oscAddressToSend = "/" + String.Join("/", pathParts.Where(s => !String.IsNullOrEmpty(s))); 
+                                    oscAddressToSend = oscAddressToSend.Replace("//", "/").TrimEnd('/');
+                                    if (oscAddressToSend == "/") oscAddressToSend = ""; 
+                                }
+                                else { oscAddressToSend = ""; }
+                                PluginLog.Info($"[LogicManager|ProcessUserAction] Dynamic TriggerButton '{itemConfig.DisplayName}' (Folder: '{dynamicFolderDisplayName}', ItemGroup: '{itemConfig.GroupName ?? "null"}'). PathParts: [{string.Join(", ", pathParts)}]. Constructed OSC: '{oscAddressToSend}'");
+                            }
+                        }
                         
-                        // 确保拼接后不会因为空部件导致太多斜杠
-                        List<String> pathParts = new List<String>();
-                        if (!String.IsNullOrEmpty(folderNamePart))
+                        if (String.IsNullOrEmpty(oscAddressToSend)) 
                         {
-                            pathParts.Add(folderNamePart);
-                        }
-
-
-                        pathParts.Add("Add"); // "Add" 是固定部分
-                        if (!String.IsNullOrEmpty(topGroupPart))
-                        {
-                            pathParts.Add(topGroupPart);
-                        }
-
-
-                        if (!String.IsNullOrEmpty(itemNamePart))
-                        {
-                            pathParts.Add(itemNamePart);
-                        }
-
-
-                        oscAddressToSend = "/" + String.Join("/", pathParts);
-                        oscAddressToSend = oscAddressToSend.Replace("//", "/").TrimEnd('/');
-                        if (String.IsNullOrEmpty(oscAddressToSend) || oscAddressToSend == "/") 
-                        { 
-                            PluginLog.Warning($"[LogicManager] ProcessUserAction: Generated OSC address for dynamic item '{itemConfig.DisplayName}' in folder '{dynamicFolderDisplayName}' was empty or just '/'. Check config.");
-                            oscAddressToSend = ""; //设置为空以防止发送无效OSC
+                            PluginLog.Warning($"[LogicManager|ProcessUserAction] Generated OSC address for dynamic item '{itemConfig.DisplayName}' in folder '{dynamicFolderDisplayName}' was effectively empty or invalid. OSC not sent.");
                         }
                     }
-                    else // 普通的、已注册的 TriggerButton
+                    else // 普通 TriggerButton (非动态列表项)
                     {
-                        oscAddressToSend = this.DetermineOscAddressForAction(config, config.GroupName); // 使用按钮自己的GroupName
+                        string triggerButtonOscTemplate = config.OscAddress;
+                        oscAddressToSend = this.GetResolvedOscAddress(config, triggerButtonOscTemplate); 
+                        PluginLog.Info($"[LogicManager|ProcessUserAction] Static TriggerButton '{config.DisplayName}', resolved OSC address: '{oscAddressToSend}'");
                     }
                     oscValueToSend = 1.0f;
                     sendOsc = true;
-                    this.CommandStateNeedsRefresh?.Invoke(this, actionParameter); // TriggerButton按下通常也刷新一下，用于瞬时反馈
+                    this.CommandStateNeedsRefresh?.Invoke(this, actionParameter); 
                     break;
 
                 case "CombineButton":
-                    this.ProcessCombineButtonAction(config, dynamicFolderDisplayName); // dynamicFolderDisplayName 仅用于日志或上下文
+                    this.ProcessCombineButtonAction(config, dynamicFolderDisplayName); 
                     this.CommandStateNeedsRefresh?.Invoke(this, actionParameter);
+                    sendOsc = false; 
                     break;
 
                 case "SelectModeButton":
-                    this.ToggleMode(config.DisplayName); // SelectModeButton的DisplayName是ModeGroup的名称
-                    // ToggleMode 内部会调用 CommandStateNeedsRefresh
-                    needsUiRefresh = true; // SelectModeButton按下通常需要刷新依赖它的按钮
+                    this.ToggleMode(config.DisplayName); 
+                    needsUiRefresh = true; 
+                    sendOsc = false; 
                     break;
-                // ControlDial 的按下操作由 ProcessDialPress 处理，不应在此处处理旋转逻辑
                 default:
                     PluginLog.Warning($"[LogicManager] ProcessUserAction: 未处理的 ActionType '{config.ActionType}' for '{config.DisplayName}' (actionParameter: '{actionParameter}')");
                     break;
             }
 
-            if (sendOsc)
+            PluginLog.Info($"[LogicManager] ProcessUserAction: PRE-SEND CHECK: Config='{config.DisplayName ?? "N/A"}', ActionType='{config.ActionType ?? "N/A"}', GroupName='{config.GroupName ?? "N/A"}', ModeName='{(String.IsNullOrEmpty(config.ModeName) ? "N/A" : config.ModeName)}', CurrentMode='{(String.IsNullOrEmpty(config.ModeName) ? "N/A" : GetCurrentModeString(config.ModeName))}', InitialExplicitSegment='{(oscAddressToSend ?? "null")}', DeterminedOscAddress='{(oscAddressToSend ?? "Not set or N/A for this ActionType")}', Value='{oscValueToSend}'");
+
+            if (sendOsc) 
             {
-                if (!String.IsNullOrEmpty(oscAddressToSend) && oscAddressToSend != "/")
+                if (!String.IsNullOrEmpty(oscAddressToSend) && oscAddressToSend != "/" && !oscAddressToSend.Contains("{mode}"))
                 {
-                    ReaOSCPlugin.SendOSCMessage(oscAddressToSend, oscValueToSend);
-                    PluginLog.Info($"[LogicManager] ProcessUserAction: OSC已发送 '{oscAddressToSend}' -> {oscValueToSend} (源: '{config.DisplayName}', ActionType: {config.ActionType})");
+                    ReaOSCPlugin.SendOSCMessage(oscAddressToSend, oscValueToSend); 
+                    PluginLog.Info($"[LogicManager] ProcessUserAction: OSC已发送 '{oscAddressToSend}' -> {oscValueToSend} (源: '{config.DisplayName ?? "N/A"}', ActionType: {config.ActionType ?? "N/A"})");
                 }
                 else
                 {
-                    PluginLog.Warning($"[LogicManager] ProcessUserAction: 无法为 '{config.DisplayName}' (ActionType: {config.ActionType}) 确定有效的OSC地址。");
+                    PluginLog.Warning($"[LogicManager] ProcessUserAction: 无效或未解析的OSC地址，未发送。Config='{config.DisplayName ?? "N/A"}', ActionType='{config.ActionType ?? "N/A"}', Calculated OSC Address='{oscAddressToSend ?? "null"}'. Review mode configuration and OSC address templates.");
                 }
             }
             return needsUiRefresh;
@@ -751,10 +840,14 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     this.CommandStateNeedsRefresh?.Invoke(this, globalActionParameter); // 确保刷新
                     break;
                 case "ControlDial":
+                    PluginLog.Info($"[ControlDialDebug] globalActionParameter: {globalActionParameter}, ticks: {ticks}"); 
                     if (this._controlDialConfigs.TryGetValue(globalActionParameter, out var controlConfig) &&
                         this._controlDialCurrentValues.TryGetValue(globalActionParameter, out var currentValue))
                     {
-                        Int32 newValue = currentValue;
+                        PluginLog.Info($"[ControlDialDebug] Found config. Mode: {controlConfig.Mode}, Default: {controlConfig.DefaultValue}, Min: {controlConfig.MinValue}, Max: {controlConfig.MaxValue}, Discrete: {(controlConfig.DiscreteValues == null ? "null" : string.Join(",", controlConfig.DiscreteValues))}");
+                        PluginLog.Info($"[ControlDialDebug] Current stored value BEFORE calculation: {currentValue}");
+
+                        Int32 newValue = currentValue; 
                         if (controlConfig.Mode == ControlDialMode.Continuous)
                         {
                             newValue = Math.Clamp(currentValue + ticks, controlConfig.MinValue, controlConfig.MaxValue);
@@ -763,29 +856,47 @@ namespace Loupedeck.ReaOSCPlugin.Base
                         {
                             if (controlConfig.DiscreteValues != null && controlConfig.DiscreteValues.Any())
                             {
-                                var discreteModeCurrentIndex = controlConfig.DiscreteValues.IndexOf(currentValue); // 变量重命名
-                                if (discreteModeCurrentIndex == -1) // Should not happen if initialized correctly
+                                var discreteModeCurrentIndex = controlConfig.DiscreteValues.IndexOf(currentValue); 
+                                if (discreteModeCurrentIndex == -1) 
                                 {
-                                    discreteModeCurrentIndex = 0;
+                                    PluginLog.Warning($"[ControlDialDebug] Current value {currentValue} not in discrete list. Resetting index to 0 for {globalActionParameter}.");
+                                    discreteModeCurrentIndex = 0; 
                                 }
                                 var newIndex = (discreteModeCurrentIndex + ticks % controlConfig.DiscreteValues.Count + controlConfig.DiscreteValues.Count) % controlConfig.DiscreteValues.Count;
                                 newValue = controlConfig.DiscreteValues[newIndex];
                             }
+                            else
+                            {
+                                PluginLog.Warning($"[ControlDialDebug] Discrete mode for {globalActionParameter} but DiscreteValues is null or empty.");
+                            }
                         }
+                        PluginLog.Info($"[ControlDialDebug] Calculated newValue: {newValue}");
 
                         if (newValue != currentValue)
                         {
-                            this._controlDialCurrentValues[globalActionParameter] = newValue;
-                            // OSC地址构建: 优先用config.OscAddress, 否则用 /<GroupName>/<Title>
-                            // 注意：config.Title 是预期的显示标题，比 config.DisplayName 更适合用于OSC路径 (如果OscAddress未定义)
-                            String oscAddress = this.DetermineOscAddressForAction(config, config.GroupName, config.OscAddress ?? config.Title);
+                            PluginLog.Info($"[ControlDialDebug] Value changed from {currentValue} to {newValue}. Updating stored value and sending OSC.");
+                            this._controlDialCurrentValues[globalActionParameter] = newValue; 
+                            PluginLog.Info($"[ControlDialDebug] Current stored value AFTER update: {this._controlDialCurrentValues[globalActionParameter]}");
+
+                            // 【修改】使用 GetResolvedOscAddress，并包含 DisplayName作为最终回退
+                            String oscAddress = this.GetResolvedOscAddress(config, config.OscAddress ?? config.Title ?? config.DisplayName);
+                            PluginLog.Info($"[ControlDialDebug] Determined OSC Address: {oscAddress}");
+
                             if (!String.IsNullOrEmpty(oscAddress) && oscAddress != "/")
                             {
-                                ReaOSCPlugin.SendOSCMessage(oscAddress, newValue); // 发送整数值
+                                ReaOSCPlugin.SendOSCMessage(oscAddress, newValue); 
                                 PluginLog.Info($"[LogicManager] ControlDial '{config.DisplayName}' OSC sent to '{oscAddress}' -> {newValue}");
                             }
                             this.CommandStateNeedsRefresh?.Invoke(this, globalActionParameter);
                         }
+                        else
+                        {
+                            PluginLog.Info($"[ControlDialDebug] Value ({newValue}) did NOT change from current ({currentValue}). No OSC sent, no value update.");
+                        }
+                    }
+                    else
+                    {
+                        PluginLog.Warning($"[ControlDialDebug] Config or current value not found in dictionaries for {globalActionParameter}. Has it been registered and initialized properly?");
                     }
                     break;
                 default:
@@ -809,19 +920,11 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     this.ProcessLegacyToggleDialAdjustmentInternal(config, ticks, actionParameter);
                     break;
                 case "ParameterDial":
-                    this.ProcessDialAdjustment(actionParameter, ticks);
+                    this.ProcessDialAdjustment(actionParameter, ticks); // 调用新版，只传 actionParameter 和 ticks
                     break;
-                case "ControlDial":
-                    if (this._controlDialConfigs.TryGetValue(actionParameter, out var controlConfigToReset))
-                    {
-                        this._controlDialCurrentValues[actionParameter] = controlConfigToReset.DefaultValue;
-                        String oscAddressReset = this.DetermineOscAddressForAction(config, config.GroupName, config.OscAddress ?? config.Title);
-                        if (!String.IsNullOrEmpty(oscAddressReset) && oscAddressReset != "/")
-                        {
-                            ReaOSCPlugin.SendOSCMessage(oscAddressReset, controlConfigToReset.DefaultValue); // 发送默认整数值
-                            PluginLog.Info($"[LogicManager] ControlDial '{config.DisplayName}' Reset OSC sent to '{oscAddressReset}' -> {controlConfigToReset.DefaultValue}");
-                        }
-                    }
+                // 【新增】确保 ControlDial 被路由到新版 ProcessDialAdjustment
+                case "ControlDial": 
+                    this.ProcessDialAdjustment(actionParameter, ticks); // 调用新版，只传 actionParameter 和 ticks
                     break;
                 default:
                     PluginLog.Warning($"[LogicManager] ProcessDialAdjustment (Legacy): 未处理的 ActionType '{config.ActionType}' for '{actionParameter}'");
@@ -890,12 +993,16 @@ namespace Loupedeck.ReaOSCPlugin.Base
 
         private void SendResetOscForDial(ButtonConfig config, String actionParameterKey)
         {
-            // 【新增辅助方法】用于发送旋钮按下的Reset OSC消息，确保使用JSON GroupName
-            String fullResetAddress = this.DetermineOscAddressForAction(config, config.GroupName, config.ResetOscAddress);
-            if (!String.IsNullOrEmpty(fullResetAddress) && fullResetAddress != "/")
-            { ReaOSCPlugin.SendOSCMessage(fullResetAddress, 1f); }
+            // 【修改】使用新的 GetResolvedOscAddress 方法
+            String fullResetAddress = this.GetResolvedOscAddress(config, config.ResetOscAddress);
+            if (!String.IsNullOrEmpty(fullResetAddress) && fullResetAddress != "/") // 确保地址有效且不是根
+            { 
+                ReaOSCPlugin.SendOSCMessage(fullResetAddress, 1f); 
+            }
             else
-            { PluginLog.Warning($"[LogicManager] Dial Reset '{actionParameterKey}' (JSON GroupName '{config.GroupName}') 生成的 OSC 地址无效。"); }
+            { 
+                PluginLog.Warning($"[LogicManager|SendResetOscForDial] Dial Reset for '{config.DisplayName}' (action: {actionParameterKey}, JSON Group: '{config.GroupName}') using template '{config.ResetOscAddress ?? "(null - will use DisplayName/Title)"}' generated an invalid OSC address: '{fullResetAddress ?? "null"}'. OSC not sent."); 
+            }
             this.CommandStateNeedsRefresh?.Invoke(this, actionParameterKey);
         }
 
@@ -1113,24 +1220,47 @@ namespace Loupedeck.ReaOSCPlugin.Base
         #region 旧的旋钮处理逻辑 (内部实现) - 这些方法已经使用config.GroupName，符合规则
         private void ProcessLegacyDialAdjustmentInternal(ButtonConfig config, Int32 ticks, String actionParameter, Dictionary<String, DateTime> lastEventTimes)
         {
-            String groupNameForPath = SanitizeOscPathSegment(config.GroupName); // 使用JSON GroupName
-            String displayNameForPath = SanitizeOscPathSegment(config.DisplayName);
+            String groupNameForPath = SanitizeOscPathSegment(config.GroupName); // 确保只声明一次
+            String displayNameForPath = SanitizeOscPathSegment(config.DisplayName); // 确保只声明一次
 
             String jsonIncreaseAddress, jsonDecreaseAddress;
             if (config.ActionType == "2ModeTickDial" && this.GetDialMode(actionParameter) == 1)
-            { jsonIncreaseAddress = config.IncreaseOSCAddress_Mode2; jsonDecreaseAddress = config.DecreaseOSCAddress_Mode2; }
+            { 
+                jsonIncreaseAddress = config.IncreaseOSCAddress_Mode2; 
+                jsonDecreaseAddress = config.DecreaseOSCAddress_Mode2; 
+            }
             else
-            { jsonIncreaseAddress = config.IncreaseOSCAddress; jsonDecreaseAddress = config.DecreaseOSCAddress; }
+            { 
+                jsonIncreaseAddress = config.IncreaseOSCAddress; 
+                jsonDecreaseAddress = config.DecreaseOSCAddress; 
+            }
 
-            String finalIncreaseOscAddress, finalDecreaseOscAddress;
-            if (!String.IsNullOrEmpty(jsonIncreaseAddress))
-            { finalIncreaseOscAddress = this.DetermineOscAddressForAction(config, config.GroupName, jsonIncreaseAddress); } // 使用JSON GroupName
-            else
-            { finalIncreaseOscAddress = $"/{groupNameForPath}/{displayNameForPath}/Right".Replace("//", "/"); }
-            if (!String.IsNullOrEmpty(jsonDecreaseAddress))
-            { finalDecreaseOscAddress = this.DetermineOscAddressForAction(config, config.GroupName, jsonDecreaseAddress); } // 使用JSON GroupName
-            else
-            { finalDecreaseOscAddress = $"/{groupNameForPath}/{displayNameForPath}/Left".Replace("//", "/"); }
+            // 【修改】使用 GetResolvedOscAddress，并优化回退逻辑
+            String finalIncreaseOscAddress = this.GetResolvedOscAddress(config, jsonIncreaseAddress);
+            String finalDecreaseOscAddress = this.GetResolvedOscAddress(config, jsonDecreaseAddress);
+            
+            // 如果 GetResolvedOscAddress 返回无效地址 (通常是"/") 并且原始模板 (jsonIncreaseAddress) 本身就是空的，
+            // 说明 GetResolvedOscAddress 内部的回退（基于DisplayName/Title）也失败了，此时才使用更硬编码的默认路径。
+            if ((String.IsNullOrEmpty(finalIncreaseOscAddress) || finalIncreaseOscAddress == "/") && String.IsNullOrEmpty(jsonIncreaseAddress))
+            {
+                 finalIncreaseOscAddress = $"/{groupNameForPath}/{displayNameForPath}/Right".Replace("//", "/");
+                 PluginLog.Warning($"[LogicManager|ProcessLegacyDialAdjustmentInternal] Increase address for '{config.DisplayName}' (template was null/empty) resolved to default: '{finalIncreaseOscAddress}'");
+            }
+            else if (String.IsNullOrEmpty(finalIncreaseOscAddress) || finalIncreaseOscAddress == "/")
+            {
+                PluginLog.Warning($"[LogicManager|ProcessLegacyDialAdjustmentInternal] Increase address for '{config.DisplayName}' (template: '{jsonIncreaseAddress ?? "null"}') was resolved to an invalid address: '{finalIncreaseOscAddress}'. OSC might not be sent correctly if this path is used.");
+                // 保留 GetResolvedOscAddress 的结果，即使它是 "/"，后续发送逻辑会处理
+            }
+
+            if ((String.IsNullOrEmpty(finalDecreaseOscAddress) || finalDecreaseOscAddress == "/") && String.IsNullOrEmpty(jsonDecreaseAddress))
+            {
+                 finalDecreaseOscAddress = $"/{groupNameForPath}/{displayNameForPath}/Left".Replace("//", "/");
+                 PluginLog.Warning($"[LogicManager|ProcessLegacyDialAdjustmentInternal] Decrease address for '{config.DisplayName}' (template was null/empty) resolved to default: '{finalDecreaseOscAddress}'");
+            }
+            else if (String.IsNullOrEmpty(finalDecreaseOscAddress) || finalDecreaseOscAddress == "/")
+            {
+                PluginLog.Warning($"[LogicManager|ProcessLegacyDialAdjustmentInternal] Decrease address for '{config.DisplayName}' (template: '{jsonDecreaseAddress ?? "null"}') was resolved to an invalid address: '{finalDecreaseOscAddress}'. OSC might not be sent correctly if this path is used.");
+            }
 
             Single acceleration = 1.0f; // Single for float
             if (lastEventTimes != null && config.AccelerationFactor.HasValue && lastEventTimes.TryGetValue(actionParameter, out var lastTime))
@@ -1274,5 +1404,120 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 PluginLog.Warning($"[LogicManager|ParseAndStoreControlDialConfig] ControlDial '{config.DisplayName}' (action: {actionParameter}) could not determine a valid OSC address for listening to external state changes. It will not be updated by incoming OSC messages.");
             }
         }
+
+        /// <summary>
+        /// 解析包含 "{mode}" 占位符的文本模板。
+        /// </summary>
+        /// <param name="itemConfig">按钮或旋钮的配置，包含 ModeName。</param>
+        /// <param name="textTemplate">可能包含 "{mode}" 的文本模板。</param>
+        /// <returns>已解析的文本，或在无法解析时返回经过处理的模板。</returns>
+        public string ResolveTextWithMode(ButtonConfig itemConfig, string textTemplate)
+        {
+            // 如果配置为空、模板为空或模板中不包含"{mode}"占位符，则直接返回原始模板
+            if (itemConfig == null || string.IsNullOrEmpty(textTemplate) || !textTemplate.Contains("{mode}"))
+            {
+                return textTemplate;
+            }
+
+            // 如果配置中没有定义ModeName，则无法解析"{mode}"
+            if (string.IsNullOrEmpty(itemConfig.ModeName))
+            {
+                PluginLog.Warning($"[LogicManager|ResolveTextWithMode] 项目 '{itemConfig.DisplayName}' 的模板 '{textTemplate}' 包含 '{{mode}}' 但其配置中未定义 ModeName。将 '{{mode}}' 视为空字符串。");
+                return textTemplate.Replace("{mode}", ""); // 将 {mode} 替换为空字符串
+            }
+
+            // 获取当前模式的原始字符串
+            string currentModeActual = this.GetCurrentModeString(itemConfig.ModeName);
+            
+            // 对模式字符串进行清理，使其适用于OSC路径和可能的显示
+            // 注意: SanitizeOscPathSegment 主要用于OSC路径，对于纯显示文本可能需要调整
+            string sanitizedMode = SanitizeOscPathSegment(currentModeActual); 
+
+            // 如果清理后的模式字符串为空 (例如，原始模式名为空或清理后变为空)
+            // 并且模板中确实需要 "{mode}"
+            if (string.IsNullOrEmpty(sanitizedMode) && textTemplate.Contains("{mode}"))
+            {
+                 PluginLog.Warning($"[LogicManager|ResolveTextWithMode] 项目 '{itemConfig.DisplayName}' (ModeName: '{itemConfig.ModeName}') 的当前模式名 '{currentModeActual}' 解析/清理后为空。模板是 '{textTemplate}'。将 '{{mode}}' 视为空字符串。");
+                 return textTemplate.Replace("{mode}", ""); // 将 {mode} 替换为空字符串
+            }
+            
+            // 执行替换
+            return textTemplate.Replace("{mode}", sanitizedMode);
+        }
+
+        /// <summary>
+        /// 获取经过 {mode} 解析和 GroupName 前缀处理的最终 OSC 地址。
+        /// </summary>
+        /// <param name="itemConfig">按钮或旋钮的配置。</param>
+        /// <param name="oscAddressTemplateFromSource">原始的 OSC 地址模板，可能包含 {mode}。</param>
+        /// <returns>最终的 OSC 地址字符串。</returns>
+        public string GetResolvedOscAddress(ButtonConfig itemConfig, string oscAddressTemplateFromSource)
+        {
+            if (itemConfig == null)
+            {
+                PluginLog.Error("[LogicManager|GetResolvedOscAddress] itemConfig 为空，无法解析 OSC 地址。");
+                return "/"; // 返回一个安全的默认值
+            }
+
+            // 1. 首先尝试解析传入的 oscAddressTemplateFromSource
+            string resolvedSegment = ResolveTextWithMode(itemConfig, oscAddressTemplateFromSource);
+
+            // 2. 如果原始模板解析后为空，则尝试使用 itemConfig.Title 作为模板
+            if (string.IsNullOrEmpty(resolvedSegment) && !string.IsNullOrEmpty(itemConfig.Title))
+            {
+                PluginLog.Verbose($"[LogicManager|GetResolvedOscAddress] Original template for '{itemConfig.DisplayName}' was empty or resolved to empty. Trying Title: '{itemConfig.Title}'");
+                resolvedSegment = ResolveTextWithMode(itemConfig, itemConfig.Title);
+            }
+
+            // 3. 如果 Title 解析后仍为空，则尝试使用 itemConfig.DisplayName 作为模板
+            if (string.IsNullOrEmpty(resolvedSegment) && !string.IsNullOrEmpty(itemConfig.DisplayName))
+            {
+                PluginLog.Verbose($"[LogicManager|GetResolvedOscAddress] Title for '{itemConfig.DisplayName}' also resolved to empty. Trying DisplayName: '{itemConfig.DisplayName}'");
+                resolvedSegment = ResolveTextWithMode(itemConfig, itemConfig.DisplayName);
+            }
+            
+            // 4. 应用 GroupName 前缀逻辑
+            string groupNameForPath = itemConfig.GroupName;
+            string basePart = FormatTopLevelOscPathSegment(groupNameForPath);
+
+            // 如果最终的 resolvedSegment 仍然为空 (意味着所有来源都无效)
+            if (string.IsNullOrEmpty(resolvedSegment))
+            {
+                PluginLog.Warning($"[LogicManager|GetResolvedOscAddress] All potential sources (template, Title, DisplayName) for '{itemConfig.DisplayName}' resolved to an empty segment. Base part is '{basePart ?? "null"}'.");
+                if (string.IsNullOrEmpty(basePart) || basePart == "/")
+                {
+                    return "/"; // GroupName 也无效，返回根
+                }
+                string onlyBaseAddress = $"/{basePart}".Replace("//", "/").TrimEnd('/');
+                return string.IsNullOrEmpty(onlyBaseAddress) ? "/" : onlyBaseAddress; // 只返回 GroupName 部分
+            }
+
+            // 如果 resolvedSegment 是绝对路径 (以 "/" 开头)
+            if (resolvedSegment.StartsWith("/"))
+            {
+                return SanitizeOscAddress(resolvedSegment);
+            }
+
+            // 否则，它是一个相对路径段，需要与 basePart (GroupName) 组合
+            string actionSpecificPart = SanitizeOscPathSegment(resolvedSegment); 
+
+            if (string.IsNullOrEmpty(basePart) || basePart == "/") // 如果没有有效的 GroupName
+            {
+                var finalAddressNoBase = $"/{actionSpecificPart}".Replace("//", "/").TrimEnd('/');
+                return string.IsNullOrEmpty(finalAddressNoBase) || finalAddressNoBase == "/" ? "/" : finalAddressNoBase;
+            }
+            else // 有 GroupName，组合它们
+            {   
+                var finalAddressWithBase = $"/{basePart}/{actionSpecificPart}".Replace("//", "/").TrimEnd('/');
+                return string.IsNullOrEmpty(finalAddressWithBase) || finalAddressWithBase == "/" ? "/" : finalAddressWithBase;
+            }
+        }
+
+        // 用于构建全局唯一的 Toggle 状态键
+        private String GetToggleStateKey(String actionParameter)
+        {
+            return $"{actionParameter}_ToggleState";
+        }
+
     }
 }

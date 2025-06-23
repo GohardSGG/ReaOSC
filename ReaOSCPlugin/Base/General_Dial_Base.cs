@@ -102,45 +102,47 @@ namespace Loupedeck.ReaOSCPlugin.Base
 
             try
             {
-                BitmapImage loadedIcon = PluginImage.TryLoadIcon(config, "GeneralDialBase_Press"); // Context for press
+                BitmapImage loadedIcon = PluginImage.TryLoadIcon(config, "GeneralDialBase_Press");
 
                 Boolean isActive = false; 
-                String mainTitleOverride = null;
-                String valueText = null; // 旋钮按下通常不显示值文本
+                String preliminaryTitle = null;
+                String valueText = null; 
                 Int32 currentMode = 0;    
 
                 if (config.ActionType == "ToggleDial")
                 {
-                    isActive = this._logicManager.GetToggleState(actionParameter); // 获取ToggleDial的当前状态
-                    mainTitleOverride = config.Title ?? config.DisplayName;
+                    isActive = this._logicManager.GetToggleState(actionParameter); 
+                    preliminaryTitle = config.Title ?? config.DisplayName;
                 }
                 else if (config.ActionType == "2ModeTickDial")
                 {
-                    currentMode = this._logicManager.GetDialMode(actionParameter); // 获取2ModeTickDial的当前模式
-                    // 标题会由PluginImage.DrawElement根据模式和配置决定，这里可以传递基础标题
-                    mainTitleOverride = config.Title ?? config.DisplayName; 
+                    currentMode = this._logicManager.GetDialMode(actionParameter);
+                    preliminaryTitle = (currentMode == 1 && !String.IsNullOrEmpty(config.Title_Mode2)) ? config.Title_Mode2 : (config.Title ?? config.DisplayName);
                 }
-                else if (config.ActionType == "ControlDial") // 【新增】ControlDial 按下时的图像处理
+                else if (config.ActionType == "ControlDial") 
                 {
-                    // 按下时，主要显示标题，值由LogicManager重置，刷新会由OnLogicManagerCommandStateNeedsRefresh触发
-                    mainTitleOverride = config.Title ?? config.DisplayName;
+                    preliminaryTitle = config.Title ?? config.DisplayName;
                 }
-                else // 其他旋钮类型，如TickDial，按下时可能只显示标题
+                else 
                 {
-                    mainTitleOverride = config.Title ?? config.DisplayName;
+                    preliminaryTitle = config.Title ?? config.DisplayName;
                 }
+                
+                // 使用 ResolveTextWithMode 解析标题和辅助文本
+                String mainTitleToDraw = this._logicManager.ResolveTextWithMode(config, preliminaryTitle);
+                String auxTextToDraw = this._logicManager.ResolveTextWithMode(config, config.Text); // config.Text 是原始模板
                 
                 return PluginImage.DrawElement(
                     imageSize,
                     config,
-                    mainTitleOverride,
-                    valueText, // 通常为null
+                    mainTitleToDraw,    // 解析后的标题
+                    valueText, 
                     isActive,          
                     currentMode,       
                     loadedIcon, 
-                    false, // forceTextOnly
-                    config.Text, // 辅助文本，在无图标或非纯图标模式下可能显示
-                    preferIconOnlyForDial: true // 对于旋钮（包括按下），如果图标存在，则只显示图标
+                    false, 
+                    auxTextToDraw,      // 解析后的辅助文本
+                    preferIconOnlyForDial: true 
                 );
             }
             catch (Exception ex)
@@ -167,40 +169,44 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 Boolean isActive = false; 
                 Int32 currentMode = 0;   
                 String valueTextForAdjustment = null; 
-                // mainTitleOverride 会在 PluginImage.DrawElement 中根据 config.Title/DisplayName 和 preferIconOnlyForDial 确定
-                // 如果是纯图标模式，标题会被忽略；如果是文本模式，会使用config的标题。
-                String mainTitleOverride = config.Title ?? config.DisplayName; // 供文本模式使用
+                String preliminaryTitle = null; // 用于 ResolveTextWithMode 的原始标题模板
 
+                // 1. 根据 ActionType 确定初步的标题模板 和其他状态
                 if (config.ActionType == "ToggleDial")
                 {
                     isActive = this._logicManager.GetToggleState(actionParameter); 
+                    preliminaryTitle = config.Title ?? config.DisplayName; 
                 }
                 else if (config.ActionType == "2ModeTickDial")
                 {
                     currentMode = this._logicManager.GetDialMode(actionParameter);
+                    preliminaryTitle = (currentMode == 1 && !String.IsNullOrEmpty(config.Title_Mode2)) ? config.Title_Mode2 : (config.Title ?? config.DisplayName);
                 }
-                else if (config.ActionType == "ControlDial") // 【新增】为 ControlDial 获取并设置显示值
+                else if (config.ActionType == "ControlDial") 
                 {
                     valueTextForAdjustment = this._logicManager.GetControlDialValue(actionParameter).ToString();
-                    // ControlDial 通常不关心 isActive 或 currentMode 状态，除非有特定视觉需求
+                    preliminaryTitle = config.Title ?? config.DisplayName; 
                 }
-                // 对于 ParameterDial, FilterDial, PageDial 等，它们的 valueText (如果有的话) 
-                // 是由 General_Folder_Base.GetAdjustmentImage 负责准备并传入 PluginImage.DrawElement 的。
-                // General_Dial_Base 通常不直接处理这些特定类型的 valueText。
-                // 如果 General_Dial_Base 要独立支持这些，需要在这里添加获取valueText的逻辑。
-                // 当前 PluginImage.DrawElement 在文本模式下，会自己根据 dialConfig.ActionType 和传入的 valueText 决定如何显示。
+                else // 其他旋钮类型，如 TickDial, ParameterDial (由Folder处理值) 等
+                {
+                    preliminaryTitle = config.Title ?? config.DisplayName;
+                }
+
+                // 2. 使用 ResolveTextWithMode 解析标题和辅助文本
+                String mainTitleToDraw = this._logicManager.ResolveTextWithMode(config, preliminaryTitle);
+                String auxTextToDraw = this._logicManager.ResolveTextWithMode(config, config.Text); // config.Text 是原始模板
 
                 return PluginImage.DrawElement(
                     imageSize,
                     config,
-                    mainTitleOverride, // 供文本模式使用，图标模式下通常被忽略（除非按钮模式）
-                    valueTextForAdjustment, // 通常为null，除非此基类直接处理带值的旋钮
+                    mainTitleToDraw,        // 解析后的主标题 (文本模式下使用)
+                    valueTextForAdjustment, // 特定旋钮类型的值文本
                     isActive,          
                     currentMode,       
                     loadedIcon, 
-                    false, // forceTextOnly
-                    config.Text, // 辅助文本，在无图标或非纯图标模式下可能显示
-                    preferIconOnlyForDial: true // 对于旋钮，如果图标存在，则只显示图标
+                    false, 
+                    auxTextToDraw,          // 解析后的辅助文本
+                    preferIconOnlyForDial: true 
                 );
             }
             catch (Exception ex)

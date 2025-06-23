@@ -149,88 +149,127 @@ namespace Loupedeck.ReaOSCPlugin.Base
         {
             if (this._logicManager.GetConfig(actionParameter) is not { } config)
             {
+                PluginLog.Warning($"[GeneralButtonBase|RunCommand] Config not found for actionParameter: {actionParameter}. Aborting.");
                 return;
             }
+
+            String finalOscAddressToSend = null;
+            Single oscValueToSend = 1.0f; // 默认为1.0f，ToggleButton会修改它
 
             if (config.ActionType == "SelectModeButton")
             {
                 this._logicManager.ToggleMode(config.DisplayName);
+                // SelectModeButton 通常不发送OSC，仅切换模式并依赖事件刷新UI
+                // ActionImageChanged 会由 Logic_Manager 的 ToggleMode 间接触发
+                return; 
             }
-            else if (!String.IsNullOrEmpty(config.ModeName))
+            else if (!String.IsNullOrEmpty(config.ModeName)) // 处理带模式的按钮
             {
                 var modeIndex = this._logicManager.GetCurrentModeIndex(config.ModeName);
                 String currentModeStringForLog = this._logicManager.GetCurrentModeString(config.ModeName);
+
                 if (modeIndex == -1)
                 {
-                    PluginLog.Warning($"[RunCommand] Button '{actionParameter}' ModeGroup '{config.ModeName}' invalid index.");
-                    if (config.ActionType == "ToggleButton")
-                    { this._logicManager.SetToggleState(actionParameter, !this._logicManager.GetToggleState(actionParameter)); this.ActionImageChanged(actionParameter); }
-                    else if (config.ActionType == "TriggerButton" && this._triggerResetTimers.TryGetValue(actionParameter, out var t))
-                    { this._triggerTemporaryActiveStates[actionParameter] = true; this.ActionImageChanged(actionParameter); t.Stop(); t.Start(); }
-                    return;
-                }
-                String finalOscAddress = null;
-                if (config.OscAddresses?.Count > modeIndex)
-                {
-                    finalOscAddress = config.OscAddresses[modeIndex];
-                }
-                if (String.IsNullOrEmpty(finalOscAddress) && !String.IsNullOrEmpty(config.OscAddress))
-                {
-                    String currentModeString = this._logicManager.GetCurrentModeString(config.ModeName);
-                    if (!String.IsNullOrEmpty(currentModeString))
-                    {
-                        String groupNameForPath = config.GroupName.Replace(" ", "_").Trim('/');
-                        String pathAfterMode = config.OscAddress.Replace("{mode}", currentModeString).TrimStart('/');
-                        finalOscAddress = $"/{groupNameForPath}/{pathAfterMode}".Replace("//", "/");
+                    PluginLog.Warning($"[GeneralButtonBase|RunCommand] Button '{actionParameter}' (ModeName: '{config.ModeName}') - Invalid mode index or mode group not found. Current mode for log: '{currentModeStringForLog}'.");
+                    // 即使模式无效，也尝试执行按钮的基础动作（例如，切换本地状态）
+                    if (config.ActionType == "ToggleButton") 
+                    { 
+                        this._logicManager.SetToggleState(actionParameter, !this._logicManager.GetToggleState(actionParameter)); 
+                        this.ActionImageChanged(actionParameter); // 刷新UI以反映本地状态变化
                     }
+                    else if (config.ActionType == "TriggerButton" && this._triggerResetTimers.TryGetValue(actionParameter, out var t)) 
+                    { 
+                        this._triggerTemporaryActiveStates[actionParameter] = true; 
+                        this.ActionImageChanged(actionParameter); 
+                        t.Stop(); t.Start(); 
+                    }
+                    return; // 不发送OSC，因为模式上下文不明确
                 }
-                if (String.IsNullOrEmpty(finalOscAddress))
-                {
-                    PluginLog.Warning($"[RunCommand] Button '{actionParameter}' (Mode '{currentModeStringForLog}') no valid OSC address.");
-                    if (config.ActionType == "ToggleButton")
-                    { var currentState = this._logicManager.GetToggleState(actionParameter); this._logicManager.SetToggleState(actionParameter, !currentState); this.ActionImageChanged(actionParameter); }
-                    else if (config.ActionType == "TriggerButton" && this._triggerResetTimers.TryGetValue(actionParameter, out var timer))
-                    { this._triggerTemporaryActiveStates[actionParameter] = true; this.ActionImageChanged(actionParameter); timer.Stop(); timer.Start(); }
-                    return;
-                }
-                if (config.ActionType == "ToggleButton")
-                { var currentState = this._logicManager.GetToggleState(actionParameter); ReaOSCPlugin.SendOSCMessage(finalOscAddress, currentState ? 0f : 1f); this._logicManager.SetToggleState(actionParameter, !currentState); this.ActionImageChanged(actionParameter); }
-                else if (config.ActionType == "TriggerButton")
-                { ReaOSCPlugin.SendOSCMessage(finalOscAddress, 1f); if (this._triggerResetTimers.TryGetValue(actionParameter, out var timer)) { this._triggerTemporaryActiveStates[actionParameter] = true; this.ActionImageChanged(actionParameter); timer.Stop(); timer.Start(); } }
-            }
-            else
-            {
-                String groupNameForPath = config.GroupName.Replace(" ", "_").Trim('/');
-                String pathSuffix = (!String.IsNullOrEmpty(config.OscAddress)) ? config.OscAddress.Replace(" ", "_").TrimStart('/') : config.DisplayName.Replace(" ", "_").TrimStart('/');
-                String targetOscAddress = $"/{groupNameForPath}/{pathSuffix}".Replace("//", "/");
 
-                if (String.IsNullOrEmpty(targetOscAddress) || targetOscAddress == "/")
+                string oscAddressTemplate = null;
+                if (config.OscAddresses != null && config.OscAddresses.Count > modeIndex && !String.IsNullOrEmpty(config.OscAddresses[modeIndex]))
                 {
-                    PluginLog.Error($"[RunCommand] Button '{actionParameter}' (Normal) invalid target OSC address '{targetOscAddress}'.");
-                    if (config.ActionType == "ToggleButton")
-                    { this._logicManager.SetToggleState(actionParameter, !this._logicManager.GetToggleState(actionParameter)); this.ActionImageChanged(actionParameter); }
-                    else if (config.ActionType == "TriggerButton" && this._triggerResetTimers.TryGetValue(actionParameter, out var t))
-                    { this._triggerTemporaryActiveStates[actionParameter] = true; this.ActionImageChanged(actionParameter); t.Stop(); t.Start(); }
+                    oscAddressTemplate = config.OscAddresses[modeIndex];
+                }
+                else if (!String.IsNullOrEmpty(config.OscAddress)) // 回退到通用的 OscAddress 字段
+                {
+                    oscAddressTemplate = config.OscAddress;
+                }
+
+                if (String.IsNullOrEmpty(oscAddressTemplate))
+                {
+                    PluginLog.Warning($"[GeneralButtonBase|RunCommand] Button '{config.DisplayName}' (Mode: '{currentModeStringForLog}') has no valid OSC address template for the current mode. ActionParameter: {actionParameter}");
+                    // 仍然执行本地动作
+                    if (config.ActionType == "ToggleButton") { this._logicManager.SetToggleState(actionParameter, !this._logicManager.GetToggleState(actionParameter)); this.ActionImageChanged(actionParameter); }
+                    else if (config.ActionType == "TriggerButton" && this._triggerResetTimers.TryGetValue(actionParameter, out var t)) { this._triggerTemporaryActiveStates[actionParameter] = true; this.ActionImageChanged(actionParameter); t.Stop(); t.Start(); }
                     return;
                 }
+                
+                // 使用 Logic_Manager_Base 的新方法来解析地址
+                finalOscAddressToSend = this._logicManager.GetResolvedOscAddress(config, oscAddressTemplate);
+                PluginLog.Info($"[GeneralButtonBase|RunCommand] Mode Button '{config.DisplayName}' (Mode: '{currentModeStringForLog}'). Template: '{oscAddressTemplate}', Resolved OSC: '{finalOscAddressToSend}'. ActionParameter: {actionParameter}");
+
                 if (config.ActionType == "ToggleButton")
                 {
                     var currentState = this._logicManager.GetToggleState(actionParameter);
-                    ReaOSCPlugin.SendOSCMessage(targetOscAddress, currentState ? 0f : 1f);
-                    this._logicManager.SetToggleState(actionParameter, !currentState);
+                    oscValueToSend = !currentState ? 1.0f : 0.0f; // 发送新状态对应的值
+                    this._logicManager.SetToggleState(actionParameter, !currentState); // 更新本地状态
+                    // ActionImageChanged 会在 SetToggleState 内部或通过 CommandStateNeedsRefresh 触发
                 }
                 else if (config.ActionType == "TriggerButton")
                 {
-                    ReaOSCPlugin.SendOSCMessage(targetOscAddress, 1f);
+                    oscValueToSend = 1.0f;
                     if (this._triggerResetTimers.TryGetValue(actionParameter, out var timer))
                     {
                         this._triggerTemporaryActiveStates[actionParameter] = true;
+                        this.ActionImageChanged(actionParameter); // 立即刷新以显示按下状态
                         timer.Stop();
                         timer.Start();
                     }
                 }
-                this.ActionImageChanged(actionParameter);
             }
+            else // 处理普通按钮 (无 ModeName)
+            {
+                string oscAddressTemplate = config.OscAddress; // 主要使用 OscAddress 字段
+                                                               // 如果 OscAddress 为空，GetResolvedOscAddress 内部会回退到基于 DisplayName/Title
+                
+                finalOscAddressToSend = this._logicManager.GetResolvedOscAddress(config, oscAddressTemplate);
+                PluginLog.Info($"[GeneralButtonBase|RunCommand] Normal Button '{config.DisplayName}'. Template: '{oscAddressTemplate ?? "null (will use DisplayName/Title)"}', Resolved OSC: '{finalOscAddressToSend}'. ActionParameter: {actionParameter}");
+                
+                if (config.ActionType == "ToggleButton")
+                {
+                    var currentState = this._logicManager.GetToggleState(actionParameter);
+                    oscValueToSend = !currentState ? 1.0f : 0.0f;
+                    this._logicManager.SetToggleState(actionParameter, !currentState);
+                }
+                else if (config.ActionType == "TriggerButton")
+                {
+                    oscValueToSend = 1.0f;
+                    if (this._triggerResetTimers.TryGetValue(actionParameter, out var timer))
+                    {
+                        this._triggerTemporaryActiveStates[actionParameter] = true;
+                        this.ActionImageChanged(actionParameter);
+                        timer.Stop();
+                        timer.Start();
+                    }
+                }
+            }
+
+            // 统一发送 OSC 消息 (如果地址有效)
+            if (!String.IsNullOrEmpty(finalOscAddressToSend) && finalOscAddressToSend != "/" && !finalOscAddressToSend.Contains("{mode}"))
+            {
+                ReaOSCPlugin.SendOSCMessage(finalOscAddressToSend, oscValueToSend);
+                PluginLog.Info($"[GeneralButtonBase|RunCommand] OSC Sent: '{finalOscAddressToSend}' -> {oscValueToSend} (Source: '{config.DisplayName}', Type: {config.ActionType})");
+            }
+            else
+            {
+                PluginLog.Warning($"[GeneralButtonBase|RunCommand] Invalid or unresolved OSC address for '{config.DisplayName}' (Type: {config.ActionType}). OSC not sent. Resolved address was: '{finalOscAddressToSend ?? "null"}'");
+                // 对于 ToggleButton，即使OSC未发送，其本地状态已切换，UI应已通过SetToggleState刷新
+                // 对于 TriggerButton，如果OSC未发送，按下效果的UI刷新也已处理
+            }
+            // 对于非 TriggerButton 的 ToggleButton，其 ActionImageChanged 已由 SetToggleState 内部触发
+            // 对于 TriggerButton, ActionImageChanged 已在上面处理瞬时状态
+            // SelectModeButton 的刷新由 Logic_Manager 驱动
         }
 
         protected override BitmapImage GetCommandImage(String actionParameter, PluginImageSize imageSize)
@@ -246,58 +285,80 @@ namespace Loupedeck.ReaOSCPlugin.Base
             {
                 BitmapImage loadedIcon = PluginImage.TryLoadIcon(config, "GeneralButtonBase");
 
-                // 准备 PluginImage.DrawElement 的其他参数 (大部分与之前 GetCommandImage 中手动绘制前的准备逻辑一致)
                 Boolean isActive = false;
-                String mainTitleOverride = null;
-                String valueText = null; // 按钮通常不直接显示 valueText
-                Int32 currentModeForDrawing = 0; 
-                String actualAuxTextToDraw = config.Text; // PluginImage.DrawElement 在图标模式下不绘制此项
+                String mainTitleToDraw = null;     // 将用于最终绘制的主标题
+                String valueText = null;          // 按钮通常不直接显示 valueText
+                Int32 currentModeForDrawing = 0; // 主要用于旋钮，按钮通常为0
+                
+                // 首先，解析通用的辅助文本 (config.Text)
+                String auxTextToDraw = this._logicManager.ResolveTextWithMode(config, config.Text);
 
-                // 确定 mainTitleOverride (基于模式或默认)
-                if (!String.IsNullOrEmpty(config.ModeName) && config.Titles != null && config.Titles.Any())
-                {
-                    var modeIndex = this._logicManager.GetCurrentModeIndex(config.ModeName);
-                    if (modeIndex != -1 && config.Titles.Count > modeIndex && !String.IsNullOrEmpty(config.Titles[modeIndex]))
-                    { mainTitleOverride = config.Titles[modeIndex]; }
-                    else 
-                    { mainTitleOverride = config.Title ?? config.DisplayName; }
-                }
-                else
-                { mainTitleOverride = config.Title ?? config.DisplayName; }
-
-                // 确定 isActive 和 actualAuxTextToDraw (基于 ActionType 和模式)
                 if (config.ActionType == "SelectModeButton")
                 {
-                    mainTitleOverride = this._logicManager.GetCurrentModeString(config.DisplayName) ?? config.Modes?.FirstOrDefault() ?? config.DisplayName;
+                    // 对于 SelectModeButton，主标题直接是当前模式名
+                    mainTitleToDraw = this._logicManager.GetCurrentModeString(config.DisplayName); 
+                    if (String.IsNullOrEmpty(mainTitleToDraw) && config.Modes != null && config.Modes.Any())
+                    {
+                        mainTitleToDraw = config.Modes.FirstOrDefault(); 
+                    }
+                    if (String.IsNullOrEmpty(mainTitleToDraw))
+                    {
+                        mainTitleToDraw = config.DisplayName; 
+                    }
                     isActive = (config.Modes?.IndexOf(this._logicManager.GetCurrentModeString(config.DisplayName) ?? "") ?? 0) > 0;
-                    if (config.Text == "{mode}") { actualAuxTextToDraw = mainTitleOverride; }
                 }
-                else if (config.ActionType == "TriggerButton")
+                else
                 {
-                    isActive = this._triggerTemporaryActiveStates.TryGetValue(actionParameter, out var tempState) && tempState;
-                    if (!String.IsNullOrEmpty(config.ModeName) && config.Text == "{mode}")
-                    { actualAuxTextToDraw = this._logicManager.GetCurrentModeString(config.ModeName) ?? ""; }
+                    string preliminaryTitle = null;
+
+                    // 1. 检查按钮是否受模式控制并且定义了 Titles 列表
+                    if (!String.IsNullOrEmpty(config.ModeName) && config.Titles != null && config.Titles.Any())
+                    {
+                        var modeIndex = this._logicManager.GetCurrentModeIndex(config.ModeName);
+                        if (modeIndex != -1 && modeIndex < config.Titles.Count && !String.IsNullOrEmpty(config.Titles[modeIndex]))
+                        {
+                            preliminaryTitle = config.Titles[modeIndex]; // 优先从 Titles 列表获取
+                        }
+                        else
+                        {
+                            // 模式索引无效或 Titles 列表对应项为空，回退到通用 Title 或 DisplayName
+                            preliminaryTitle = config.Title ?? config.DisplayName;
+                            PluginLog.Warning($"[GeneralButtonBase|GetCommandImage] Button '{config.DisplayName}' (ModeName: '{config.ModeName}') - Invalid mode index '{modeIndex}' for Titles list or Titles[{modeIndex}] is empty. Falling back to Title/DisplayName: '{preliminaryTitle}'.");
+                        }
+                    }
+                    // 2. 如果不受模式+Titles列表控制，或者 ParameterButton 有特定逻辑 (当前简化为标准回退)
+                    // ParameterButton 的特殊标题逻辑如果非常复杂且独立于ModeName/Titles，可能需要在此处或其专用方法中进一步处理
+                    // 当前，如果 ParameterButton 没有被上面的 ModeName/Titles 逻辑捕获，它将和其他按钮一样回退到 config.Title/DisplayName
+                    else 
+                    {
+                        preliminaryTitle = config.Title ?? config.DisplayName; // 标准回退
+                    }
+                    
+                    // 3. 使用 ResolveTextWithMode 解析初步标题中的 {mode}
+                    mainTitleToDraw = this._logicManager.ResolveTextWithMode(config, preliminaryTitle);
+
+                    // 其他按钮类型的 isActive 判断逻辑 (保持不变)
+                    if (config.ActionType == "TriggerButton" || config.ActionType == "CombineButton")
+                    {
+                        isActive = this._triggerTemporaryActiveStates.TryGetValue(actionParameter, out var tempState) && tempState;
+                    }
+                    else if (config.ActionType == "ToggleButton")
+                    { 
+                        isActive = this._logicManager.GetToggleState(actionParameter); 
+                    }
                 }
-                else if (config.ActionType == "ToggleButton")
-                {
-                    isActive = this._logicManager.GetToggleState(actionParameter);
-                    if (!String.IsNullOrEmpty(config.ModeName) && config.Text == "{mode}")
-                    { actualAuxTextToDraw = this._logicManager.GetCurrentModeString(config.ModeName) ?? ""; }
-                }
-                // ParameterButton 的 mainTitleOverride 由 General_Folder_Base.GetCommandImage 处理，此处不直接覆盖
-                // 对于 General_Button_Base，如果它要独立支持 ParameterButton，需要类似逻辑，但当前它不直接处理此类型按钮的标题
-                
+                            
                 return PluginImage.DrawElement(
                     imageSize,
                     config,
-                    mainTitleOverride,
+                    mainTitleToDraw,    
                     valueText, 
-                    isActive,
-                    currentModeForDrawing, 
-                    loadedIcon, // 使用加载的图标
-                    false, // forceTextOnly
-                    actualAuxTextToDraw, // PluginImage.DrawElement 在按钮图标模式下不绘制它
-                    preferIconOnlyForDial: false // 按钮遵循图标+文字规则
+                    isActive,          
+                    currentModeForDrawing,       
+                    loadedIcon, 
+                    false, 
+                    auxTextToDraw,      
+                    preferIconOnlyForDial: false 
                 );
             }
             catch (Exception ex)

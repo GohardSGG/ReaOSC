@@ -35,7 +35,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
         private Int32 _totalPages = 1;
 
         // UI反馈辅助 (通用，FX_Folder_Base 中已有 _lastPressTimes)
-        private readonly Dictionary<String, DateTime> _lastPressTimes = new Dictionary<String, DateTime>();
+        // private readonly Dictionary<String, DateTime> _lastPressTimes = new Dictionary<String, DateTime>(); // 将被新的Timer机制取代
 
 
         // --- 来自旧 Dynamic_Folder_Base (并引入/整合) ---
@@ -50,9 +50,14 @@ namespace Loupedeck.ReaOSCPlugin.Base
         // ParameterDial 状态管理 (源自旧 Dynamic_Folder_Base)
         private readonly Dictionary<String, Int32> _parameterDialCurrentIndexes = new Dictionary<String, Int32>();
 
-        // 旧版静态按钮瞬时反馈 (源自旧 Dynamic_Folder_Base - 待评估是否合并到 _lastPressTimes)
-        private readonly Dictionary<String, DateTime> _lastTriggerPressTimes = new Dictionary<String, DateTime>();
-        private readonly Dictionary<String, DateTime> _lastCombineButtonPressTimes = new Dictionary<String, DateTime>();
+        // 旧版静态按钮瞬时反馈 (源自旧 Dynamic_Folder_Base - 将被新的Timer机制取代)
+        // private readonly Dictionary<String, DateTime> _lastTriggerPressTimes = new Dictionary<String, DateTime>();
+        // private readonly Dictionary<String, DateTime> _lastCombineButtonPressTimes = new Dictionary<String, DateTime>();
+
+        // 【新增】统一的瞬时高亮管理机制
+        private readonly Dictionary<String, Boolean> _folderItemTemporaryActiveStates = new Dictionary<String, Boolean>();
+        private readonly Dictionary<String, System.Timers.Timer> _folderItemResetTimers = new Dictionary<String, System.Timers.Timer>();
+        private const int HighlightDurationMilliseconds = 200; // 高亮持续时间
 
         public General_Folder_Base()
         {
@@ -162,26 +167,22 @@ namespace Loupedeck.ReaOSCPlugin.Base
 
             if (this._isButtonListDynamic || staticButtonConfigs == null || !staticButtonConfigs.Any())
             {
-                // 如果是动态列表模式或没有静态按钮，则不处理
                 return; 
             }
 
             foreach (var buttonConfigFromJson in staticButtonConfigs) 
             {
-                // Placeholder按钮类型也应该被跳过 (如果未来按钮也支持Placeholder的话)
                 if (buttonConfigFromJson.ActionType == "Placeholder") 
                 {
                     continue; 
                 }
 
-                // 注意: 静态按钮的 GroupName 和 DisplayName 来自其在 folderContentConfig.Buttons 中的定义
-                // 我们需要用这些信息去 Logic_Manager_Base 中查找匹配的已注册全局配置
                 var kvp = Logic_Manager_Base.Instance.GetAllConfigs().FirstOrDefault(
                     x => x.Value.DisplayName == buttonConfigFromJson.DisplayName && 
-                         x.Value.GroupName == (buttonConfigFromJson.GroupName ?? this.DisplayName) // 如果按钮没定义GroupName，则假定其GroupName为文件夹的DisplayName
+                         x.Value.GroupName == (buttonConfigFromJson.GroupName ?? this.DisplayName) 
                 );
                 var globalActionParameter = kvp.Key;   
-                var loadedConfig = kvp.Value; // 这是从Logic_Manager加载的完整配置，可能包含更多信息或已被处理过         
+                var loadedConfig = kvp.Value;          
 
                 if (String.IsNullOrEmpty(globalActionParameter) || loadedConfig == null)
                 {
@@ -189,10 +190,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     continue;
                 }
 
-                // 使用加载的配置来生成localId，确保与Logic_Manager中注册的一致性 (虽然通常localId是内部的)
-                // 或者，更简单地，可以直接使用 buttonConfigFromJson 中的信息，因为这些按钮是此文件夹"拥有"的
-                // 旧 Dynamic_Folder_Base 使用的是 loadedConfig.GroupName 和 loadedConfig.DisplayName
-                var localId = $"{loadedConfig.GroupName}_{loadedConfig.DisplayName}".Replace(" ", ""); // 注意旧版移除了空格
+                var localId = $"{loadedConfig.GroupName}_{loadedConfig.DisplayName}".Replace(" ", ""); 
 
                 if (this._localIdToConfig_Buttons.ContainsKey(localId))
                 {
@@ -200,10 +198,35 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     continue;
                 }
                 this._localIdToGlobalActionParameter_Buttons[localId] = globalActionParameter;
-                this._localIdToConfig_Buttons[localId] = loadedConfig; // 存储从Logic_Manager加载的配置
+                this._localIdToConfig_Buttons[localId] = loadedConfig; 
                 this._localButtonIds.Add(localId);
+
+                // 【新增】为静态 TriggerButton 和 CombineButton 初始化 Timer
+                if (loadedConfig.ActionType == "TriggerButton" || loadedConfig.ActionType == "CombineButton")
+                {
+                    if (!this._folderItemResetTimers.ContainsKey(localId))
+                    {
+                        var timer = new System.Timers.Timer(HighlightDurationMilliseconds);
+                        timer.AutoReset = false;
+                        // 使用 lambda 表达式捕获 localId
+                        timer.Elapsed += (sender, e) => HandleFolderItemResetTimerElapsed(sender, e, localId);
+                        this._folderItemResetTimers[localId] = timer;
+                        this._folderItemTemporaryActiveStates[localId] = false; // 初始化状态
+                    }
+                }
             }
             PluginLog.Info($"[{this.DisplayName}] PopulateStaticButtonMappings: 处理了 {this._localButtonIds.Count} 个静态按钮。");
+        }
+
+        // 【新增】Timer Elapsed 处理方法
+        private void HandleFolderItemResetTimerElapsed(Object sender, System.Timers.ElapsedEventArgs e, String itemActionParameter)
+        {
+            if (this._folderItemTemporaryActiveStates.TryGetValue(itemActionParameter, out bool isActive) && isActive)
+            {
+                this._folderItemTemporaryActiveStates[itemActionParameter] = false;
+                this.CommandImageChanged(itemActionParameter); 
+                PluginLog.Verbose($"[{this.DisplayName}] Timer elapsed for '{itemActionParameter}', highglight removed.");
+            }
         }
 
         // 辅助方法，用于从 ButtonConfig (通常是动态列表项) 创建唯一的动作参数 (与 FX_Folder_Base 逻辑一致)
@@ -317,6 +340,33 @@ namespace Loupedeck.ReaOSCPlugin.Base
 
             // --- 第3步: 解析动态列表项 ---
             this._allListItems.Clear();
+            this._currentDisplayedItemActionNames.Clear();
+            this._folderDialConfigs.Clear(); 
+            this._filterOptions.Clear();
+            this._currentFilterValues.Clear();
+            this._favoriteItemDisplayNames.Clear();
+            
+            // this._lastPressTimes.Clear(); // 移除旧的
+            
+            this._localButtonIds.Clear();
+            this._localIdToGlobalActionParameter_Buttons.Clear();
+            this._localIdToConfig_Buttons.Clear();
+            
+            this._parameterDialCurrentIndexes.Clear();
+            
+            // this._lastTriggerPressTimes.Clear(); // 移除旧的
+            // this._lastCombineButtonPressTimes.Clear(); // 移除旧的
+
+            // 【新增】清理新的Timer相关字典
+            foreach (var timerEntry in this._folderItemResetTimers)
+            {
+                timerEntry.Value.Stop();
+                timerEntry.Value.Elapsed -= (sender, e) => HandleFolderItemResetTimerElapsed(sender, e, timerEntry.Key); // 尝试移除，但对于lambda可能无效，Dispose是关键
+                timerEntry.Value.Dispose();
+            }
+            this._folderItemResetTimers.Clear();
+            this._folderItemTemporaryActiveStates.Clear();
+
             var processedTopLevelKeys = new HashSet<String> { "Favorite" }; // "All" 不是顶层键，是选项值
             foreach (var filterNameInDataSource in this._filterOptions.Keys)
             {
@@ -382,6 +432,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                                     continue;
                                 }
                                 this._allListItems[actionParameter] = itemConfig;
+                                this._currentDisplayedItemActionNames.Add(actionParameter);
                             }
                             catch (Exception ex)
                             {
@@ -507,7 +558,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
             this._currentFilterValues.Clear();
             this._favoriteItemDisplayNames.Clear();
             
-            this._lastPressTimes.Clear();
+            // this._lastPressTimes.Clear(); // 移除旧的
             
             this._localButtonIds.Clear();
             this._localIdToGlobalActionParameter_Buttons.Clear();
@@ -515,8 +566,18 @@ namespace Loupedeck.ReaOSCPlugin.Base
             
             this._parameterDialCurrentIndexes.Clear();
             
-            this._lastTriggerPressTimes.Clear();
-            this._lastCombineButtonPressTimes.Clear();
+            // this._lastTriggerPressTimes.Clear(); // 移除旧的
+            // this._lastCombineButtonPressTimes.Clear(); // 移除旧的
+
+            // 【新增】清理新的Timer相关字典
+            foreach (var timerEntry in this._folderItemResetTimers)
+            {
+                timerEntry.Value.Stop();
+                timerEntry.Value.Elapsed -= (sender, e) => HandleFolderItemResetTimerElapsed(sender, e, timerEntry.Key); // 尝试移除，但对于lambda可能无效，Dispose是关键
+                timerEntry.Value.Dispose();
+            }
+            this._folderItemResetTimers.Clear();
+            this._folderItemTemporaryActiveStates.Clear();
 
             // 3. 记录日志
             PluginLog.Info($"[{this.DisplayName ?? "Folder"}] Disposed.");
@@ -857,18 +918,19 @@ namespace Loupedeck.ReaOSCPlugin.Base
 
         public override void RunCommand(String actionParameter)
         {
-            String commandLocalIdToLookup = actionParameter;
-            const String commandPrefix = "plugin:command:"; // Loupedeck SDK 可能会添加的前缀
+            String commandLocalIdToLookup = actionParameter; // 对于动态列表项，这将是其全局actionParameter
+            const String commandPrefix = "plugin:command:"; 
             if (actionParameter.StartsWith(commandPrefix))
             {
                 commandLocalIdToLookup = actionParameter.Substring(commandPrefix.Length);
             }
-            PluginLog.Info($"[{this.DisplayName}] RunCommand 正在查找 localId: '{commandLocalIdToLookup}' (原始: '{actionParameter}')");
+            PluginLog.Info($"[{this.DisplayName}] RunCommand looking for key: '{commandLocalIdToLookup}' (Original: '{actionParameter}')");
 
-            // 1. 检查是否为旋钮按下
+            // 1. 检查是否为旋钮按下 (这部分逻辑已相对独立，暂不修改其高亮，除非有特别需求)
             var dialConfigPressed = this._folderDialConfigs.FirstOrDefault(dc => this.GetLocalDialId(dc) == commandLocalIdToLookup);
             if (dialConfigPressed != null)
             {
+                // ... (旋钮按下逻辑保持不变) ...
                 if (dialConfigPressed.ActionType == "Placeholder") 
                 { 
                     PluginLog.Info($"[{this.DisplayName}] Placeholder旋钮 '{dialConfigPressed.DisplayName}' 被按下，无操作。");
@@ -882,103 +944,104 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     return;
                 }
                 
-                // 对于 ToggleDial, 2ModeTickDial，其按下逻辑由 Logic_Manager_Base.ProcessDialPress 处理
-                // 【新增】ControlDial 的按下逻辑也由 Logic_Manager_Base.ProcessDialPress 处理
-                // 需要将文件夹本地的 commandLocalIdToLookup 转换为 Logic_Manager 能识别的全局参数
                 if (dialConfigPressed.ActionType == "ToggleDial" || 
                     dialConfigPressed.ActionType == "2ModeTickDial" ||
                     dialConfigPressed.ActionType == "ControlDial")
                 {
-                    // 尝试从 Logic_Manager 中找到此旋钮的全局注册项
                     var globalParamKvp = Logic_Manager_Base.Instance.GetAllConfigs().FirstOrDefault(kvp => 
                         (kvp.Value.GroupName == this.DisplayName || kvp.Value.GroupName == dialConfigPressed.GroupName) && 
                         kvp.Value.DisplayName == dialConfigPressed.DisplayName && 
                         kvp.Value.ActionType == dialConfigPressed.ActionType
                     );
-
                     if (!EqualityComparer<KeyValuePair<String, ButtonConfig>>.Default.Equals(globalParamKvp, default))
                     {
                         String globalDialActionParameter = globalParamKvp.Key;
                         if (Logic_Manager_Base.Instance.ProcessDialPress(globalDialActionParameter))
                         {
-                            // ProcessDialPress 返回true通常表示状态已改变 (例如2ModeTickDial切换了模式, ControlDial被重置)
-                            // 需要刷新此旋钮的图像
                             this.AdjustmentValueChanged(this.CreateAdjustmentName(commandLocalIdToLookup)); 
                         }
                         PluginLog.Info($"[{this.DisplayName}] 已处理旋钮 '{dialConfigPressed.DisplayName}' (Type: {dialConfigPressed.ActionType}) 的按下事件，通过Logic_Manager。全球参数: {globalDialActionParameter}");
-                        return; // 假设旋钮按下事件到此结束
+                        return; 
                     }
                     else
-                    {
+                    { 
                         PluginLog.Warning($"[{this.DisplayName}] 未能在Logic_Manager中找到旋钮 '{dialConfigPressed.DisplayName}' (Type: {dialConfigPressed.ActionType}) 的全局配置以处理按下事件。Local ID: {commandLocalIdToLookup}");
-                        // 如果找不到全局配置，可能意味着这个旋钮的按下没有在Logic_Manager中定义特定行为
-                        // 代码会继续尝试匹配是否为列表项或静态按钮 (虽然通常旋钮的localId不会与之冲突)
                     }
                 }
-                // 如果是其他类型的旋钮按下，且没有在此处定义特定行为，则允许继续尝试匹配其他类型命令
             }
 
-            // 2. 检查是否为动态列表项 (如果 _isButtonListDynamic == true)
+            // 2. 检查是否为按钮 (静态或动态列表项)
+            ButtonConfig pressedButtonConfig = null;
+            String buttonKeyForState = commandLocalIdToLookup; // 对于动态项，这是全局参数；对于静态项，这是localId
+
             if (this._isButtonListDynamic)
             {
-                // commandLocalIdToLookup 对于动态列表项，应该是 CreateActionParameterForItem 生成的 "/GroupName/DisplayName" 格式
-                if (this._allListItems.TryGetValue(commandLocalIdToLookup, out var itemConfig))
-                {
-                    // Logic_Manager_Base 将使用 this.DisplayName (文件夹名), itemConfig.GroupName (顶层分组), itemConfig.DisplayName (项名)
-                    // 来构建 "/FolderName/Add/TopGroup/ItemName" 格式的OSC地址
-                    Logic_Manager_Base.Instance.ProcessUserAction(commandLocalIdToLookup, this.DisplayName, itemConfig);
-
-                    // UI反馈
-                    this._lastPressTimes[commandLocalIdToLookup] = DateTime.Now;
-                    this.ButtonActionNamesChanged(); // 通知SDK列表项(按钮)状态可能已改变，需要重绘
-                    Task.Delay(200).ContinueWith(_ => { this.ButtonActionNamesChanged(); }); // 短暂高亮后恢复
-                    PluginLog.Info($"[{this.DisplayName}] 动态列表项 '{itemConfig.DisplayName}' (localId: '{commandLocalIdToLookup}') 被按下。");
-                    return;
-                }
+                this._allListItems.TryGetValue(commandLocalIdToLookup, out pressedButtonConfig);
             }
-            // 3. 检查是否为静态按钮 (如果 _isButtonListDynamic == false)
             else 
             {
-                if (this._localIdToConfig_Buttons.TryGetValue(commandLocalIdToLookup, out var staticButtonConfig))
+                this._localIdToConfig_Buttons.TryGetValue(commandLocalIdToLookup, out pressedButtonConfig);
+                // 对于静态按钮，buttonKeyForState (即localId) 是正确的用于Timer和状态字典的键
+            }
+
+            if (pressedButtonConfig != null)
+            {
+                String globalButtonParamForLogicManager = commandLocalIdToLookup; // 默认动态项的key就是全局key
+                if (!this._isButtonListDynamic) // 如果是静态按钮，需要从localId获取全局参数
                 {
-                    if (!this._localIdToGlobalActionParameter_Buttons.TryGetValue(commandLocalIdToLookup, out var globalButtonParam))
+                    if (!this._localIdToGlobalActionParameter_Buttons.TryGetValue(commandLocalIdToLookup, out globalButtonParamForLogicManager))
                     {
                         PluginLog.Warning($"[{this.DisplayName}] RunCommand: 未找到静态按钮 localId '{commandLocalIdToLookup}' 对应的 globalActionParameter。");
                         return;
                     }
-
-                    Logic_Manager_Base.Instance.ProcessUserAction(globalButtonParam, this.DisplayName, staticButtonConfig);
-
-                    // UI反馈 (基于旧 Dynamic_Folder_Base 的逻辑)
-                    if (staticButtonConfig.ActionType == "TriggerButton")
-                    {
-                        this._lastTriggerPressTimes[commandLocalIdToLookup] = DateTime.Now;
-                        this.ButtonActionNamesChanged();
-                        Task.Delay(200).ContinueWith(_ => { this.ButtonActionNamesChanged(); }); 
-                    }
-                    else if (staticButtonConfig.ActionType == "CombineButton") 
-                    {
-                        this._lastCombineButtonPressTimes[commandLocalIdToLookup] = DateTime.Now;
-                        this.ButtonActionNamesChanged();
-                        Task.Delay(200).ContinueWith(_ => { this.ButtonActionNamesChanged(); }); 
-                    }
-                    else if (staticButtonConfig.ActionType == "ToggleButton" || staticButtonConfig.ActionType == "ParameterButton")
-                    {
-                        // ToggleButton 和 ParameterButton 的状态由 Logic_Manager 通过 CommandStateNeedsRefresh 触发刷新
-                        // 但如果按下动作本身也需要即时反馈（即使状态可能没变），可以调用 ButtonActionNamesChanged()
-                        this.ButtonActionNamesChanged(); 
-                    }
-                    PluginLog.Info($"[{this.DisplayName}] 静态按钮 '{staticButtonConfig.DisplayName}' (localId: '{commandLocalIdToLookup}') 被按下。");
-                    return;
                 }
+
+                // 调用 Logic_Manager 处理核心动作和OSC发送
+                Logic_Manager_Base.Instance.ProcessUserAction(globalButtonParamForLogicManager, this.DisplayName, pressedButtonConfig);
+
+                // 【修改】统一使用新的 Timer 高亮机制
+                if (pressedButtonConfig.ActionType == "TriggerButton" || pressedButtonConfig.ActionType == "CombineButton")
+                {
+                    this._folderItemTemporaryActiveStates[buttonKeyForState] = true;
+                    if (!this._folderItemResetTimers.TryGetValue(buttonKeyForState, out var timer))
+                    {
+                        // 为动态列表项按需创建 Timer
+                        if (this._isButtonListDynamic) 
+                        {
+                            timer = new System.Timers.Timer(HighlightDurationMilliseconds);
+                            timer.AutoReset = false;
+                            timer.Elapsed += (s, e) => HandleFolderItemResetTimerElapsed(s, e, buttonKeyForState); // buttonKeyForState 是动态项的全局 actionParameter
+                            this._folderItemResetTimers[buttonKeyForState] = timer;
+                            PluginLog.Verbose($"[{this.DisplayName}] On-demand timer created for dynamic item '{buttonKeyForState}'.");
+                        }
+                        else
+                        {
+                             // 静态按钮的Timer应该在PopulateStaticButtonMappings中已创建，理论上不应到这里
+                             PluginLog.Warning($"[{this.DisplayName}] Timer not found for static button '{buttonKeyForState}' in RunCommand. This should have been initialized.");
+                        }
+                    }
+                    
+                    timer?.Stop(); // ?.确保timer不为null
+                    timer?.Start();
+                    
+                    this.CommandImageChanged(buttonKeyForState); // 请求重绘此按钮
+                    PluginLog.Info($"[{this.DisplayName}] Button '{pressedButtonConfig.DisplayName}' (key: '{buttonKeyForState}', type: {pressedButtonConfig.ActionType}) pressed, highlight activated.");
+                }
+                else if (pressedButtonConfig.ActionType == "ToggleButton" || pressedButtonConfig.ActionType == "ParameterButton")
+                {
+                    // ToggleButton 和 ParameterButton 的状态由 Logic_Manager 通过 CommandStateNeedsRefresh 触发刷新
+                    // 如果其按下也需要瞬时视觉反馈（即使状态没变），可以考虑也使用上面的Timer机制，
+                    // 但通常它们的视觉变化是状态驱动的，CommandStateNeedsRefresh 应该足够。
+                    // 为保持与 General_Button_Base 的一致性（它不为Toggle提供瞬时反馈），此处仅依赖 CommandStateNeedsRefresh
+                    // this.CommandImageChanged(buttonKeyForState); // 可选：如果希望按下立即有反馈，即使是状态驱动按钮
+                }
+                return;
             }
             
-            // 如果以上均未匹配
-            if(dialConfigPressed == null) // 仅当它不是一个可识别的旋钮按下时才报告此最终警告
+            if(dialConfigPressed == null) 
             {
-                 PluginLog.Warning($"[{this.DisplayName}] RunCommand: 未找到与 localId '{commandLocalIdToLookup}' 匹配的旋钮、动态列表项或静态按钮配置。");
+                 PluginLog.Warning($"[{this.DisplayName}] RunCommand: 未找到与 key '{commandLocalIdToLookup}' 匹配的旋钮或按钮配置。");
             }
-            // 如果是旋钮按下但未在前面return，则意味着该旋钮按下无特定RunCommand逻辑，此处不再重复警告
         }
 
         public override Boolean ProcessButtonEvent2(String actionParameter, DeviceButtonEvent2 buttonEvent)
@@ -1024,10 +1087,13 @@ namespace Loupedeck.ReaOSCPlugin.Base
 
             if (localId.Equals(NavigateUpActionName))
             {
+                // NavigateUpActionName 的图像绘制保持不变
                 using(var bb = new BitmapBuilder(imageSize))
                 {
                     bb.Clear(BitmapColor.Black);
-                    bb.DrawText("Up", BitmapColor.White, GetButtonFontSize("Up"));
+                    // 使用 PluginImage.GetButtonFontSize 以保持一致性，如果需要的话
+                    // 或者直接使用一个固定的、合适的字体大小
+                    bb.DrawText("Up", BitmapColor.White, GetButtonFontSize("Up")); 
                     return bb.ToImage();
                 }
             }
@@ -1035,11 +1101,13 @@ namespace Loupedeck.ReaOSCPlugin.Base
             ButtonConfig configToDraw = null;
             String globalParamForState = null; 
             Boolean isStaticButton = false;
+            Logic_Manager_Base logicManager = Logic_Manager_Base.Instance; // 获取 Logic_Manager 实例
 
             if (this._isButtonListDynamic)
             {
                 if (!this._allListItems.TryGetValue(localId, out configToDraw))
                 {
+                    // 动态列表项未找到，绘制默认错误图像
                     return PluginImage.DrawElement(imageSize, null, "Itm?", isActive:true, preferIconOnlyForDial: false);
                 }
             }
@@ -1049,54 +1117,65 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 if (!this._localIdToConfig_Buttons.TryGetValue(localId, out configToDraw) || 
                     !this._localIdToGlobalActionParameter_Buttons.TryGetValue(localId, out globalParamForState))
                 {
+                    // 静态按钮配置未找到，绘制默认错误图像
                     return PluginImage.DrawElement(imageSize, null, "Btn?", isActive:true, preferIconOnlyForDial: false);
                 }
             }
             if (configToDraw == null)
             {
+                 // 理论上不会到这里，因为上面已经处理了未找到的情况
                 return PluginImage.DrawElement(imageSize, null, "Err", isActive:true, preferIconOnlyForDial: false);
             }
 
             BitmapImage loadedIcon = PluginImage.TryLoadIcon(configToDraw, this.DisplayName);
-            String mainTitleOverride = null; 
+            String preliminaryTitle = null; 
             Boolean isActive = false;
             Int32 currentModeForDrawing = 0; 
+            String preliminaryAuxText = configToDraw.Text; // 原始辅助文本模板
 
+            // 确定初步标题
+            if (configToDraw.ActionType == "ParameterButton" && isStaticButton)
+            {
+                // ParameterButton的标题由DetermineParameterButtonTitle特殊处理，其内部可能也需要{mode}解析（如果其回退标题含{mode}）
+                preliminaryTitle = this.DetermineParameterButtonTitle(configToDraw); 
+            }
+            else
+            {
+                preliminaryTitle = configToDraw.Title ?? configToDraw.DisplayName;
+            }
+
+            // 使用 Logic_Manager 解析标题和辅助文本中的 {mode}
+            String mainTitleToDraw = logicManager.ResolveTextWithMode(configToDraw, preliminaryTitle);
+            String auxTextToDraw = logicManager.ResolveTextWithMode(configToDraw, preliminaryAuxText);
+
+            // 【修改】确定激活状态，统一使用新的 _folderItemTemporaryActiveStates 机制
             if (configToDraw.ActionType == "TriggerButton" || configToDraw.ActionType == "CombineButton")
             {
-                DateTime pressTime = DateTime.MinValue; 
-                Boolean foundInDynamic = !isStaticButton && this._lastPressTimes.TryGetValue(localId, out pressTime);
-                Boolean foundInStaticTrigger = isStaticButton && configToDraw.ActionType == "TriggerButton" && this._lastTriggerPressTimes.TryGetValue(localId, out pressTime);
-                Boolean foundInStaticCombine = isStaticButton && configToDraw.ActionType == "CombineButton" && this._lastCombineButtonPressTimes.TryGetValue(localId, out pressTime);
-                if (foundInDynamic || foundInStaticTrigger || foundInStaticCombine)
-                {
-                    if ((DateTime.Now - pressTime).TotalMilliseconds < 200)
-                    {
-                        isActive = true;
-                    }
-                }
+                // localId 对于动态列表项是其全局 actionParameter，对于静态按钮是其 localId
+                // 这与 _folderItemTemporaryActiveStates 和 _folderItemResetTimers 中使用的键一致
+                isActive = this._folderItemTemporaryActiveStates.TryGetValue(localId, out var tempState) && tempState;
             }
             else if (configToDraw.ActionType == "ToggleButton")
-            {
+            { 
                 if (isStaticButton && !String.IsNullOrEmpty(globalParamForState))
                 {
-                    isActive = Logic_Manager_Base.Instance.GetToggleState(globalParamForState);
+                    isActive = logicManager.GetToggleState(globalParamForState);
+                }
+                else if (!isStaticButton) 
+                {
+                    isActive = logicManager.GetToggleState(localId); 
                 }
             }
-            else if (configToDraw.ActionType == "ParameterButton" && isStaticButton)
-            {
-                mainTitleOverride = this.DetermineParameterButtonTitle(configToDraw);
-            }
+            // ParameterButton 的 isActive 状态通常不通过这种瞬时高亮管理，而是由其参数源决定，或固定显示
             
-            // 对于按钮，actualAuxText 将由 PluginImage.DrawElement 在文本模式下根据 config.Text 处理
-            // 在图标模式下，按钮的辅助文本不显示
-            return PluginImage.DrawElement(imageSize, configToDraw, mainTitleOverride, null, isActive, currentModeForDrawing, loadedIcon, false, null, false );
+            return PluginImage.DrawElement(imageSize, configToDraw, mainTitleToDraw, null, isActive, currentModeForDrawing, loadedIcon, false, auxTextToDraw, false );
         }
 
         public override BitmapImage GetAdjustmentImage(String actionParameter, PluginImageSize imageSize)
         {
             if (String.IsNullOrEmpty(actionParameter))
             {
+                // 空 actionParameter，返回全黑图像 (保持不变)
                 using (var bb = new BitmapBuilder(imageSize))
                 {
                     bb.Clear(BitmapColor.Black);
@@ -1107,6 +1186,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
             var dialConfig = this._folderDialConfigs.FirstOrDefault(dc => this.GetLocalDialId(dc) == localDialId);
             if (dialConfig == null || dialConfig.ActionType == "Placeholder")
             {
+                // 未找到配置或为占位符，返回全黑图像 (保持不变)
                 using (var bb = new BitmapBuilder(imageSize))
                 {
                     bb.Clear(BitmapColor.Black);
@@ -1114,12 +1194,22 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 }
             }
             
+            Logic_Manager_Base logicManager = Logic_Manager_Base.Instance; // 获取 Logic_Manager 实例
             BitmapImage loadedIcon = PluginImage.TryLoadIcon(dialConfig, this.DisplayName);
-            String mainTitleToDraw = dialConfig.ShowTitle?.Equals("No", StringComparison.OrdinalIgnoreCase) == true ? null : (dialConfig.Title ?? dialConfig.DisplayName);
+            
+            // 初步确定标题 (未解析 {mode})
+            String preliminaryTitle = dialConfig.ShowTitle?.Equals("No", StringComparison.OrdinalIgnoreCase) == true ? null : (dialConfig.Title ?? dialConfig.DisplayName);
+            // 初步确定辅助文本 (未解析 {mode})
+            String preliminaryAuxText = dialConfig.Text;
+
+            // 使用 ResolveTextWithMode 解析标题和辅助文本
+            String mainTitleToDraw = logicManager.ResolveTextWithMode(dialConfig, preliminaryTitle);
+            String auxTextToDraw = logicManager.ResolveTextWithMode(dialConfig, preliminaryAuxText);
+            
             String valueTextToDisplay = null; 
             Boolean isActiveStatus = false; 
             Int32 currentModeStatus = 0;    
-            String globalParamForState = this.GetGlobalParamForDialState(dialConfig);
+            String globalParamForState = this.GetGlobalParamForDialState(dialConfig); // 此方法获取全局参数，用于从LogicManager获取状态
 
             switch (dialConfig.ActionType)
             {
@@ -1135,30 +1225,36 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 case "ToggleDial": 
                     if(globalParamForState != null)
                     {
-                        isActiveStatus = Logic_Manager_Base.Instance.GetToggleState(globalParamForState); 
+                        isActiveStatus = logicManager.GetToggleState(globalParamForState); 
                     }
                     break;
                 case "2ModeTickDial":
                     if(globalParamForState != null)
                     {
-                        currentModeStatus = Logic_Manager_Base.Instance.GetDialMode(globalParamForState);
+                        currentModeStatus = logicManager.GetDialMode(globalParamForState);
+                        // 对于 2ModeTickDial，如果其 ModeName 与 dialConfig.ModeName 匹配 (理论上应该如此如果它受模式控制)
+                        // 它的标题可能在 ResolveTextWithMode 时已经根据当前模式切换了 (如果 Title 或 Title_Mode2 含 {mode})
+                        // 这里 mainTitleToDraw 已处理过 ResolveTextWithMode，但如果其 Title/Title_Mode2 本身也应该根据外部模式组改变，
+                        // 且 ResolveTextWithMode(dialConfig,...) 使用了 dialConfig.ModeName，那么这里可能需要重新确定 preliminaryTitle
+                        // 以便在 PluginImage.DrawElement 中，dialConfig.Title_Mode2 能被正确使用。
+                        // 不过，PluginImage.DrawElement 内部对2ModeTickDial的标题有自己的处理逻辑（基于currentModeStatus从dialConfig取）
+                        // 所以这里 mainTitleToDraw 的准备主要是为了那些 config.Title 本身就包含 {mode} 的情况。
                     }
                     break;
-                case "ControlDial": // 【新增】为 ControlDial 获取显示值
-                    if (!String.IsNullOrEmpty(globalParamForState)) // 确保我们有全局参数来查询状态
+                case "ControlDial": 
+                    if (!String.IsNullOrEmpty(globalParamForState)) 
                     {
-                        valueTextToDisplay = Logic_Manager_Base.Instance.GetControlDialValue(globalParamForState).ToString();
+                        valueTextToDisplay = logicManager.GetControlDialValue(globalParamForState).ToString();
                     }
                     else
                     {
                         PluginLog.Warning($"[{this.DisplayName}|GetAdjustmentImage] ControlDial '{dialConfig.DisplayName}' (localId: {localDialId}) 无法获取 globalParamForState 以查询值。");
-                        valueTextToDisplay = "ERR"; // 或其他错误指示
+                        valueTextToDisplay = "ERR"; 
                     }
                     break;
             }
-            // 对于旋钮，actualAuxText 将由 PluginImage.DrawElement 在文本模式下根据 config.Text 处理
-            // 在图标模式下 (preferIconOnlyForDial=true)，旋钮不显示任何文本
-            return PluginImage.DrawElement(imageSize, dialConfig, mainTitleToDraw, valueTextToDisplay, isActiveStatus, currentModeStatus, loadedIcon, false, null, true);
+            
+            return PluginImage.DrawElement(imageSize, dialConfig, mainTitleToDraw, valueTextToDisplay, isActiveStatus, currentModeStatus, loadedIcon, false, auxTextToDraw, true);
         }
 
         public override BitmapImage GetButtonImage(PluginImageSize imageSize) // 文件夹入口按钮

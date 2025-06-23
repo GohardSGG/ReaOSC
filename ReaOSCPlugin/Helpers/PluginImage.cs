@@ -82,7 +82,7 @@ namespace Loupedeck.ReaOSCPlugin.Helpers
                 }
                 else
                 {
-                    PluginLog.Verbose($"[{contextDisplayName ?? "PluginImage"}|TryLoadIcon] 外部PNG图标 '{externalIconPath}' 未找到。");
+                    //PluginLog.Verbose($"[{contextDisplayName ?? "PluginImage"}|TryLoadIcon] 外部PNG图标 '{externalIconPath}' 未找到。");
                 }
             }
             else
@@ -91,7 +91,7 @@ namespace Loupedeck.ReaOSCPlugin.Helpers
             }
             
             // 2. 回退到嵌入式资源加载
-            PluginLog.Info($"[{contextDisplayName ?? "PluginImage"}|TryLoadIcon] 准备从嵌入式资源加载图标 '{imagePathDeterminedByConfig}' for control '{config.DisplayName}'.");
+            //PluginLog.Info($"[{contextDisplayName ?? "PluginImage"}|TryLoadIcon] 准备从嵌入式资源加载图标 '{imagePathDeterminedByConfig}' for control '{config.DisplayName}'.");
 
             // 确保只尝试加载 .png 文件作为嵌入资源
             if (Path.GetExtension(imagePathDeterminedByConfig).ToLowerInvariant() != ".png")
@@ -107,7 +107,7 @@ namespace Loupedeck.ReaOSCPlugin.Helpers
                 if (embeddedIcon == null)
                 {
                     // PluginResources.ReadImage 内部已有日志，这里简单记录
-                    PluginLog.Verbose($"[{contextDisplayName ?? "PluginImage"}|TryLoadIcon] 从嵌入式资源加载 '{imagePathDeterminedByConfig}' 失败或未找到。");
+                    //PluginLog.Verbose($"[{contextDisplayName ?? "PluginImage"}|TryLoadIcon] 从嵌入式资源加载 '{imagePathDeterminedByConfig}' 失败或未找到。");
                 }
                 else
                 {
