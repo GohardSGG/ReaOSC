@@ -972,6 +972,29 @@ namespace Loupedeck.ReaOSCPlugin.Base
 
             if (pressedButtonConfig != null)
             {
+                // 【新增】处理 NavigationButton，应优先于其他按钮类型判断
+                if (pressedButtonConfig.ActionType == "NavigationButton")
+                {
+                    // 约定：导航按钮通过其 DisplayName, Title, 或 OscAddress 字段指定为 "Back" 来触发返回
+                    bool isBackButton = (pressedButtonConfig.DisplayName == "Back") || 
+                                      (String.IsNullOrEmpty(pressedButtonConfig.DisplayName) && pressedButtonConfig.Title == "Back") || 
+                                      (!String.IsNullOrEmpty(pressedButtonConfig.OscAddress) && pressedButtonConfig.OscAddress == "Back");
+
+                    if (isBackButton)
+                    {
+                        PluginLog.Info($"[{this.DisplayName}] NavigationButton 'Back' (Key: '{commandLocalIdToLookup}') pressed. Closing folder.");
+                        this.Close();
+                        return; // 操作完成，直接返回
+                    }
+                    else
+                    {
+                        PluginLog.Warning($"[{this.DisplayName}] NavigationButton '{pressedButtonConfig.DisplayName}' (Key: '{commandLocalIdToLookup}') pressed, but its target is not recognized as 'Back'. No action taken.");
+                        // 即使不是Back，也触发一下UI刷新，以防有高亮等效果
+                        this.CommandImageChanged(buttonKeyForState);
+                        return;
+                    }
+                }
+
                 String globalButtonParamForLogicManager = commandLocalIdToLookup; // 默认动态项的key就是全局key
                 if (!this._isButtonListDynamic) // 如果是静态按钮，需要从localId获取全局参数
                 {

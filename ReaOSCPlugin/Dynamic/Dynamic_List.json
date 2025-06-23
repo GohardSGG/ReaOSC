@@ -353,6 +353,11 @@
           "OscAddress": "Offset/Unit",
           "Text": "/ MS",
           "TextColor": "#88E2FF"
+        },
+        {
+          "ActionType": "NavigationButton",
+          "DisplayName": "Back",
+          "Title": "Back"
         }
 
       ],
@@ -437,11 +442,6 @@
             "256"
           ],
           "ParameterDefault": "0"
-        },
-        {
-          "ActionType": "NavigationDial",
-          "DisplayName": "Back",
-          "Title": "Back"
         }
       ]
     }
@@ -452,7 +452,38 @@
     "Text": "Output",
     "Content": {
       "Buttons": [
-      
+        {
+          "ActionType": "Placeholder"
+        },
+        {
+          "ActionType": "Placeholder"
+        },
+        {
+          "ActionType": "Placeholder"
+        },
+        {
+          "ActionType": "Placeholder"
+        },
+        {
+          "ActionType": "Placeholder"
+        },
+        {
+          "ActionType": "Placeholder"
+        },
+        {
+          "ActionType": "Placeholder"
+        },
+        {
+          "ActionType": "Placeholder"
+        },
+        {
+          "ActionType": "Placeholder"
+        },
+        {
+          "ActionType": "NavigationButton",
+          "DisplayName": "Back",
+          "Title": "Back"
+        }
       ],
       "Dials": [
       ]

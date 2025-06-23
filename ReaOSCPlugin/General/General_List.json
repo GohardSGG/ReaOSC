@@ -596,6 +596,7 @@
     {
       "ActionType": "ControlDial",
       "DisplayName": "Volume",
+      "Title": "Vol",
       "ShowTitle": "Yes",
       "Parameter": [
         true,
