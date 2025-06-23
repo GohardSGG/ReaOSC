@@ -339,36 +339,22 @@ namespace Loupedeck.ReaOSCPlugin.Base
             }
 
             // --- 第3步: 解析动态列表项 ---
-            this._allListItems.Clear();
-            this._currentDisplayedItemActionNames.Clear();
-            this._folderDialConfigs.Clear(); 
-            this._filterOptions.Clear();
-            this._currentFilterValues.Clear();
-            this._favoriteItemDisplayNames.Clear();
-            
-            // this._lastPressTimes.Clear(); // 移除旧的
-            
-            this._localButtonIds.Clear();
-            this._localIdToGlobalActionParameter_Buttons.Clear();
-            this._localIdToConfig_Buttons.Clear();
-            
-            this._parameterDialCurrentIndexes.Clear();
-            
-            // this._lastTriggerPressTimes.Clear(); // 移除旧的
-            // this._lastCombineButtonPressTimes.Clear(); // 移除旧的
+            this._allListItems.Clear(); // 清理旧的列表项是正确的
+            // this._currentDisplayedItemActionNames.Clear(); // 将在 UpdateDisplayedDynamicItemsList 中更新
 
-            // 【新增】清理新的Timer相关字典
-            foreach (var timerEntry in this._folderItemResetTimers)
-            {
-                timerEntry.Value.Stop();
-                timerEntry.Value.Elapsed -= (sender, e) => HandleFolderItemResetTimerElapsed(sender, e, timerEntry.Key); // 尝试移除，但对于lambda可能无效，Dispose是关键
-                timerEntry.Value.Dispose();
-            }
-            this._folderItemResetTimers.Clear();
-            this._folderItemTemporaryActiveStates.Clear();
+            // 【移除对以下集合的错误清理】
+            // this._folderDialConfigs.Clear();             // !错误
+            // this._filterOptions.Clear();                 // !错误 (已在上面处理或不应在此)
+            // this._currentFilterValues.Clear();           // !错误 (已在上面处理或不应在此)
+            // this._favoriteItemDisplayNames.Clear();      // !错误 (已在上面处理或不应在此)
+            
+            // 【移除对高亮状态字典的全局清理，这些应在Dispose或更细粒度管理】
+            // foreach (var timerEntry in this._folderItemResetTimers) { timerEntry.Value.Dispose(); }
+            // this._folderItemResetTimers.Clear();
+            // this._folderItemTemporaryActiveStates.Clear();
 
-            var processedTopLevelKeys = new HashSet<String> { "Favorite" }; // "All" 不是顶层键，是选项值
-            foreach (var filterNameInDataSource in this._filterOptions.Keys)
+            var processedTopLevelKeys = new HashSet<String> { "Favorite" }; 
+            foreach (var filterNameInDataSource in this._filterOptions.Keys) // 确保在 this._filterOptions 填充后使用
             {
                 processedTopLevelKeys.Add(filterNameInDataSource); // 记录已作为过滤器处理的顶层键
             }
