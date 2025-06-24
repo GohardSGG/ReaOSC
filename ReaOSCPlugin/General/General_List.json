@@ -83,6 +83,14 @@
       "DisplayName": "Phase Align",
       "ActionType": "ToggleButton",
       "Title": "Phase Align"
+    },
+    {
+      "DisplayName": "Fixed Lane",
+      "ActionType": "TickDial",
+      "Title": "Lane",
+      "IncreaseOSCAddress": "Track/Lane_Down",
+      "DecreaseOSCAddress": "Track/Lane_Up",
+      "ResetOSCAddress": "Track/Lane"
     }
   ],
   "MIDI": [
@@ -375,6 +383,13 @@
       "ActiveColor": "#FFFFFF",
       "Text": "{mode}",
       "TextColor": "#88E2FF"
+    },
+    {
+      "DisplayName": "Envelope Select",
+      "ActionType": "TickDial",
+      "Title": "Env",
+      "IncreaseOSCAddress": "Down",
+      "DecreaseOSCAddress": "Up"
     }
   ],
   "General": [
@@ -528,23 +543,27 @@
   "Track": [
     {
       "DisplayName": "Solo",
-      "ActionType": "ToggleButton"
+      "ActionType": "ToggleButton",
+      "ActiveColor": "#FF8F15"
     },
     {
       "DisplayName": "Mute",
-      "ActionType": "ToggleButton"
+      "ActionType": "ToggleButton",
+      "ActiveColor": "#88E2FF"
     },
     {
       "DisplayName": "Arm",
       "ActionType": "ToggleButton",
       "Text": "Record",
-      "TextColor": "#88E2FF"
+      "TextColor": "#88E2FF",
+      "ActiveColor": "#FF0000"
     },
     {
       "DisplayName": "Monitor",
       "ActionType": "ToggleButton",
       "Text": "Record",
-      "TextColor": "#88E2FF"
+      "TextColor": "#88E2FF",
+      "ActiveColor": "#00FF00"
     },
     {
       "DisplayName": "Track Template",
@@ -614,6 +633,13 @@
         "+12"
       ],
       "UnitDefault": "0"
+    },
+    {
+      "DisplayName": "Track Select",
+      "ActionType": "TickDial",
+      "Title": "Track",
+      "IncreaseOSCAddress": "Down",
+      "DecreaseOSCAddress": "Up"
     }
   ]
 }

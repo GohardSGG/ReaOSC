@@ -735,20 +735,14 @@ namespace Loupedeck.ReaOSCPlugin.Base
 
         public override void ApplyAdjustment(String actionParameter, Int32 ticks)
         {
-            // SDK 传入的 actionParameter 通常是 CreateAdjustmentName(localId) 中的 localId
             var localDialId = actionParameter; 
-
             var dialConfig = this._folderDialConfigs.FirstOrDefault(dc => this.GetLocalDialId(dc) == localDialId);
 
-            if (dialConfig == null || dialConfig.ActionType == "Placeholder")
-            {
-                // PluginLog.Warning($"[{this.DisplayName}] ApplyAdjustment: 未找到配置或为Placeholder: '{localDialId}'.");
-                return; 
-            }
+            if (dialConfig == null || dialConfig.ActionType == "Placeholder") { return; } 
             
-            Boolean listChanged = false;       // 标记按钮/列表项是否因调整而改变 (用于 ButtonActionNamesChanged)
-            Boolean valueChanged = false;      // 标记旋钮本身显示的值是否改变 (用于 AdjustmentValueChanged)
-            Boolean pageCountChanged = false;  // 标记总页数是否因过滤器调整而改变
+            Boolean listChanged = false;      
+            Boolean valueChanged = false;     
+            Boolean pageCountChanged = false; 
 
             switch (dialConfig.ActionType)
             {
@@ -800,76 +794,42 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     }
                     break;
 
-                // 对于以下类型，我们将逻辑委托给 Logic_Manager_Base
-                // 注意：需要确保 Logic_Manager_Base.ProcessDialAdjustment 能够通过 localDialId (或其对应的全局参数) 正确处理
                 case "ParameterDial":
                 case "ToggleDial":
                 case "2ModeTickDial":
                 case "TickDial":
-                case "ControlDial": // 【新增】处理ControlDial旋转
-                    // 首先，我们需要从 localDialId 找到对应的全局 actionParameter，因为 Logic_Manager 使用全局参数作为键
-                    // 这个查找逻辑可能比较复杂，因为 localDialId 是文件夹内部的，而 Logic_Manager 的键是全局唯一的。
-                    // 一个简单的（但不完全健壮的）假设是 localDialId 就是全局参数的一部分，或者需要拼接。
-                    // 更好的方法是在 PopulateStaticButtonMappings 或 InitializeDynamicListData (如果旋钮也被视为一种全局可配置项时) 
-                    // 就建立 localDialId 到 globalActionParameter 的映射。但旋钮通常不通过这种方式注册到 Logic_Manager 的 _allConfigs。
-                    // 另一种方式是，Logic_Manager.ProcessDialAdjustment 接受 ButtonConfig 对象。
-
-                    // 暂时采用一种简化的查找方式：尝试基于 localDialId 和当前文件夹的 DisplayName (作为GroupName) 去 Logic_Manager 查找对应的配置项
-                    // 这假设 Logic_Manager 中的旋钮配置键格式为 "/FolderName_DialName/DialAction" 或类似
-                    // String potentialGlobalKey = $"/{this.DisplayName.Replace(" ", "_")}_{dialConfig.DisplayName.Replace(" ", "_")}/DialAction"; // 这是一个猜测
-                    // 更好的方法是，如果这些旋钮的逻辑要由LogicManager处理，它们应该在LogicManager中有对应的注册条目和全局Key
-                    // 旧Dynamic_Folder_Base的ParameterDial是在本地ApplyAdjustment中处理的
-                    // 旧General_Dial_Base是调用Logic_Manager.ProcessDialAdjustment(config, ticks, actionParameter, this._lastEventTimes);
-                    // 其中actionParameter已经是全局的。
-                    
-                    // 现在的localDialId就是ApplyAdjustment的直接参数actionParameter
-                    // 我们需要一个方法从这个文件夹内的localDialId找到LogicManager的全局Key
-                    // 这个转换可能需要在 Logic_Manager_Base.GetAllConfigs() 中查找，匹配 GroupName 和 DisplayName，以及 ActionType
+                case "ControlDial": 
+                    String groupNameToMatchForGlobalLookup = dialConfig.GroupName ?? this.DisplayName;
                     var globalParamKvp = Logic_Manager_Base.Instance.GetAllConfigs().FirstOrDefault(kvp => 
-                        (kvp.Value.GroupName == this.DisplayName || kvp.Value.GroupName == dialConfig.GroupName) && // GroupName可能是在JSON中明确指定的，或默认为文件夹名
+                        kvp.Value.GroupName == groupNameToMatchForGlobalLookup && 
                         kvp.Value.DisplayName == dialConfig.DisplayName && 
                         kvp.Value.ActionType == dialConfig.ActionType
                     );
 
                     if (!EqualityComparer<KeyValuePair<String, ButtonConfig>>.Default.Equals(globalParamKvp, default))
                     {
-                        String globalActionParameter = globalParamKvp.Key;
-                        Logic_Manager_Base.Instance.ProcessDialAdjustment(globalActionParameter, ticks);
-                        // Logic_Manager_Base.ProcessDialAdjustment 内部应负责调用 CommandStateNeedsRefresh
-                        // 这会触发 OnCommandStateNeedsRefresh, 进而调用 AdjustmentValueChanged
-                        // 所以这里可能不需要直接调用 this.AdjustmentValueChanged(actionParameter);
-                        // 但如果Logic_Manager不保证刷新本旋钮，则需要调用。ToggleDial等状态变化会触发。ParameterDial和ControlDial的值变化需要本地刷新。
-                        if(dialConfig.ActionType == "ParameterDial" || dialConfig.ActionType == "ControlDial")
+                        String globalActionParameterForLogicManager = globalParamKvp.Key;
+                        Logic_Manager_Base.Instance.ProcessDialAdjustment(globalActionParameterForLogicManager, ticks);
+                        if(dialConfig.ActionType == "ParameterDial" || dialConfig.ActionType == "ControlDial" || dialConfig.ActionType == "ToggleDial" || dialConfig.ActionType == "2ModeTickDial")
                         {
-                            valueChanged = true;
+                            valueChanged = true; // These types change their display value on adjustment
                         }
-
                     }
                     else
                     {
-                        // 如果在Logic_Manager中找不到对应的全局配置，对于ParameterDial，可以尝试在本地处理
+                        // Fallback for ParameterDial if not found globally (as per previous logic)
                         if (dialConfig.ActionType == "ParameterDial" && dialConfig.Parameter != null && dialConfig.Parameter.Any())
                         {
-                            if (!this._parameterDialCurrentIndexes.TryGetValue(localDialId, out var currentIndex))
-                            {
-                                currentIndex = 0; // 理论上构造函数已初始化
-                            }
+                            if (!this._parameterDialCurrentIndexes.TryGetValue(localDialId, out var currentIndex)) { currentIndex = 0; }
                             Int32 newParamIndex = (currentIndex + ticks + dialConfig.Parameter.Count) % dialConfig.Parameter.Count;
-                            if (newParamIndex < 0)
-                            {
-                                newParamIndex += dialConfig.Parameter.Count;
-                            }
-
-
+                            if (newParamIndex < 0) { newParamIndex += dialConfig.Parameter.Count; }
                             this._parameterDialCurrentIndexes[localDialId] = newParamIndex;
                             valueChanged = true;
                             PluginLog.Info($"[{this.DisplayName}] ParameterDial '{dialConfig.DisplayName}' (本地处理) 值变为索引 {newParamIndex}: '{dialConfig.Parameter[newParamIndex]}'.");
-                            // 如果ParameterDial的值改变需要更新关联的ParameterButton，Logic_Manager会通过CommandStateNeedsRefresh处理
                         }
-                        // ControlDial 的核心逻辑完全在 Logic_Manager_Base 中，如果找不到全局配置，则不应在本地处理
-                        else if (dialConfig.ActionType != "ControlDial") 
-                        {
-                            PluginLog.Warning($"[{this.DisplayName}] ApplyAdjustment: 未能在Logic_Manager中找到旋钮 '{dialConfig.DisplayName}' (Type: {dialConfig.ActionType}) 的全局配置，且无法本地处理。");
+                        else 
+                        { 
+                            PluginLog.Warning($"[{this.DisplayName}] ApplyAdjustment: 未能在Logic_Manager中找到旋钮 '{dialConfig.DisplayName}' (Type: {dialConfig.ActionType}) 的全局配置，且无法本地处理。LocalID: {localDialId}");
                         }
                     }
                     break;
@@ -879,62 +839,33 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     break;
             }
 
-            if(listChanged)
-            {
-                this.ButtonActionNamesChanged(); 
-            }
-            if(valueChanged) // 如果旋钮的显示值改变了
-            {
-                this.AdjustmentValueChanged(actionParameter); 
-            }
-            if(pageCountChanged) // 如果总页数改变了，通知PageDial更新其显示
-            {
-                var pageDialConfig = this._folderDialConfigs.FirstOrDefault(dc => dc.ActionType == "PageDial");
-                if(pageDialConfig != null)
-                {
-                    var pageDialLocalId = this.GetLocalDialId(pageDialConfig);
-                    if(!String.IsNullOrEmpty(pageDialLocalId))
-                    {
-                        this.AdjustmentValueChanged(pageDialLocalId);
-                    }
-                }
+            if(listChanged) { this.ButtonActionNamesChanged(); } 
+            if(valueChanged) { this.AdjustmentValueChanged(actionParameter); } 
+            if(pageCountChanged) 
+            { 
+                var pageDialConfig = this._folderDialConfigs.FirstOrDefault(dc => dc.ActionType == "PageDial"); 
+                if(pageDialConfig != null) { var pageDialLocalId = this.GetLocalDialId(pageDialConfig); if(!String.IsNullOrEmpty(pageDialLocalId)) { this.AdjustmentValueChanged(pageDialLocalId); } }
             }
         }
 
         public override void RunCommand(String actionParameter)
         {
-            String commandLocalIdToLookup = actionParameter; // 对于动态列表项，这将是其全局actionParameter
+            String commandLocalIdToLookup = actionParameter; 
             const String commandPrefix = "plugin:command:"; 
-            if (actionParameter.StartsWith(commandPrefix))
-            {
-                commandLocalIdToLookup = actionParameter.Substring(commandPrefix.Length);
-            }
+            if (actionParameter.StartsWith(commandPrefix)) { commandLocalIdToLookup = actionParameter.Substring(commandPrefix.Length); }
             PluginLog.Info($"[{this.DisplayName}] RunCommand looking for key: '{commandLocalIdToLookup}' (Original: '{actionParameter}')");
 
-            // 1. 检查是否为旋钮按下 (这部分逻辑已相对独立，暂不修改其高亮，除非有特别需求)
             var dialConfigPressed = this._folderDialConfigs.FirstOrDefault(dc => this.GetLocalDialId(dc) == commandLocalIdToLookup);
             if (dialConfigPressed != null)
             {
-                // ... (旋钮按下逻辑保持不变) ...
-                if (dialConfigPressed.ActionType == "Placeholder") 
-                { 
-                    PluginLog.Info($"[{this.DisplayName}] Placeholder旋钮 '{dialConfigPressed.DisplayName}' 被按下，无操作。");
-                    return; 
-                }
-
-                if (dialConfigPressed.ActionType == "NavigationDial" && dialConfigPressed.DisplayName == "Back")
-                {
-                    PluginLog.Info($"[{this.DisplayName}] 'Back' NavigationDial (localId: '{commandLocalIdToLookup}') 被按下。关闭文件夹。");
-                    this.Close();
-                    return;
-                }
+                if (dialConfigPressed.ActionType == "Placeholder") { PluginLog.Info($"[{this.DisplayName}] Placeholder旋钮 '{dialConfigPressed.DisplayName}' 被按下，无操作。"); return; } 
+                if (dialConfigPressed.ActionType == "NavigationDial" && dialConfigPressed.DisplayName == "Back") { this.Close(); return; }
                 
-                if (dialConfigPressed.ActionType == "ToggleDial" || 
-                    dialConfigPressed.ActionType == "2ModeTickDial" ||
-                    dialConfigPressed.ActionType == "ControlDial")
+                if (dialConfigPressed.ActionType == "ToggleDial" || dialConfigPressed.ActionType == "2ModeTickDial" || dialConfigPressed.ActionType == "ControlDial")
                 {
+                    String groupNameToMatchForGlobalLookup = dialConfigPressed.GroupName ?? this.DisplayName;
                     var globalParamKvp = Logic_Manager_Base.Instance.GetAllConfigs().FirstOrDefault(kvp => 
-                        (kvp.Value.GroupName == this.DisplayName || kvp.Value.GroupName == dialConfigPressed.GroupName) && 
+                        kvp.Value.GroupName == groupNameToMatchForGlobalLookup && 
                         kvp.Value.DisplayName == dialConfigPressed.DisplayName && 
                         kvp.Value.ActionType == dialConfigPressed.ActionType
                     );
@@ -948,10 +879,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                         PluginLog.Info($"[{this.DisplayName}] 已处理旋钮 '{dialConfigPressed.DisplayName}' (Type: {dialConfigPressed.ActionType}) 的按下事件，通过Logic_Manager。全球参数: {globalDialActionParameter}");
                         return; 
                     }
-                    else
-                    { 
-                        PluginLog.Warning($"[{this.DisplayName}] 未能在Logic_Manager中找到旋钮 '{dialConfigPressed.DisplayName}' (Type: {dialConfigPressed.ActionType}) 的全局配置以处理按下事件。Local ID: {commandLocalIdToLookup}");
-                    }
+                    else { PluginLog.Warning($"[{this.DisplayName}] 未能在Logic_Manager中找到旋钮 '{dialConfigPressed.DisplayName}' (Type: {dialConfigPressed.ActionType}) 的全局配置以处理按下事件。Local ID: {commandLocalIdToLookup}"); }
                 }
             }
 
@@ -1252,7 +1180,8 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 case "ControlDial": 
                     if (!String.IsNullOrEmpty(globalParamForState)) 
                     {
-                        valueTextToDisplay = logicManager.GetControlDialValue(globalParamForState).ToString();
+                        // 【修正】调用 GetControlDialDisplayText 来获取包含单位的、格式化好的文本
+                        valueTextToDisplay = logicManager.GetControlDialDisplayText(globalParamForState); 
                     }
                     else
                     {
@@ -1298,12 +1227,15 @@ namespace Loupedeck.ReaOSCPlugin.Base
             }
             return dialCfg.Parameter?.FirstOrDefault() ?? "N/A"; 
         }
-        private String GetGlobalParamForDialState(ButtonConfig dialCfg)
+        private String GetGlobalParamForDialState(ButtonConfig dialCfgFromFolder) // dialCfgFromFolder 是从 _folderDialConfigs 来的原始配置
         {
-             var kvp = Logic_Manager_Base.Instance.GetAllConfigs().FirstOrDefault(c => 
-                (c.Value.GroupName == this.DisplayName || c.Value.GroupName == dialCfg.GroupName) && 
-                c.Value.DisplayName == dialCfg.DisplayName && 
-                c.Value.ActionType == dialCfg.ActionType );
+            // 如果原始配置中没有GroupName，则它在 Logic_Manager_Base 中注册时会被赋予文件夹的DisplayName作为GroupName
+            String groupNameToMatchInLogicManager = dialCfgFromFolder.GroupName ?? this.DisplayName;
+
+            var kvp = Logic_Manager_Base.Instance.GetAllConfigs().FirstOrDefault(c => 
+                c.Value.GroupName == groupNameToMatchInLogicManager && 
+                c.Value.DisplayName == dialCfgFromFolder.DisplayName && 
+                c.Value.ActionType == dialCfgFromFolder.ActionType);
             return !EqualityComparer<KeyValuePair<String, ButtonConfig>>.Default.Equals(kvp, default) ? kvp.Key : null;
         }
 

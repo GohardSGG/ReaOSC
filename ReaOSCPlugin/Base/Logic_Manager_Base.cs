@@ -1638,23 +1638,20 @@ namespace Loupedeck.ReaOSCPlugin.Base
             }
             parsedDialConfig.IsParameterIntegerBased = allParamsLookLikeIntegers;
 
-            // 处理 ParameterDefault
+            // 首先，基于 config.ParameterDefault (参数刻度, 0.0-1.0f 或整数) 设置 DefaultValue
             parsedDialConfig.DefaultValue = initialParameterDefaultValue; 
             if (!String.IsNullOrEmpty(config.ParameterDefault))
             {
                 String defaultParamStr = config.ParameterDefault;
-                var defaultIsInt = Int32.TryParse(defaultParamStr, out _) && !defaultParamStr.Contains(".") && !defaultParamStr.ToLowerInvariant().Contains("e");
+                bool defaultIsIntStyled = Int32.TryParse(defaultParamStr, out _) && !defaultParamStr.Contains(".") && !defaultParamStr.ToLowerInvariant().Contains("e");
 
                 if (Single.TryParse(defaultParamStr, NumberStyles.Any, CultureInfo.InvariantCulture, out var explicitParamDefaultFloat))
                 {
-                    // 如果 Parameter 数组本身是整数基准的，那么 ParameterDefault 也应被视为整数基准，即使它可以被解析为浮点数
-                    // 但如果 ParameterDefault 本身包含小数点，则覆盖 IsParameterIntegerBased 的判断（不常见，但处理边缘情况）
-                    if (parsedDialConfig.IsParameterIntegerBased && !defaultIsInt && (defaultParamStr.Contains(".") || defaultParamStr.ToLowerInvariant().Contains("e")))
+                    if (parsedDialConfig.IsParameterIntegerBased && !defaultIsIntStyled && (defaultParamStr.Contains(".") || defaultParamStr.ToLowerInvariant().Contains("e")))
                     {
-                        PluginLog.Warning($"[LogicManager] ControlDial '{config.DisplayName}': Parameters appear integer-based, but ParameterDefault ('{defaultParamStr}') looks like a float. The dial will be treated as float-based due to ParameterDefault.");
-                        parsedDialConfig.IsParameterIntegerBased = false;
+                        PluginLog.Warning($"[LogicManager] ControlDial '{config.DisplayName}': Parameters appear integer-based, but ParameterDefault ('{defaultParamStr}') looks like a float. The dial will be treated as float-based for default value purposes if not overridden by UnitDefault.");
+                        // No change to IsParameterIntegerBased itself, just influences how this default is interpreted if not overridden
                     }
-
                     if (parsedDialConfig.Mode == ControlDialMode.Continuous)
                     {
                         parsedDialConfig.DefaultValue = Math.Clamp(explicitParamDefaultFloat, parsedDialConfig.MinValue, parsedDialConfig.MaxValue);
@@ -1662,136 +1659,102 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     else // Discrete
                     {
                         const Single tolerance = 0.0001f;
-                        var foundInDiscrete = false;
-                        foreach(var discreteVal in parsedDialConfig.DiscreteValues)
+                        bool foundInDiscrete = parsedDialConfig.DiscreteValues?.Any(dv => Math.Abs(explicitParamDefaultFloat - dv) < tolerance) ?? false;
+                        if (foundInDiscrete)
                         {
-                            if (Math.Abs(explicitParamDefaultFloat - discreteVal) < tolerance)
-                            {
-                                parsedDialConfig.DefaultValue = discreteVal; 
-                                foundInDiscrete = true;
-                                break;
-                            }
+                            // 如果找到，则设置为列表中的精确值以避免微小差异
+                            parsedDialConfig.DefaultValue = parsedDialConfig.DiscreteValues.First(dv => Math.Abs(explicitParamDefaultFloat - dv) < tolerance);
                         }
-                        if(!foundInDiscrete)
+                        else
                         {
                              PluginLog.Warning($"[LogicManager] ControlDial '{config.DisplayName}' ParameterDefault '{defaultParamStr}' not found (with tolerance) in discrete values. Using first discrete value or initial calc as default.");
-                             // DefaultValue 保持为 initialParameterDefaultValue
                         }
                     }
                 }
-                else
-                {
-                    PluginLog.Warning($"[LogicManager] ControlDial '{config.DisplayName}': Could not parse ParameterDefault '{defaultParamStr}'. Using initial default.");
-                }
+                else { PluginLog.Warning($"[LogicManager] ControlDial '{config.DisplayName}': Could not parse ParameterDefault '{defaultParamStr}'. Using initial default."); }
             }
             
-            // Unit 和 UnitDefault 的处理 (此部分逻辑不变，但会基于新的 DefaultValue 类型进行操作)
-            if (config.Unit != null && config.Unit.Count >= 3)
+            // 接下来，处理 Unit 和 UnitDefault (这可能会覆盖上面基于 ParameterDefault 设置的 DefaultValue)
+            if (config.Unit != null && config.Unit.Any() && !String.IsNullOrEmpty(config.Unit[0]))
             {
-                parsedDialConfig.DisplayUnitString = config.Unit[0]; // 首先设置 DisplayUnitString
+                parsedDialConfig.DisplayUnitString = config.Unit[0];
+                // 对于L&R这类，UnitLabel可以为空，因为显示格式是L100/C/R100
+                // 对于dB这类，UnitLabel就是dB
+                parsedDialConfig.UnitLabel = parsedDialConfig.DisplayUnitString.Equals("L&R", StringComparison.OrdinalIgnoreCase) ? "" : parsedDialConfig.DisplayUnitString;
+                parsedDialConfig.HasUnitConversion = true; // 只要Unit[0]有效，就认为有单位转换意图
 
-                if (parsedDialConfig.DisplayUnitString.Equals("L&R", StringComparison.OrdinalIgnoreCase))
+                if (config.Unit.Count >= 3)
                 {
-                    parsedDialConfig.HasUnitConversion = true;
-                    parsedDialConfig.UnitLabel = ""; // L&R 的值是自解释的，不需要额外标签
-
-                    // 解析 UnitMin from config.Unit[1] (例如 "L100")
-                    if (config.Unit[1] != null && config.Unit[1].ToUpperInvariant().StartsWith("L") &&
-                        Single.TryParse(config.Unit[1].Substring(1), NumberStyles.Any, CultureInfo.InvariantCulture, out var lVal))
+                    if (TryParseSingleExtended(config.Unit[1], out var unitMinNumeric) &&
+                        TryParseSingleExtended(config.Unit[2], out var unitMaxNumeric))
                     {
-                        parsedDialConfig.UnitMin = -lVal;
+                        parsedDialConfig.UnitMin = unitMinNumeric; 
+                        parsedDialConfig.UnitMax = unitMaxNumeric; 
                     }
                     else
                     {
-                        PluginLog.Warning($"[LogicManager] ControlDial '{config.DisplayName}' L&R UnitMin '{config.Unit[1]}' 无效。默认设为 -100f。");
-                        parsedDialConfig.UnitMin = -100f; // 回退值
+                        PluginLog.Warning($"[LogicManager] ControlDial '{config.DisplayName}' (action: {actionParameter}) Unit Min/Max strings ('{config.Unit[1]}', '{config.Unit[2]}') not standard numbers. Expected for some types (e.g. L&R). UnitMin/Max default to 0f.");
+                        parsedDialConfig.UnitMin = 0f; 
+                        parsedDialConfig.UnitMax = 0f;
                     }
-
-                    // 解析 UnitMax from config.Unit[2] (例如 "R100")
-                    if (config.Unit[2] != null && config.Unit[2].ToUpperInvariant().StartsWith("R") &&
-                        Single.TryParse(config.Unit[2].Substring(1), NumberStyles.Any, CultureInfo.InvariantCulture, out var rVal))
-                    {
-                        parsedDialConfig.UnitMax = rVal;
-                    }
-                    else
-                    {
-                        PluginLog.Warning($"[LogicManager] ControlDial '{config.DisplayName}' L&R UnitMax '{config.Unit[2]}' 无效。默认设为 100f。");
-                        parsedDialConfig.UnitMax = 100f; // 回退值
-                    }
-                    PluginLog.Info($"[LogicManager] ControlDial '{config.DisplayName}' (action: {actionParameter}) 配置为 L&R 单位转换。Unit: {parsedDialConfig.DisplayUnitString}, Min: {parsedDialConfig.UnitMin}, Max: {parsedDialConfig.UnitMax}");
-
-                    // 解析 UnitDefault from config.UnitDefault (例如 "C")
-                    if (!String.IsNullOrEmpty(config.UnitDefault))
-                    {
-                        if (config.UnitDefault.ToUpperInvariant() == "C")
-                        {
-                            parsedDialConfig.ParsedUnitDefault = 0f;
-                        }
-                        // 也允许数字 "0" 代表 L&R 的中间值
-                        else if (Single.TryParse(config.UnitDefault, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsedNumericDef) && parsedNumericDef == 0f)
-                        {
-                             parsedDialConfig.ParsedUnitDefault = 0f;
-                        }
-                        else
-                        {
-                            PluginLog.Warning($"[LogicManager] ControlDial '{config.DisplayName}' L&R UnitDefault '{config.UnitDefault}' 无效。默认设为 0f (Center)。");
-                            parsedDialConfig.ParsedUnitDefault = 0f; // 回退到中间值
-                        }
-                        PluginLog.Info($"[LogicManager] ControlDial '{config.DisplayName}' (action: {actionParameter}) L&R ParsedUnitDefault (单位刻度): {parsedDialConfig.ParsedUnitDefault}.");
-
-                        // 将单位默认值应用到参数刻度的 DefaultValue
-                        // 这一步依赖 ConvertUnitToParameter 方法后续的更新以支持 L&R
-                        Single newDefaultValue = this.ConvertUnitToParameter(parsedDialConfig.ParsedUnitDefault, parsedDialConfig);
-                        PluginLog.Info($"[LogicManager] ControlDial '{config.DisplayName}' (action: {actionParameter}): L&R UnitDefault ('{config.UnitDefault}' -> 单位刻度 {parsedDialConfig.ParsedUnitDefault}) 被转换为参数刻度 DefaultValue。旧参数 DefaultValue: {parsedDialConfig.DefaultValue:F3}, 新参数 DefaultValue: {newDefaultValue:F3}.");
-                        parsedDialConfig.DefaultValue = newDefaultValue;
-                    }
-                    // else: 如果没有提供 UnitDefault，则 DefaultValue 保持基于 Parameter 数组的初始计算值。
-                    // 例如 Pan 的 Parameter 为 ["true", "-100", "100"], 初始 DefaultValue 为 -100f。
-                    // 如果 UnitDefault 为 "C", ParsedUnitDefault 为 0f, ConvertUnitToParameter(0f, L&R_config) 应返回 0f, 因此 DefaultValue 会被更新为 0f。
-                }
-                else if (TryParseSingleExtended(config.Unit[1], out var unitMin) &&
-                    TryParseSingleExtended(config.Unit[2], out var unitMax))
-                {
-                    parsedDialConfig.UnitLabel = parsedDialConfig.DisplayUnitString; // 其他类型单位的默认标签
-                    parsedDialConfig.HasUnitConversion = true;
-                    parsedDialConfig.UnitMin = unitMin;
-                    parsedDialConfig.UnitMax = unitMax;
-                    PluginLog.Info($"[LogicManager] ControlDial '{config.DisplayName}' (action: {actionParameter}) configured for Unit Conversion. Unit: {parsedDialConfig.DisplayUnitString}, Min: {parsedDialConfig.UnitMin}, Max: {parsedDialConfig.UnitMax}");
-
-                    if (!String.IsNullOrEmpty(config.UnitDefault))
-                    {
-                        if (TryParseSingleExtended(config.UnitDefault, out var parsedUnitDef))
-                        {
-                            parsedDialConfig.ParsedUnitDefault = parsedUnitDef;
-                            PluginLog.Info($"[LogicManager] ControlDial '{config.DisplayName}' (action: {actionParameter}) ParsedUnitDefault (unit scale): {parsedDialConfig.ParsedUnitDefault}.");
-                            if(parsedDialConfig.HasUnitConversion) 
-                            {
-                                Single newDefaultValue = this.ConvertUnitToParameter(parsedDialConfig.ParsedUnitDefault, parsedDialConfig);
-                                PluginLog.Info($"[LogicManager] ControlDial '{config.DisplayName}' (action: {actionParameter}): UnitDefault ('{config.UnitDefault}' -> unit scale {parsedDialConfig.ParsedUnitDefault}) being converted to parameter scale DefaultValue. Old param DefaultValue: {parsedDialConfig.DefaultValue:F3}, New (target) param DefaultValue: {newDefaultValue:F3}.");
-                                parsedDialConfig.DefaultValue = newDefaultValue; // DefaultValue (0.0-1.0f) 被单位默认值覆盖
-                            }
-                            else
-                            {
-                                PluginLog.Warning($"[LogicManager] ControlDial '{config.DisplayName}' (action: {actionParameter}): UnitDefault was parsed, but HasUnitConversion is false. Cannot apply UnitDefault to parameter scale DefaultValue. Current param scale DefaultValue is {parsedDialConfig.DefaultValue}");
-                            }
-                        }
-                        else
-                        {
-                            PluginLog.Warning($"[LogicManager] ControlDial '{config.DisplayName}' (action: {actionParameter}) has invalid UnitDefault string: '{config.UnitDefault}'. UnitDefault will not be applied.");
-                        }
-                    }
+                    PluginLog.Info($"[LogicManager] ControlDial '{config.DisplayName}' (action: {actionParameter}) configured with Unit: {parsedDialConfig.DisplayUnitString}, NumericMin: {parsedDialConfig.UnitMin:F1}, NumericMax: {parsedDialConfig.UnitMax:F1}, HasUnitConversion: {parsedDialConfig.HasUnitConversion}");
                 }
                 else
                 {
-                    PluginLog.Warning($"[LogicManager] ControlDial '{config.DisplayName}' (action: {actionParameter}) has invalid Unit Min/Max strings: '{config.Unit[1]}', '{config.Unit[2]}' for unit type '{parsedDialConfig.DisplayUnitString}'. Unit conversion will NOT be enabled.");
-                    parsedDialConfig.HasUnitConversion = false; 
+                    PluginLog.Warning($"[LogicManager] ControlDial '{config.DisplayName}' (action: {actionParameter}) 'Unit' array has < 3 elements. Expected [\"Name\", \"MinStr\", \"MaxStr\"]. Using Unit Name '{parsedDialConfig.DisplayUnitString}'. Numeric UnitMin/Max default to 0f.");
+                    parsedDialConfig.UnitMin = 0f; 
+                    parsedDialConfig.UnitMax = 0f;
+                     PluginLog.Info($"[LogicManager] ControlDial '{config.DisplayName}' (action: {actionParameter}) configured with Unit: {parsedDialConfig.DisplayUnitString}, HasUnitConversion: {parsedDialConfig.HasUnitConversion} (Min/Max from Unit array missing/invalid).");
+                }
+
+                // 处理 UnitDefault，它会覆盖 ParameterDefault 设定的 DefaultValue
+                if (!String.IsNullOrEmpty(config.UnitDefault))
+                {
+                    Single newDefaultValueBasedOnUnit = parsedDialConfig.DefaultValue; // 先保留当前值
+                    bool unitDefaultApplied = false;
+
+                    if (parsedDialConfig.DisplayUnitString.Equals("L&R", StringComparison.OrdinalIgnoreCase))
+                    {
+                        string ud = config.UnitDefault.ToUpperInvariant();
+                        if (ud == "C") { newDefaultValueBasedOnUnit = 0.0f; unitDefaultApplied = true; }
+                        else if (ud.StartsWith("L") && Single.TryParse(ud.Substring(1), NumberStyles.Any, CultureInfo.InvariantCulture, out var lVal))
+                            { newDefaultValueBasedOnUnit = -lVal; unitDefaultApplied = true; }
+                        else if (ud.StartsWith("R") && Single.TryParse(ud.Substring(1), NumberStyles.Any, CultureInfo.InvariantCulture, out var rVal))
+                            { newDefaultValueBasedOnUnit = rVal; unitDefaultApplied = true; }
+                        else
+                            PluginLog.Warning($"[LogicManager] ControlDial '{config.DisplayName}' (L&R) has unrecognised UnitDefault: '{config.UnitDefault}'");
+                    }
+                    else if (TryParseSingleExtended(config.UnitDefault, out var parsedNumericUnitDefault)) // 对于dB等期望数字UnitDefault的
+                    {
+                        parsedDialConfig.ParsedUnitDefault = parsedNumericUnitDefault; // 存储单位刻度的默认值
+                        // 使用 ConvertUnitToParameter 将单位刻度的默认值转回参数刻度 (0.0-1.0 或 整数范围)
+                        newDefaultValueBasedOnUnit = this.ConvertUnitToParameter(parsedDialConfig.ParsedUnitDefault, parsedDialConfig);
+                        unitDefaultApplied = true;
+                        PluginLog.Info($"[LogicManager] ControlDial '{config.DisplayName}' UnitDefault ('{config.UnitDefault}' -> unit val {parsedDialConfig.ParsedUnitDefault}) converted to param scale target: {newDefaultValueBasedOnUnit:F3}.");
+                    }
+                    else
+                    {
+                        PluginLog.Warning($"[LogicManager] ControlDial '{config.DisplayName}' has invalid UnitDefault string: '{config.UnitDefault}' for unit type '{parsedDialConfig.DisplayUnitString}'. UnitDefault will not be applied.");
+                    }
+
+                    if (unitDefaultApplied)
+                    {
+                        // 确保最终的DefaultValue在参数自身的Min/Max范围内，并符合整数特性（如果适用）
+                        if (parsedDialConfig.IsParameterIntegerBased) 
+                        { 
+                            newDefaultValueBasedOnUnit = (Single)Math.Round(newDefaultValueBasedOnUnit);
+                        }
+                        parsedDialConfig.DefaultValue = Math.Clamp(newDefaultValueBasedOnUnit, parsedDialConfig.MinValue, parsedDialConfig.MaxValue);
+                        PluginLog.Info($"[LogicManager] ControlDial '{config.DisplayName}': ParameterDefault was '{initialParameterDefaultValue:F3}'. UnitDefault ('{config.UnitDefault}') applied, resulting in final ParamDefault: {parsedDialConfig.DefaultValue:F3}");
+                    }
                 }
             }
-            else if (config.Unit != null && config.Unit.Any()) 
+            else if (config.Unit != null && config.Unit.Any() && String.IsNullOrEmpty(config.Unit[0]))
             {
-                 String expectedFormatLiteral = "[\"Name\", \"Min\", \"Max\"]";
-                 PluginLog.Warning($"[LogicManager] ControlDial '{config.DisplayName}' (action: {actionParameter}) 'Unit' array is present but does not have 3 elements. Expected {expectedFormatLiteral}. Unit conversion will NOT be enabled.");
+                PluginLog.Warning($"[LogicManager] ControlDial '{config.DisplayName}' (action: {actionParameter}) 'Unit' array provided but Unit[0] (Name) is empty. Unit conversion will NOT be enabled.");
+                // parsedDialConfig.HasUnitConversion 保持 false
             }
+            // 如果 config.Unit == null，则 HasUnitConversion 保持默认的 false
 
             this._controlDialConfigs[actionParameter] = parsedDialConfig;
             this._controlDialCurrentValues[actionParameter] = parsedDialConfig.DefaultValue; 

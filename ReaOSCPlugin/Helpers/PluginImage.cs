@@ -67,7 +67,7 @@ namespace Loupedeck.ReaOSCPlugin.Helpers
                         BitmapImage externalIcon = BitmapImage.FromFile(externalIconPath);
                         if (externalIcon != null)
                         {
-                            PluginLog.Info($"[{contextDisplayName ?? "PluginImage"}|TryLoadIcon] 成功从外部目录 '{externalIconPath}' 加载图标 for control '{config.DisplayName}'.");
+                            //PluginLog.Info($"[{contextDisplayName ?? "PluginImage"}|TryLoadIcon] 成功从外部目录 '{externalIconPath}' 加载图标 for control '{config.DisplayName}'.");
                             return externalIcon;
                         }
                         else

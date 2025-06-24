@@ -41,6 +41,23 @@
           "OscAddress": "Track/VCA",
           "Text": "Insert",
           "TextColor": "#88E2FF"
+        },
+        {
+          "ActionType": "Placeholder"
+        },
+        {
+          "ActionType": "Placeholder"
+        },
+        {
+          "ActionType": "Placeholder"
+        },
+        {
+          "ActionType": "Placeholder"
+        },
+        {
+          "ActionType": "NavigationButton",
+          "DisplayName": "Back",
+          "Title": "Back"
         }
       ],
       "Dials": [
@@ -58,11 +75,6 @@
         },
         {
           "ActionType": "Placeholder"
-        },
-        {
-          "ActionType": "NavigationDial",
-          "DisplayName": "Back",
-          "Title": "Back"
         }
       ]
     }
@@ -140,6 +152,17 @@
             "Folder",
             "Auto Channel"
           ]
+        },
+        {
+          "ActionType": "Placeholder"
+        },
+        {
+          "ActionType": "Placeholder"
+        },
+        {
+          "ActionType": "NavigationButton",
+          "DisplayName": "Back",
+          "Title": "Back"
         }
       ],
       "Dials": [
@@ -189,11 +212,6 @@
         },
         {
           "ActionType": "Placeholder"
-        },
-        {
-          "ActionType": "NavigationDial",
-          "DisplayName": "Back",
-          "Title": "Back"
         }
       ]
     }
@@ -406,7 +424,12 @@
             "-100",
             "100"
           ],
-          "ParameterDefault": "0"
+          "Unit": [
+            "L&R",
+            "L100",
+            "R100"
+          ],
+          "UnitDefault": "C"
         },
         {
           "ActionType": "ControlDial",
