@@ -251,9 +251,54 @@
   ],
   "FX": [
     {
+      "ActionType": "ControlDial",
       "DisplayName": "Over Sampling",
+      "ShowTitle": "Yes",
+      "Title": "Sample",
+      "Parameter": [
+        true,
+        "0",
+        "4"
+      ],
+      "Unit": [
+        "Rate",
+        "1x",
+        "16x"
+      ],
+      "UnitDefault": "1x"
+    },
+    {
+      "ActionType": "ControlDial",
+      "DisplayName": "Wet",
+      "ShowTitle": "Yes",
+      "Parameter": [
+        true,
+        "0",
+        "100"
+      ],
+      "Unit": [
+        "%",
+        "0",
+        "100"
+      ],
+      "UnitDefault": "100"
+    },
+    {
+      "DisplayName": "FX Last Touch",
+      "ActionType": "ToggleDial",
+      "OscAddress": "Envelope/Last_Touch",
+      "Title": "Last Touch",
+      "ResetOscAddress": "Envelope/Delete",
+      "ActiveColor": "#00C800",
+      "DeactiveColor": "#C80000"
+    },
+    {
+      "DisplayName": "Add Container",
+      "OscAddress": "Add/Container",
       "ActionType": "TriggerButton",
-      "Title": "Over Sampling"
+      "Title": "Container",
+      "Text": "Add",
+      "TextColor": "#88E2FF"
     },
     {
       "DisplayName": "Show In TCP",
@@ -478,6 +523,12 @@
       "DecreaseOSCAddress_Mode2": "Region/Left",
       "BackgroundColor_Mode2": "#FFFFFF",
       "TitleColor_Mode2": "#000000"
+    },
+    {
+      "DisplayName": "Full Screen",
+      "ActionType": "ToggleDial",
+      "Title": "Full Screen",
+      "ActiveColor": "#88E2FF"
     },
     {
       "DisplayName": "Mixer",

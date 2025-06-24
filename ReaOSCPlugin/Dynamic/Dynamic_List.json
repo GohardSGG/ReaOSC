@@ -1,5 +1,5 @@
-[
-  {
+{
+  "Add Track": {
     "DisplayName": "Add Track",
     "Title": "Track",
     "Text": "Add",
@@ -79,7 +79,7 @@
       ]
     }
   },
-  {
+  "Render": {
     "DisplayName": "Render",
     "Title": "Render",
     "Description": "Access render settings and export",
@@ -216,7 +216,7 @@
       ]
     }
   },
-  {
+  "Effect": {
     "DisplayName": "Effect",
     "Title": "Effect",
     "Text": "Add",
@@ -254,7 +254,7 @@
       ]
     }
   },
-  {
+  "Instrument": {
     "DisplayName": "Instrument",
     "Title": "Instrument",
     "Text": "Add",
@@ -292,7 +292,7 @@
       ]
     }
   },
-  {
+  "Track Name": {
     "DisplayName": "Track Name",
     "Title": "Name",
     "Text": "Add",
@@ -328,7 +328,7 @@
       ]
     }
   },
-  {
+  "Track": {
     "DisplayName": "Track",
     "Title": "Advance",
     "Text": "Track",
@@ -483,7 +483,7 @@
       ]
     }
   },
-  {
+  "Track Routing": {
     "DisplayName": "Track Routing",
     "Title": "Routing",
     "Text": "Track",
@@ -610,56 +610,7 @@
         }
       ],
       "Dials": [
-        {
-          "ActionType": "ControlDial",
-          "DisplayName": "Routing Dial 1",
-          "ShowTitle": "Yes",
-          "Parameter": [
-            true,
-            "-100",
-            "100"
-          ],
-          "ParameterDefault": "100"
-        },
-        {
-          "ActionType": "ControlDial",
-          "DisplayName": "Routing Dial 2",
-          "ShowTitle": "Yes",
-          "Parameter": [
-            true,
-            "-100",
-            "100"
-          ],
-          "ParameterDefault": "100"
-        },
-        {
-          "ActionType": "PageDial",
-          "DisplayName": "Page",
-          "ShowTitle": "Yes"
-        },
-        {
-          "ActionType": "ControlDial",
-          "DisplayName": "Bus Dial 1",
-          "ShowTitle": "Yes",
-          "Parameter": [
-            true,
-            "-100",
-            "100"
-          ],
-          "ParameterDefault": "100"
-        },
-        {
-          "ActionType": "ControlDial",
-          "DisplayName": "Bus Dial 2",
-          "ShowTitle": "Yes",
-          "Parameter": [
-            true,
-            "-100",
-            "100"
-          ],
-          "ParameterDefault": "100"
-        }
       ]
     }
   }
-]
+}
