@@ -1346,221 +1346,116 @@ namespace Loupedeck.ReaOSCPlugin.Base
 
         #region ControlDial Unit Conversion and Display Helpers
 
-        private const Single PARAM_FOR_0DB_CALIBRATION = 0.716f; 
-        private const Single EFFECTIVE_MIN_DB_FOR_INF_INTERPOLATION = -144.0f; 
+        // 移除旧的多项式常量 C1_POLY 至 C5_POLY 和 P_POLY_0DB_TARGET_PARAM
+        // private const Single C1_POLY = 1.373f; ... 等
+        // 定义新的有效最小dB，用于从p=0开始的第一个插值区间
+        private const Single EFFECTIVE_MIN_DB_FOR_0_TO_0005_INTERPOLATION = -144.0f; 
+        // 0dB对应的参数值，仍作为一个重要的参考点和校准点使用
+        private const Single P_AT_0DB = 0.716f;
 
         private Single ConvertParameterToUnit(Single parameterValue, ControlDialParsedConfig dialConfig) 
         {
             if (!dialConfig.HasUnitConversion) { return parameterValue; }
 
-            // 【新增】处理 L&R 单位类型
-            if (dialConfig.DisplayUnitString.Equals("L&R", StringComparison.OrdinalIgnoreCase))
-            {
-                // 对于 L&R 类型，单位值直接映射到参数值，但需要确保在参数范围内。
-                // dialConfig.MinValue 和 dialConfig.MaxValue 是从 Parameter 数组解析得到的参数范围 (例如 -100f, 100f for Pan)。
-                return Math.Clamp(parameterValue, dialConfig.MinValue, dialConfig.MaxValue);
-            }
-            // 【结束新增】
-
-            Single paramMin = dialConfig.MinValue; 
-            Single paramMax = dialConfig.MaxValue; 
-            Single unitMin = dialConfig.UnitMin;   
-            Single unitMax = dialConfig.UnitMax;   
+            Single p_clamped = Math.Clamp(parameterValue, dialConfig.MinValue, dialConfig.MaxValue);
 
             if (dialConfig.DisplayUnitString.Equals("dB", StringComparison.OrdinalIgnoreCase))
             {
-                const Single epsilon = 0.00001f;
-                if (parameterValue <= paramMin + epsilon) { return Single.NegativeInfinity; }
-                if (Math.Abs(parameterValue - 0.005f) < epsilon) { return -132.0f; } // 新增校准点
-                if (Math.Abs(parameterValue - 0.01f) < epsilon) { return -114.0f; }
-                if (Math.Abs(parameterValue - 0.05f) < epsilon) { return -72.0f; }
-                if (Math.Abs(parameterValue - 0.1f)  < epsilon) { return -54.0f; }
-                if (Math.Abs(parameterValue - 0.25f) < epsilon) { return -30.0f; }
-                if (Math.Abs(parameterValue - 0.5f)  < epsilon) { return -11.0f; }
-                if (Math.Abs(parameterValue - PARAM_FOR_0DB_CALIBRATION) < epsilon) { return 0.0f; }
-                if (parameterValue >= paramMax - epsilon) { return unitMax; }
+                const Single epsilon = 0.00001f; // 比较浮点数的容差
 
-                Single effectiveMinInterpolationDb = Single.IsNegativeInfinity(unitMin) ? EFFECTIVE_MIN_DB_FOR_INF_INTERPOLATION : unitMin;
+                // 精确匹配校准点（优先处理）
+                if (p_clamped <= dialConfig.MinValue + epsilon) { return Single.NegativeInfinity; }
+                if (Math.Abs(p_clamped - 0.005f) < epsilon) { return -132.0f; }
+                if (Math.Abs(p_clamped - 0.01f)  < epsilon) { return -114.0f; }
+                if (Math.Abs(p_clamped - 0.05f)  < epsilon) { return -72.0f; }
+                if (Math.Abs(p_clamped - 0.1f)   < epsilon) { return -54.0f; }
+                if (Math.Abs(p_clamped - 0.25f)  < epsilon) { return -30.0f; }
+                if (Math.Abs(p_clamped - 0.5f)   < epsilon) { return -11.0f; }
+                if (Math.Abs(p_clamped - P_AT_0DB) < epsilon) { return 0.0f; }   // 0.716f
+                if (Math.Abs(p_clamped - 0.8f)   < epsilon) { return 3.76f; }
+                if (Math.Abs(p_clamped - 0.85f)  < epsilon) { return 5.90f; }
+                if (Math.Abs(p_clamped - 0.9f)   < epsilon) { return 7.99f; }
+                if (Math.Abs(p_clamped - 0.95f)  < epsilon) { return 10.00f; }
+                if (Math.Abs(p_clamped - 0.98f)  < epsilon) { return 11.20f; }
+                if (p_clamped >= dialConfig.MaxValue - epsilon) { return dialConfig.UnitMax; } // 通常是 +12dB @ p=1.0f
 
-                // 段0: (paramMin, 0.005f) -> (effectiveMinInterpolationDb, -132dB)
-                if (parameterValue > paramMin && parameterValue < 0.005f)
-                {
-                    if (0.005f - paramMin <= epsilon) return effectiveMinInterpolationDb; 
-                    Single proportion = (parameterValue - paramMin) / (0.005f - paramMin);
-                    return effectiveMinInterpolationDb + proportion * (-132.0f - effectiveMinInterpolationDb);
-                }
-                // 段1: (0.005f, 0.01f) -> (-132dB, -114dB)
-                else if (parameterValue > 0.005f && parameterValue < 0.01f)
-                {
-                    if (0.01f - 0.005f <= epsilon) return -132.0f; 
-                    Single proportion = (parameterValue - 0.005f) / (0.01f - 0.005f);
-                    return -132.0f + proportion * (-114.0f - (-132.0f));
-                }
-                // 段2: (0.01f, 0.05f) -> (-114dB, -72dB)
-                else if (parameterValue > 0.01f && parameterValue < 0.05f)
-                {
-                    if (0.05f - 0.01f <= epsilon) return -114.0f;
-                    Single proportion = (parameterValue - 0.01f) / (0.05f - 0.01f);
-                    return -114.0f + proportion * (-72.0f - (-114.0f));
-                }
-                // 段3: (0.05f, 0.1f) -> (-72dB, -54dB)
-                else if (parameterValue > 0.05f && parameterValue < 0.1f) 
-                { 
-                    if (0.1f - 0.05f <= epsilon) return -72.0f; 
-                    Single proportion = (parameterValue - 0.05f) / (0.1f - 0.05f); 
-                    return -72.0f + proportion * (-54.0f - (-72.0f)); 
-                }
-                // 段4: (0.1f, 0.25f) -> (-54dB, -30dB)
-                else if (parameterValue > 0.1f && parameterValue < 0.25f) 
-                { 
-                    if (0.25f - 0.1f <= epsilon) return -54.0f; 
-                    Single proportion = (parameterValue - 0.1f) / (0.25f - 0.1f); 
-                    return -54.0f + proportion * (-30.0f - (-54.0f)); 
-                }
-                // 段5: (0.25f, 0.5f) -> (-30dB, -11dB)
-                else if (parameterValue > 0.25f && parameterValue < 0.5f) 
-                { 
-                    if (0.5f - 0.25f <= epsilon) return -30.0f; 
-                    Single proportion = (parameterValue - 0.25f) / (0.5f - 0.25f); 
-                    return -30.0f + proportion * (-11.0f - (-30.0f)); 
-                }
-                // 段6: (0.5f, PARAM_FOR_0DB_CALIBRATION) -> (-11dB, 0dB)
-                else if (parameterValue > 0.5f && parameterValue < PARAM_FOR_0DB_CALIBRATION) 
-                { 
-                    if (PARAM_FOR_0DB_CALIBRATION - 0.5f <= epsilon) return -11.0f; 
-                    Single proportion = (parameterValue - 0.5f) / (PARAM_FOR_0DB_CALIBRATION - 0.5f); 
-                    return -11.0f + proportion * (0.0f - (-11.0f)); 
-                }
-                // 段7: (PARAM_FOR_0DB_CALIBRATION, paramMax) -> (0dB, unitMax)
-                else if (parameterValue > PARAM_FOR_0DB_CALIBRATION && parameterValue < paramMax) 
-                { 
-                    if (paramMax - PARAM_FOR_0DB_CALIBRATION <= epsilon) return 0.0f; 
-                    Single proportion = (parameterValue - PARAM_FOR_0DB_CALIBRATION) / (paramMax - PARAM_FOR_0DB_CALIBRATION); 
-                    return 0.0f + proportion * (unitMax - 0.0f); 
-                }
-                
-                PluginLog.Warning($"[ConvertParameterToUnit][dB] Parameter {parameterValue:F5} did not fit into any defined interpolation segment. Clamping to nearest known boundary.");
-                if (parameterValue < 0.005f) return -132f; // 更新的 fallback
-                if (parameterValue < 0.01f) return -114f; 
-                if (parameterValue < 0.05f) return -72f;
-                if (parameterValue < 0.1f) return -54f;
-                if (parameterValue < 0.25f) return -30f;
-                if (parameterValue < 0.5f) return -11f;
-                if (parameterValue < PARAM_FOR_0DB_CALIBRATION) return 0f;
-                return unitMax; 
+                // 分段线性插值
+                if (p_clamped > dialConfig.MinValue && p_clamped < 0.005f) { Single p = (p_clamped - dialConfig.MinValue) / (0.005f - dialConfig.MinValue); return EFFECTIVE_MIN_DB_FOR_0_TO_0005_INTERPOLATION + p * (-132.0f - EFFECTIVE_MIN_DB_FOR_0_TO_0005_INTERPOLATION); }
+                if (p_clamped > 0.005f && p_clamped < 0.01f)  { Single p = (p_clamped - 0.005f) / (0.01f - 0.005f); return -132.0f + p * (-114.0f - (-132.0f)); }
+                if (p_clamped > 0.01f  && p_clamped < 0.05f)  { Single p = (p_clamped - 0.01f) / (0.05f - 0.01f); return -114.0f + p * (-72.0f - (-114.0f)); }
+                if (p_clamped > 0.05f  && p_clamped < 0.1f)   { Single p = (p_clamped - 0.05f) / (0.1f - 0.05f); return -72.0f + p * (-54.0f - (-72.0f)); }
+                if (p_clamped > 0.1f   && p_clamped < 0.25f)  { Single p = (p_clamped - 0.1f) / (0.25f - 0.1f); return -54.0f + p * (-30.0f - (-54.0f)); }
+                if (p_clamped > 0.25f  && p_clamped < 0.5f)   { Single p = (p_clamped - 0.25f) / (0.5f - 0.25f); return -30.0f + p * (-11.0f - (-30.0f)); }
+                if (p_clamped > 0.5f   && p_clamped < P_AT_0DB) { Single p = (p_clamped - 0.5f) / (P_AT_0DB - 0.5f); return -11.0f + p * (0.0f - (-11.0f)); }
+                if (p_clamped > P_AT_0DB && p_clamped < 0.8f)   { Single p = (p_clamped - P_AT_0DB) / (0.8f - P_AT_0DB); return 0.0f + p * (3.76f - 0.0f); }
+                if (p_clamped > 0.8f   && p_clamped < 0.85f)  { Single p = (p_clamped - 0.8f) / (0.85f - 0.8f); return 3.76f + p * (5.90f - 3.76f); }
+                if (p_clamped > 0.85f  && p_clamped < 0.9f)   { Single p = (p_clamped - 0.85f) / (0.9f - 0.85f); return 5.90f + p * (7.99f - 5.90f); }
+                if (p_clamped > 0.9f   && p_clamped < 0.95f)  { Single p = (p_clamped - 0.9f) / (0.95f - 0.9f); return 7.99f + p * (10.00f - 7.99f); }
+                if (p_clamped > 0.95f  && p_clamped < 0.98f)  { Single p = (p_clamped - 0.95f) / (0.98f - 0.95f); return 10.00f + p * (11.20f - 10.00f); }
+                if (p_clamped > 0.98f  && p_clamped < dialConfig.MaxValue) { Single p = (p_clamped - 0.98f) / (dialConfig.MaxValue - 0.98f); return 11.20f + p * (dialConfig.UnitMax - 11.20f); }
+
+                PluginLog.Warning($"[ConvertParameterToUnit][dB] Parameter {p_clamped:F5} did not fit any interpolation segment. Returning closest boundary.");
+                // Fallback clamping to nearest known point if somehow not caught by exact matches or segments
+                if (p_clamped < 0.005f) return -132.0f; if (p_clamped < 0.01f) return -114.0f; if (p_clamped < 0.05f) return -72.0f;
+                if (p_clamped < 0.1f) return -54.0f; if (p_clamped < 0.25f) return -30.0f; if (p_clamped < 0.5f) return -11.0f;
+                if (p_clamped < P_AT_0DB) return 0.0f; if (p_clamped < 0.8f) return 3.76f; if (p_clamped < 0.85f) return 5.90f;
+                if (p_clamped < 0.9f) return 7.99f; if (p_clamped < 0.95f) return 10.00f; if (p_clamped < 0.98f) return 11.20f;
+                return dialConfig.UnitMax;
             }
-            else { if (Math.Abs(paramMax - paramMin) < 0.00001f) return unitMin; Single proportion = (parameterValue - paramMin) / (paramMax - paramMin); return unitMin + proportion * (unitMax - unitMin); }
+            else { /* non-dB (linear) remains same */ Single pm = dialConfig.MinValue; Single pM = dialConfig.MaxValue; Single um = dialConfig.UnitMin; Single uM = dialConfig.UnitMax; if (Math.Abs(pM - pm) < 0.00001f) return um; Single prop = (p_clamped - pm) / (pM - pm); return um + prop * (uM - um); }
         }
 
         private Single ConvertUnitToParameter(Single unitValue, ControlDialParsedConfig dialConfig) 
         {
             if (!dialConfig.HasUnitConversion) { return unitValue; }
 
-            // 【新增】处理 L&R 单位类型
-            if (dialConfig.DisplayUnitString.Equals("L&R", StringComparison.OrdinalIgnoreCase))
-            {
-                // 对于 L&R 类型，单位值直接映射到参数值，但需要确保在参数范围内。
-                // dialConfig.MinValue 和 dialConfig.MaxValue 是从 Parameter 数组解析得到的参数范围 (例如 -100f, 100f for Pan)。
-                return Math.Clamp(unitValue, dialConfig.MinValue, dialConfig.MaxValue);
-            }
-            // 【结束新增】
-
-            Single paramMin = dialConfig.MinValue; 
-            Single paramMax = dialConfig.MaxValue; 
-            Single unitMin = dialConfig.UnitMin;   
-            Single unitMax = dialConfig.UnitMax;
+            Single paramMin = dialConfig.MinValue;
+            Single paramMax = dialConfig.MaxValue;
+            Single unitMax = dialConfig.UnitMax; 
 
             if (dialConfig.DisplayUnitString.Equals("dB", StringComparison.OrdinalIgnoreCase))
             {
-                const Single dbEpsilon = 0.01f; 
+                const Single dbEpsilon = 0.001f; 
+
                 if (Single.IsNegativeInfinity(unitValue)) { return paramMin; }
-                if (Math.Abs(unitValue - (-132.0f)) < dbEpsilon) { return 0.005f; } // 新增
-                if (Math.Abs(unitValue - (-114.0f)) < dbEpsilon) { return 0.01f; }
-                if (Math.Abs(unitValue - (-72.0f)) < dbEpsilon) { return 0.05f; }
-                if (Math.Abs(unitValue - (-54.0f)) < dbEpsilon) { return 0.1f; }
-                if (Math.Abs(unitValue - (-30.0f)) < dbEpsilon) { return 0.25f; }
-                if (Math.Abs(unitValue - (-11.0f)) < dbEpsilon) { return 0.5f; }
-                if (Math.Abs(unitValue - 0.0f) < dbEpsilon) { return PARAM_FOR_0DB_CALIBRATION; }
                 if (unitValue >= unitMax - dbEpsilon) { return paramMax; }
+                if (Math.Abs(unitValue - 11.20f) < dbEpsilon) { return 0.98f; }
+                if (Math.Abs(unitValue - 10.00f) < dbEpsilon) { return 0.95f; }
+                if (Math.Abs(unitValue - 7.99f)  < dbEpsilon) { return 0.9f; }
+                if (Math.Abs(unitValue - 5.90f)  < dbEpsilon) { return 0.85f; }
+                if (Math.Abs(unitValue - 3.76f)  < dbEpsilon) { return 0.8f; }
+                if (Math.Abs(unitValue - 0.0f)   < dbEpsilon) { return P_AT_0DB; }
+                if (Math.Abs(unitValue - (-11.0f)) < dbEpsilon) { return 0.5f; }
+                if (Math.Abs(unitValue - (-30.0f)) < dbEpsilon) { return 0.25f; }
+                if (Math.Abs(unitValue - (-54.0f)) < dbEpsilon) { return 0.1f; }
+                if (Math.Abs(unitValue - (-72.0f)) < dbEpsilon) { return 0.05f; }
+                if (Math.Abs(unitValue - (-114.0f))< dbEpsilon) { return 0.01f; }
+                if (Math.Abs(unitValue - (-132.0f))< dbEpsilon) { return 0.005f; }
+                // If unitValue is less than -132dB but not -inf, map to param range [0, 0.005]
+                if (unitValue < -132.0f) { Single p = (unitValue - EFFECTIVE_MIN_DB_FOR_0_TO_0005_INTERPOLATION) / (-132.0f - EFFECTIVE_MIN_DB_FOR_0_TO_0005_INTERPOLATION); return paramMin + p * (0.005f - paramMin); }
+
+                // 분할 선형 보간
+                if (unitValue > -132.0f && unitValue < -114.0f) { Single t = (unitValue - (-132.0f)) / (-114.0f - (-132.0f)); return 0.005f + t * (0.01f - 0.005f); }
+                if (unitValue > -114.0f && unitValue < -72.0f)  { Single t = (unitValue - (-114.0f)) / (-72.0f - (-114.0f)); return 0.01f + t * (0.05f - 0.01f); }
+                if (unitValue > -72.0f  && unitValue < -54.0f)  { Single t = (unitValue - (-72.0f)) / (-54.0f - (-72.0f)); return 0.05f + t * (0.1f - 0.05f); }
+                if (unitValue > -54.0f  && unitValue < -30.0f)  { Single t = (unitValue - (-54.0f)) / (-30.0f - (-54.0f)); return 0.1f + t * (0.25f - 0.1f); }
+                if (unitValue > -30.0f  && unitValue < -11.0f)  { Single t = (unitValue - (-30.0f)) / (-11.0f - (-30.0f)); return 0.25f + t * (0.5f - 0.25f); }
+                if (unitValue > -11.0f  && unitValue < 0.0f)    { Single t = (unitValue - (-11.0f)) / (0.0f - (-11.0f)); return 0.5f + t * (P_AT_0DB - 0.5f); }
+                if (unitValue > 0.0f    && unitValue < 3.76f)   { Single t = (unitValue - 0.0f) / (3.76f - 0.0f); return P_AT_0DB + t * (0.8f - P_AT_0DB); }
+                if (unitValue > 3.76f   && unitValue < 5.90f)   { Single t = (unitValue - 3.76f) / (5.90f - 3.76f); return 0.8f + t * (0.85f - 0.8f); }
+                if (unitValue > 5.90f   && unitValue < 7.99f)   { Single t = (unitValue - 5.90f) / (7.99f - 5.90f); return 0.85f + t * (0.9f - 0.85f); }
+                if (unitValue > 7.99f   && unitValue < 10.00f)  { Single t = (unitValue - 7.99f) / (10.00f - 7.99f); return 0.9f + t * (0.95f - 0.9f); }
+                if (unitValue > 10.00f  && unitValue < 11.20f)  { Single t = (unitValue - 10.00f) / (11.20f - 10.00f); return 0.95f + t * (0.98f - 0.95f); }
+                if (unitValue > 11.20f  && unitValue < unitMax)   { Single t = (unitValue - 11.20f) / (unitMax - 11.20f); return 0.98f + t * (paramMax - 0.98f); }
                 
-                Single effectiveMinDbForInf = Single.IsNegativeInfinity(unitMin) ? EFFECTIVE_MIN_DB_FOR_INF_INTERPOLATION : unitMin;
-                // 如果 unitValue 比我们定义的最低有效dB还小 (但不是-inf)，则钳位到paramMin
-                if (unitValue < effectiveMinDbForInf && !Single.IsNegativeInfinity(unitValue)) { return paramMin; } 
-
-                Single calculatedParamValue;
-
-                // 段0: (effectiveMinDbForInf, -132dB] -> (paramMin, 0.005f]
-                if (unitValue > effectiveMinDbForInf && unitValue <= -132.0f)
-                {
-                    if (-132.0f - effectiveMinDbForInf <= dbEpsilon) return paramMin; 
-                    Single proportion = (unitValue - effectiveMinDbForInf) / (-132.0f - effectiveMinDbForInf);
-                    calculatedParamValue = paramMin + proportion * (0.005f - paramMin);
-                }
-                // 段1: (-132dB, -114dB] -> (0.005f, 0.01f]
-                else if (unitValue > -132.0f && unitValue <= -114.0f)
-                {
-                    if (-114.0f - (-132.0f) <= dbEpsilon) return 0.005f; 
-                    Single proportion = (unitValue - (-132.0f)) / (-114.0f - (-132.0f));
-                    calculatedParamValue = 0.005f + proportion * (0.01f - 0.005f);
-                }
-                // 段2: (-114dB, -72dB] -> (0.01f, 0.05f]
-                else if (unitValue > -114.0f && unitValue <= -72.0f)
-                {
-                    if (-72.0f - (-114.0f) <= dbEpsilon) return 0.01f;
-                    Single proportion = (unitValue - (-114.0f)) / (-72.0f - (-114.0f));
-                    calculatedParamValue = 0.01f + proportion * (0.05f - 0.01f);
-                }
-                // 段3: (-72dB, -54dB] -> (0.05f, 0.1f]
-                else if (unitValue > -72.0f && unitValue <= -54.0f) 
-                { 
-                    if (-54.0f - (-72.0f) <= dbEpsilon) return 0.05f; 
-                    Single proportion = (unitValue - (-72.0f)) / (-54.0f - (-72.0f)); 
-                    calculatedParamValue = 0.05f + proportion * (0.1f - 0.05f); 
-                }
-                // 段4: (-54dB, -30dB] -> (0.1f, 0.25f]
-                else if (unitValue > -54.0f && unitValue <= -30.0f) 
-                { 
-                    if (-30.0f - (-54.0f) <= dbEpsilon) return 0.1f; 
-                    Single proportion = (unitValue - (-54.0f)) / (-30.0f - (-54.0f)); 
-                    calculatedParamValue = 0.1f + proportion * (0.25f - 0.1f); 
-                }
-                // 段5: (-30dB, -11dB] -> (0.25f, 0.5f]
-                else if (unitValue > -30.0f && unitValue <= -11.0f) 
-                { 
-                    if (-11.0f - (-30.0f) <= dbEpsilon) return 0.25f; 
-                    Single proportion = (unitValue - (-30.0f)) / (-11.0f - (-30.0f)); 
-                    calculatedParamValue = 0.25f + proportion * (0.5f - 0.25f); 
-                }
-                // 段6: (-11dB, 0dB) -> (0.5f, PARAM_FOR_0DB_CALIBRATION)
-                else if (unitValue > -11.0f && unitValue < 0.0f) 
-                { 
-                    if (0.0f - (-11.0f) <= dbEpsilon) return 0.5f; 
-                    Single proportion = (unitValue - (-11.0f)) / (0.0f - (-11.0f)); 
-                    calculatedParamValue = 0.5f + proportion * (PARAM_FOR_0DB_CALIBRATION - 0.5f); 
-                }
-                // 段7: (0dB, unitMax) -> (PARAM_FOR_0DB_CALIBRATION, paramMax)
-                else if (unitValue > 0.0f && unitValue < unitMax) 
-                { 
-                    if (unitMax - 0.0f <= dbEpsilon) return PARAM_FOR_0DB_CALIBRATION;
-                    Single proportion = (unitValue - 0.0f) / (unitMax - 0.0f);
-                    calculatedParamValue = PARAM_FOR_0DB_CALIBRATION + proportion * (paramMax - PARAM_FOR_0DB_CALIBRATION);
-                }
-                else 
-                {
-                    PluginLog.Warning($"[ConvertUnitToParameter][dB] Unit value {unitValue:F1} did not fit interpolation. Clamping to bounds.");
-                    if (unitValue < EFFECTIVE_MIN_DB_FOR_INF_INTERPOLATION && !Single.IsNegativeInfinity(unitValue)) calculatedParamValue = paramMin;
-                    else if (unitValue < -132.0f) calculatedParamValue = 0.005f; 
-                    else if (unitValue < -114.0f) calculatedParamValue = 0.01f;
-                    else if (unitValue < -72.0f) calculatedParamValue = 0.05f;
-                    else if (unitValue < -54.0f) calculatedParamValue = 0.1f;
-                    else if (unitValue < -30.0f) calculatedParamValue = 0.25f;
-                    else if (unitValue < -11.0f) calculatedParamValue = 0.5f;
-                    else if (unitValue < 0.0f) calculatedParamValue = PARAM_FOR_0DB_CALIBRATION; 
-                    else calculatedParamValue = paramMax; 
-                }
-                return Math.Clamp(calculatedParamValue, paramMin, paramMax);
+                PluginLog.Warning($"[ConvertUnitToParameter][dB] Unit value {unitValue:F2} did not fit any interpolation segment. Clamping to parameter bounds.");
+                if (unitValue < -132.0f) return paramMin; // Should have been caught by specific < -132 check already
+                if (unitValue < -114.0f) return 0.01f;
+                // ... (add more fallback clamps based on nearest known point) ...
+                if (unitValue > 11.20f) return paramMax; // Should have been caught by >= unitMax check
+                return P_AT_0DB; // Default fallback
             }
-            else { if (Math.Abs(unitMax - unitMin) < 0.00001f) return paramMin; Single proportion = (unitValue - unitMin) / (unitMax - unitMin); Single result = paramMin + proportion * (paramMax - paramMin); return Math.Clamp(result, paramMin, paramMax); }
+            else { /* non-dB (linear) remains same */ Single pm = dialConfig.MinValue; Single pM = dialConfig.MaxValue; Single um = dialConfig.UnitMin; Single uM = dialConfig.UnitMax; if (Math.Abs(uM - um) < 0.00001f) return pm; Single prop = (unitValue - um) / (uM - um); Single res = pm + prop * (pM - pm); return Math.Clamp(res, pm, pM); }
         }
 
         // 获取 ControlDial 在设备上应显示的文本
