@@ -184,7 +184,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 }
                 else if (config.ActionType == "ControlDial") 
                 {
-                    valueTextForAdjustment = this._logicManager.GetControlDialValue(actionParameter).ToString();
+                    valueTextForAdjustment = this._logicManager.GetControlDialDisplayText(actionParameter); 
                     preliminaryTitle = config.Title ?? config.DisplayName; 
                 }
                 else // 其他旋钮类型，如 TickDial, ParameterDial (由Folder处理值) 等
