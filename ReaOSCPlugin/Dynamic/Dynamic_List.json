@@ -329,8 +329,8 @@
     }
   },
   {
-    "DisplayName": "Track Routing",
-    "Title": "Routing",
+    "DisplayName": "Track",
+    "Title": "Advance",
     "Text": "Track",
     "Content": {
       "Buttons": [
@@ -350,26 +350,40 @@
           "ActiveColor": "#FF8F15"
         },
         {
-          "ActionType": "Placeholder"
-        },
-        {
-          "ActionType": "Placeholder"
-        },
-        {
-          "ActionType": "Placeholder"
-        },
-        {
-          "ActionType": "Placeholder"
-        },
-        {
-          "ActionType": "Placeholder"
-        },
-        {
           "ActionType": "ToggleButton",
-          "DisplayName": "Offset Unit",
-          "Title": "Sample",
-          "OscAddress": "Offset/Unit",
-          "Text": "/ MS",
+          "DisplayName": "Time Base",
+          "Title": "Time Base",
+          "ActiveColor": "#FF8F15"
+        },
+        {
+          "DisplayName": "Bus Send Mode",
+          "ActionType": "SelectModeButton",
+          "Modes": [ "From", "To" ],
+          "ActiveColor": "#FFFFFF",
+          "Title": "{Mode}",
+          "TitleColor": "#000000",
+          "DeactiveTextColor": "#FFFFFF",
+          "Text": "Bus",
+          "TextColor": "#88E2FF"
+        },
+        {
+          "ActionType": "Placeholder"
+        },
+        {
+          "ActionType": "Placeholder"
+        },
+        {
+          "ActionType": "Placeholder"
+        },
+        {
+          "DisplayName": "Offset Unit Mode",
+          "ActionType": "SelectModeButton",
+          "Modes": [ "Sample", "MS" ],
+          "ActiveColor": "#FFFFFF",
+          "Title": "{Mode}",
+          "TitleColor": "#000000",
+          "DeactiveTextColor": "#FFFFFF",
+          "Text": "Offset",
           "TextColor": "#88E2FF"
         },
         {
@@ -470,45 +484,181 @@
     }
   },
   {
-    "DisplayName": "Input Output",
-    "Title": "Input",
-    "Text": "Output",
+    "DisplayName": "Track Routing",
+    "Title": "Routing",
+    "Text": "Track",
     "Content": {
       "Buttons": [
         {
-          "ActionType": "Placeholder"
+          "DisplayName": "Routing Dial Mode 1",
+          "ActionType": "SelectModeButton",
+          "Modes": [ "Volume", "Pan" ],
+          "ActiveColor": "#FFFFFF",
+          "Title": "{Mode}",
+          "TitleColor": "#000000",
+          "DeactiveTextColor": "#FFFFFF",
+          "Text": "Dial",
+          "TextColor": "#88E2FF"
         },
         {
-          "ActionType": "Placeholder"
+          "DisplayName": "More Toggle Mode 1",
+          "ActionType": "SelectModeButton",
+          "Modes": [ "Post Fade", "Pre Fade" ],
+          "ActiveColor": "#FFFFFF",
+          "Title": "{Mode}",
+          "TitleColor": "#000000",
+          "DeactiveTextColor": "#FFFFFF"
         },
         {
-          "ActionType": "Placeholder"
+          "DisplayName": "More Option Mode 1",
+          "ActionType": "SelectModeButton",
+          "Modes": [ "FX", "Mono" ],
+          "ActiveColor": "#FFFFFF",
+          "Title": "{Mode}",
+          "TitleColor": "#000000",
+          "DeactiveTextColor": "#FFFFFF",
+          "Text": "Option",
+          "TextColor": "#88E2FF"
         },
         {
-          "ActionType": "Placeholder"
+          "DisplayName": "Bus Send Mode 1",
+          "ActionType": "SelectModeButton",
+          "Modes": [ "From", "To" ],
+          "ActiveColor": "#FFFFFF",
+          "Title": "{Mode}",
+          "TitleColor": "#000000",
+          "DeactiveTextColor": "#FFFFFF",
+          "Text": "Bus",
+          "TextColor": "#88E2FF"
         },
         {
-          "ActionType": "Placeholder"
+          "DisplayName": "Routing Dial Mode 2",
+          "ActionType": "SelectModeButton",
+          "Modes": [ "Volume", "Pan" ],
+          "ActiveColor": "#FFFFFF",
+          "Title": "{Mode}",
+          "TitleColor": "#000000",
+          "DeactiveTextColor": "#FFFFFF",
+          "Text": "Dial",
+          "TextColor": "#88E2FF"
         },
         {
-          "ActionType": "Placeholder"
+          "DisplayName": "More Toggle Mode 2",
+          "ActionType": "SelectModeButton",
+          "Modes": [ "Post Fade", "Pre Fade" ],
+          "ActiveColor": "#FFFFFF",
+          "Title": "{Mode}",
+          "TitleColor": "#000000",
+          "DeactiveTextColor": "#FFFFFF"
         },
         {
-          "ActionType": "Placeholder"
+          "DisplayName": "More Option Mode 2",
+          "ActionType": "SelectModeButton",
+          "Modes": [ "FX", "Mono" ],
+          "ActiveColor": "#FFFFFF",
+          "Title": "{Mode}",
+          "TitleColor": "#000000",
+          "DeactiveTextColor": "#FFFFFF",
+          "Text": "Option",
+          "TextColor": "#88E2FF"
         },
         {
-          "ActionType": "Placeholder"
+          "DisplayName": "Bus Send Mode 2",
+          "ActionType": "SelectModeButton",
+          "Modes": [ "From", "To" ],
+          "ActiveColor": "#FFFFFF",
+          "Title": "{Mode}",
+          "TitleColor": "#000000",
+          "DeactiveTextColor": "#FFFFFF",
+          "Text": "Bus",
+          "TextColor": "#88E2FF"
         },
         {
-          "ActionType": "Placeholder"
+          "DisplayName": "Routing Mode",
+          "ActionType": "SelectModeButton",
+          "Modes": [ "Send", "Receive" ],
+          "ActiveColor": "#FFFFFF",
+          "Title": "{Mode}",
+          "TitleColor": "#000000",
+          "DeactiveTextColor": "#FFFFFF",
+          "Text": "Mode",
+          "TextColor": "#88E2FF"
         },
         {
           "ActionType": "NavigationButton",
           "DisplayName": "Back",
           "Title": "Back"
+        },
+        {
+          "ActionType": "TriggerButton",
+          "DisplayName": "Routing Pin",
+          "ModeName": "Routing Mode",
+          "Title": "{Mode}",
+          "Text": "To",
+          "TextColor": "#88E2FF"
+        },
+        {
+          "DisplayName": "Direct Output Mode",
+          "ActionType": "SelectModeButton",
+          "Modes": [ "Hardware", "MIDI" ],
+          "ActiveColor": "#FFFFFF",
+          "Title": "{Mode}",
+          "TitleColor": "#000000",
+          "DeactiveTextColor": "#FFFFFF",
+          "Text": "Output",
+          "TextColor": "#88E2FF"
         }
       ],
       "Dials": [
+        {
+          "ActionType": "ControlDial",
+          "DisplayName": "Routing Dial 1",
+          "ShowTitle": "Yes",
+          "Parameter": [
+            true,
+            "-100",
+            "100"
+          ],
+          "ParameterDefault": "100"
+        },
+        {
+          "ActionType": "ControlDial",
+          "DisplayName": "Routing Dial 2",
+          "ShowTitle": "Yes",
+          "Parameter": [
+            true,
+            "-100",
+            "100"
+          ],
+          "ParameterDefault": "100"
+        },
+        {
+          "ActionType": "PageDial",
+          "DisplayName": "Page",
+          "ShowTitle": "Yes"
+        },
+        {
+          "ActionType": "ControlDial",
+          "DisplayName": "Bus Dial 1",
+          "ShowTitle": "Yes",
+          "Parameter": [
+            true,
+            "-100",
+            "100"
+          ],
+          "ParameterDefault": "100"
+        },
+        {
+          "ActionType": "ControlDial",
+          "DisplayName": "Bus Dial 2",
+          "ShowTitle": "Yes",
+          "Parameter": [
+            true,
+            "-100",
+            "100"
+          ],
+          "ParameterDefault": "100"
+        }
       ]
     }
   }

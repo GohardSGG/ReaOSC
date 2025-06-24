@@ -82,11 +82,11 @@ namespace Loupedeck.ReaOSCPlugin.Dynamic
     /// <summary>
     /// "Input Output" 动态文件夹。
     /// </summary>
-    public class Input_Output_Dynamic : General_Folder_Base // 修改基类
+    public class Track_Dynamic : General_Folder_Base // 修改基类
     {
         // 所有逻辑均由 General_Folder_Base 处理。
         // 基类会根据此类名 "Input_Output_Dynamic" -> "Input Output"
         // 来加载对应的 "Input_Output_List.json" 配置文件。
-        public Input_Output_Dynamic() : base() { } // 调用基类构造函数
+        public Track_Dynamic() : base() { } // 调用基类构造函数
     }
 } 

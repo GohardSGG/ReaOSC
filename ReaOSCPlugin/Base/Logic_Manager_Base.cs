@@ -214,7 +214,24 @@ namespace Loupedeck.ReaOSCPlugin.Base
             } 
         }
         private String GetActionParameterForModeController(String modeName) => this._allConfigs.FirstOrDefault(kvp => kvp.Value.ActionType == "SelectModeButton" && kvp.Value.DisplayName == modeName).Key;
-        public String GetCurrentModeString(String modeName) { if (this._currentModes.TryGetValue(modeName, out var currentIndex) && this._modeOptions.TryGetValue(modeName, out var options) && currentIndex >= 0 && currentIndex < options.Count) { return options[currentIndex]; } return String.Empty; }
+        public String GetCurrentModeString(String modeName) 
+        {
+            PluginLog.Info($"[LogicManager|GetCurrentModeString] Requesting current mode for ModeName: '{modeName ?? "null"}'");
+            if (this._currentModes.TryGetValue(modeName, out var currentIndex) && 
+                this._modeOptions.TryGetValue(modeName, out var options) && 
+                currentIndex >= 0 && currentIndex < options.Count) 
+            {
+                var modeStr = options[currentIndex];
+                PluginLog.Info($"[LogicManager|GetCurrentModeString] Found. ModeName: '{modeName}', Index: {currentIndex}, ModeString: '{modeStr}'");
+                return modeStr; 
+            }
+            PluginLog.Warning($"[LogicManager|GetCurrentModeString] ModeName '{modeName ?? "null"}' not found or index/options invalid. CurrentModes has key: {this._currentModes.ContainsKey(modeName)}, ModeOptions has key: {this._modeOptions.ContainsKey(modeName)}");
+            if(this._modeOptions.TryGetValue(modeName, out var availableOptions))
+            {
+                PluginLog.Warning($"[LogicManager|GetCurrentModeString] Available options for ModeName '{modeName}': [{string.Join(", ", availableOptions)}]");
+            }
+            return String.Empty; 
+        }
         public Int32 GetCurrentModeIndex(String modeName) => this._currentModes.TryGetValue(modeName, out var currentIndex) ? currentIndex : -1;
 
         public void SubscribeToModeChange(String modeName, Action handler) { if (String.IsNullOrEmpty(modeName) || handler == null) { return; } if (!this._modeChangedEvents.ContainsKey(modeName)) { this._modeChangedEvents[modeName] = null; } this._modeChangedEvents[modeName] += handler; }
@@ -718,17 +735,34 @@ namespace Loupedeck.ReaOSCPlugin.Base
                             else
                             {
                                 List<String> pathParts = new List<String>();
-                                if (!String.IsNullOrEmpty(folderPart) && folderPart != "/") pathParts.Add(folderPart);
-                                if (!String.IsNullOrEmpty(itemGroupPart) && itemGroupPart != "/") pathParts.Add(itemGroupPart);
+                                if (!String.IsNullOrEmpty(folderPart) && folderPart != "/")
+                                {
+                                    pathParts.Add(folderPart);
+                                }
+
+
+                                if (!String.IsNullOrEmpty(itemGroupPart) && itemGroupPart != "/")
+                                {
+                                    pathParts.Add(itemGroupPart);
+                                }
+
 
                                 var sanitizedActionSegmentForPath = SanitizeOscPathSegment(resolvedActionSegment);
-                                if (!String.IsNullOrEmpty(sanitizedActionSegmentForPath) && sanitizedActionSegmentForPath != "/") pathParts.Add(sanitizedActionSegmentForPath);
+                                if (!String.IsNullOrEmpty(sanitizedActionSegmentForPath) && sanitizedActionSegmentForPath != "/")
+                                {
+                                    pathParts.Add(sanitizedActionSegmentForPath);
+                                }
+
 
                                 if (pathParts.Any())
                                 {
                                     oscAddressToSend = "/" + String.Join("/", pathParts.Where(s => !String.IsNullOrEmpty(s))); 
                                     oscAddressToSend = oscAddressToSend.Replace("//", "/").TrimEnd('/');
-                                    if (oscAddressToSend == "/") oscAddressToSend = ""; 
+                                    if (oscAddressToSend == "/")
+                                    {
+                                        oscAddressToSend = "";
+                                    }
+
                                 }
                                 else { oscAddressToSend = ""; }
                                 PluginLog.Info($"[LogicManager|ProcessUserAction] Dynamic TriggerButton '{itemConfig.DisplayName}' (Folder: '{dynamicFolderDisplayName}', ItemGroup: '{itemConfig.GroupName ?? "null"}'). PathParts: [{String.Join(", ", pathParts)}]. Constructed OSC: '{oscAddressToSend}'");
@@ -860,7 +894,11 @@ namespace Loupedeck.ReaOSCPlugin.Base
                                 {
                                     const Single firstStepParamOffset = 0.001f; 
                                     targetUnitValue = this.ConvertParameterToUnit(controlConfig.MinValue + firstStepParamOffset, controlConfig);
-                                    if (Single.IsNegativeInfinity(targetUnitValue)) { targetUnitValue = controlConfig.UnitMin; if(Single.IsNegativeInfinity(targetUnitValue)) targetUnitValue = -60.0f; }
+                                    if (Single.IsNegativeInfinity(targetUnitValue)) { targetUnitValue = controlConfig.UnitMin; if(Single.IsNegativeInfinity(targetUnitValue))
+                                        {
+                                            targetUnitValue = -60.0f;
+                                        }
+                                    }
                                     if (ticks > 1) { targetUnitValue += (ticks - 1) * 0.1f; }
                                     PluginLog.Info($"[ControlDialDebug][dBMode] From -inf, ticks: {ticks}. Target UnitVal: {targetUnitValue:F1}");
                                 }
@@ -1396,13 +1434,72 @@ namespace Loupedeck.ReaOSCPlugin.Base
 
                 PluginLog.Warning($"[ConvertParameterToUnit][dB] Parameter {p_clamped:F5} did not fit any interpolation segment. Returning closest boundary.");
                 // Fallback clamping to nearest known point if somehow not caught by exact matches or segments
-                if (p_clamped < 0.005f) return -132.0f; if (p_clamped < 0.01f) return -114.0f; if (p_clamped < 0.05f) return -72.0f;
-                if (p_clamped < 0.1f) return -54.0f; if (p_clamped < 0.25f) return -30.0f; if (p_clamped < 0.5f) return -11.0f;
-                if (p_clamped < P_AT_0DB) return 0.0f; if (p_clamped < 0.8f) return 3.76f; if (p_clamped < 0.85f) return 5.90f;
-                if (p_clamped < 0.9f) return 7.99f; if (p_clamped < 0.95f) return 10.00f; if (p_clamped < 0.98f) return 11.20f;
+                if (p_clamped < 0.005f)
+                {
+                    return -132.0f;
+                }
+
+                if (p_clamped < 0.01f)
+                {
+                    return -114.0f;
+                }
+
+                if (p_clamped < 0.05f)
+                {
+                    return -72.0f;
+                }
+
+                if (p_clamped < 0.1f)
+                {
+                    return -54.0f;
+                }
+
+                if (p_clamped < 0.25f)
+                {
+                    return -30.0f;
+                }
+
+                if (p_clamped < 0.5f)
+                {
+                    return -11.0f;
+                }
+
+
+                if (p_clamped < P_AT_0DB)
+                {
+                    return 0.0f;
+                }
+
+                if (p_clamped < 0.8f)
+                {
+                    return 3.76f;
+                }
+
+                if (p_clamped < 0.85f)
+                {
+                    return 5.90f;
+                }
+
+
+                if (p_clamped < 0.9f)
+                {
+                    return 7.99f;
+                }
+
+                if (p_clamped < 0.95f)
+                {
+                    return 10.00f;
+                }
+
+                if (p_clamped < 0.98f)
+                {
+                    return 11.20f;
+                }
+
+
                 return dialConfig.UnitMax;
             }
-            else { /* non-dB (linear) remains same */ Single pm = dialConfig.MinValue; Single pM = dialConfig.MaxValue; Single um = dialConfig.UnitMin; Single uM = dialConfig.UnitMax; if (Math.Abs(pM - pm) < 0.00001f) return um; Single prop = (p_clamped - pm) / (pM - pm); return um + prop * (uM - um); }
+            else { /* non-dB (linear) remains same */ Single pm = dialConfig.MinValue; Single pM = dialConfig.MaxValue; Single um = dialConfig.UnitMin; Single uM = dialConfig.UnitMax; if (Math.Abs(pM - pm) < 0.00001f) { return um; } Single prop = (p_clamped - pm) / (pM - pm); return um + prop * (uM - um); }
         }
 
         private Single ConvertUnitToParameter(Single unitValue, ControlDialParsedConfig dialConfig) 
@@ -1449,13 +1546,27 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 if (unitValue > 11.20f  && unitValue < unitMax)   { Single t = (unitValue - 11.20f) / (unitMax - 11.20f); return 0.98f + t * (paramMax - 0.98f); }
                 
                 PluginLog.Warning($"[ConvertUnitToParameter][dB] Unit value {unitValue:F2} did not fit any interpolation segment. Clamping to parameter bounds.");
-                if (unitValue < -132.0f) return paramMin; // Should have been caught by specific < -132 check already
-                if (unitValue < -114.0f) return 0.01f;
+                if (unitValue < -132.0f)
+                {
+                    return paramMin; // Should have been caught by specific < -132 check already
+                }
+
+
+                if (unitValue < -114.0f)
+                {
+                    return 0.01f;
+                }
                 // ... (add more fallback clamps based on nearest known point) ...
-                if (unitValue > 11.20f) return paramMax; // Should have been caught by >= unitMax check
+
+                if (unitValue > 11.20f)
+                {
+                    return paramMax; // Should have been caught by >= unitMax check
+                }
+
+
                 return P_AT_0DB; // Default fallback
             }
-            else { /* non-dB (linear) remains same */ Single pm = dialConfig.MinValue; Single pM = dialConfig.MaxValue; Single um = dialConfig.UnitMin; Single uM = dialConfig.UnitMax; if (Math.Abs(uM - um) < 0.00001f) return pm; Single prop = (unitValue - um) / (uM - um); Single res = pm + prop * (pM - pm); return Math.Clamp(res, pm, pM); }
+            else { /* non-dB (linear) remains same */ Single pm = dialConfig.MinValue; Single pM = dialConfig.MaxValue; Single um = dialConfig.UnitMin; Single uM = dialConfig.UnitMax; if (Math.Abs(uM - um) < 0.00001f) { return pm; } Single prop = (unitValue - um) / (uM - um); Single res = pm + prop * (pM - pm); return Math.Clamp(res, pm, pM); }
         }
 
         // 获取 ControlDial 在设备上应显示的文本
@@ -1722,7 +1833,10 @@ namespace Loupedeck.ReaOSCPlugin.Base
                         else if (ud.StartsWith("R") && Single.TryParse(ud.Substring(1), NumberStyles.Any, CultureInfo.InvariantCulture, out var rVal))
                             { newDefaultValueBasedOnUnit = rVal; unitDefaultApplied = true; }
                         else
+                        {
                             PluginLog.Warning($"[LogicManager] ControlDial '{config.DisplayName}' (L&R) has unrecognised UnitDefault: '{config.UnitDefault}'");
+                        }
+
                     }
                     else if (TryParseSingleExtended(config.UnitDefault, out var parsedNumericUnitDefault)) // 对于dB等期望数字UnitDefault的
                     {
@@ -1787,36 +1901,41 @@ namespace Loupedeck.ReaOSCPlugin.Base
         /// <returns>已解析的文本，或在无法解析时返回经过处理的模板。</returns>
         public String ResolveTextWithMode(ButtonConfig itemConfig, String textTemplate)
         {
-            // 如果配置为空、模板为空或模板中不包含"{mode}"占位符，则直接返回原始模板
-            if (itemConfig == null || String.IsNullOrEmpty(textTemplate) || !textTemplate.Contains("{mode}"))
+            PluginLog.Info($"[LogicManager|ResolveTextWithMode] BEGIN Resolving. Item: '{itemConfig?.DisplayName ?? "N/A"}', Item's ModeName property: '{itemConfig?.ModeName ?? "N/A"}', Template: '{textTemplate ?? "N/A"}'");
+
+            // 如果配置为空、模板为空或模板中不包含"{mode}"占位符 (忽略大小写)，则直接返回原始模板
+            if (itemConfig == null || String.IsNullOrEmpty(textTemplate) || !Regex.IsMatch(textTemplate, "{mode}", RegexOptions.IgnoreCase))
             {
+                PluginLog.Info($"[LogicManager|ResolveTextWithMode] END Resolving (no change or invalid input): Template directly returned: '{textTemplate}'");
                 return textTemplate;
             }
 
             // 如果配置中没有定义ModeName，则无法解析"{mode}"
             if (String.IsNullOrEmpty(itemConfig.ModeName))
             {
-                PluginLog.Warning($"[LogicManager|ResolveTextWithMode] 项目 '{itemConfig.DisplayName}' 的模板 '{textTemplate}' 包含 '{{mode}}' 但其配置中未定义 ModeName。将 '{{mode}}' 视为空字符串。");
-                return textTemplate.Replace("{mode}", ""); // 将 {mode} 替换为空字符串
+                PluginLog.Warning($"[LogicManager|ResolveTextWithMode] Item '{itemConfig.DisplayName}' has empty ModeName. Cannot resolve '{{mode}}' in template '{textTemplate}'. Replacing with empty string (ignore case).");
+                var resultNoModeName = Regex.Replace(textTemplate, "{mode}", "", RegexOptions.IgnoreCase);
+                PluginLog.Info($"[LogicManager|ResolveTextWithMode] END Resolving (ModeName empty): Result: '{resultNoModeName}'");
+                return resultNoModeName;
             }
 
             // 获取当前模式的原始字符串
             var currentModeActual = this.GetCurrentModeString(itemConfig.ModeName);
+            PluginLog.Info($"[LogicManager|ResolveTextWithMode] For ModeName '{itemConfig.ModeName}', GetCurrentModeString returned: '{currentModeActual ?? "null_or_empty"}'");
 
             // 对模式字符串进行清理，使其适用于OSC路径和可能的显示
-            // 注意: SanitizeOscPathSegment 主要用于OSC路径，对于纯显示文本可能需要调整
             var sanitizedMode = SanitizeOscPathSegment(currentModeActual); 
-
-            // 如果清理后的模式字符串为空 (例如，原始模式名为空或清理后变为空)
-            // 并且模板中确实需要 "{mode}"
-            if (String.IsNullOrEmpty(sanitizedMode) && textTemplate.Contains("{mode}"))
+            PluginLog.Info($"[LogicManager|ResolveTextWithMode] Sanitized mode string for ModeName '{itemConfig.ModeName}' is: '{sanitizedMode ?? "null_or_empty"}' (from actual: '{currentModeActual ?? "null_or_empty"}').");
+            
+            if (String.IsNullOrEmpty(sanitizedMode)) 
             {
-                 PluginLog.Warning($"[LogicManager|ResolveTextWithMode] 项目 '{itemConfig.DisplayName}' (ModeName: '{itemConfig.ModeName}') 的当前模式名 '{currentModeActual}' 解析/清理后为空。模板是 '{textTemplate}'。将 '{{mode}}' 视为空字符串。");
-                 return textTemplate.Replace("{mode}", ""); // 将 {mode} 替换为空字符串
+                 PluginLog.Warning($"[LogicManager|ResolveTextWithMode] Item '{itemConfig.DisplayName}' (ModeName: '{itemConfig.ModeName}') current mode ('{currentModeActual}') sanitized to empty. '{{mode}}' in template '{textTemplate}' will be replaced with empty string.");
             }
             
             // 执行替换
-            return textTemplate.Replace("{mode}", sanitizedMode);
+            var finalResult = Regex.Replace(textTemplate, "{mode}", sanitizedMode ?? "", RegexOptions.IgnoreCase); // 使用 sanitizedMode ?? "" 确保不传 null
+            PluginLog.Info($"[LogicManager|ResolveTextWithMode] END Resolving. For Item '{itemConfig.DisplayName}', ModeName '{itemConfig.ModeName}', SanitizedMode '{sanitizedMode ?? ""}', Final Result: '{finalResult}'");
+            return finalResult;
         }
 
         /// <summary>

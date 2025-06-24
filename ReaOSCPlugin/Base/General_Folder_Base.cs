@@ -190,6 +190,16 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     continue;
                 }
 
+                // 【新增】如果这是一个 SelectModeButton，则需要在此处显式注册其模式组
+                // 因为 Logic_Manager_Base.RegisterConfigs 在初始加载时不会为文件夹内的 SelectModeButton 注册模式组
+                if (loadedConfig.ActionType == "SelectModeButton")
+                {
+                    // loadedConfig.DisplayName 是 SelectModeButton 的模式组名称
+                    // loadedConfig.Modes 包含了它的模式列表
+                    Logic_Manager_Base.Instance.RegisterModeGroup(loadedConfig);
+                    PluginLog.Info($"[{this.DisplayName}] PopulateStaticButtonMappings: Registered mode group for static SelectModeButton '{loadedConfig.DisplayName}' from folder content. Effective GroupName in LogicManager: '{loadedConfig.GroupName}'.");
+                }
+
                 var localId = $"{loadedConfig.GroupName}_{loadedConfig.DisplayName}".Replace(" ", ""); 
 
                 if (this._localIdToConfig_Buttons.ContainsKey(localId))
@@ -1039,6 +1049,9 @@ namespace Loupedeck.ReaOSCPlugin.Base
             Boolean isStaticButton = false;
             Logic_Manager_Base logicManager = Logic_Manager_Base.Instance; // 获取 Logic_Manager 实例
 
+            // 【新增】在此处声明 mainTitleToDraw 以确保其在整个方法中的作用域
+            String mainTitleToDraw = null; 
+
             if (this._isButtonListDynamic)
             {
                 if (!this._allListItems.TryGetValue(localId, out configToDraw))
@@ -1069,40 +1082,55 @@ namespace Loupedeck.ReaOSCPlugin.Base
             Int32 currentModeForDrawing = 0; 
             String preliminaryAuxText = configToDraw.Text; // 原始辅助文本模板
 
-            // 确定初步标题
-            if (configToDraw.ActionType == "ParameterButton" && isStaticButton)
-            {
-                // ParameterButton的标题由DetermineParameterButtonTitle特殊处理，其内部可能也需要{mode}解析（如果其回退标题含{mode}）
-                preliminaryTitle = this.DetermineParameterButtonTitle(configToDraw); 
-            }
-            else
-            {
-                preliminaryTitle = configToDraw.Title ?? configToDraw.DisplayName;
-            }
-
-            // 使用 Logic_Manager 解析标题和辅助文本中的 {mode}
-            String mainTitleToDraw = logicManager.ResolveTextWithMode(configToDraw, preliminaryTitle);
+            // 首先解析通用的辅助文本 (config.Text)
             String auxTextToDraw = logicManager.ResolveTextWithMode(configToDraw, preliminaryAuxText);
 
-            // 【修改】确定激活状态，统一使用新的 _folderItemTemporaryActiveStates 机制
-            if (configToDraw.ActionType == "TriggerButton" || configToDraw.ActionType == "CombineButton")
+            // 【新增】特别处理 SelectModeButton 的标题和激活状态
+            if (configToDraw.ActionType == "SelectModeButton")
             {
-                // localId 对于动态列表项是其全局 actionParameter，对于静态按钮是其 localId
-                // 这与 _folderItemTemporaryActiveStates 和 _folderItemResetTimers 中使用的键一致
-                isActive = this._folderItemTemporaryActiveStates.TryGetValue(localId, out var tempState) && tempState;
-            }
-            else if (configToDraw.ActionType == "ToggleButton")
-            { 
-                if (isStaticButton && !String.IsNullOrEmpty(globalParamForState))
+                mainTitleToDraw = logicManager.GetCurrentModeString(configToDraw.DisplayName); 
+                if (String.IsNullOrEmpty(mainTitleToDraw) && configToDraw.Modes != null && configToDraw.Modes.Any())
                 {
-                    isActive = logicManager.GetToggleState(globalParamForState);
+                    mainTitleToDraw = configToDraw.Modes.FirstOrDefault(); 
                 }
-                else if (!isStaticButton) 
+                if (String.IsNullOrEmpty(mainTitleToDraw))
                 {
-                    isActive = logicManager.GetToggleState(localId); 
+                    mainTitleToDraw = configToDraw.DisplayName; // 最终回退到 DisplayName
                 }
+                // SelectModeButton 的 isActive 状态：如果当前模式不是列表中的第一个，则视为激活
+                isActive = (configToDraw.Modes?.IndexOf(logicManager.GetCurrentModeString(configToDraw.DisplayName) ?? "") ?? 0) > 0;
             }
-            // ParameterButton 的 isActive 状态通常不通过这种瞬时高亮管理，而是由其参数源决定，或固定显示
+            else // 处理其他类型的按钮
+            {
+                // 确定初步标题 (非 SelectModeButton)
+                if (configToDraw.ActionType == "ParameterButton" && isStaticButton)
+                {
+                    preliminaryTitle = this.DetermineParameterButtonTitle(configToDraw); 
+                }
+                else
+                {
+                    preliminaryTitle = configToDraw.Title ?? configToDraw.DisplayName;
+                }
+                mainTitleToDraw = logicManager.ResolveTextWithMode(configToDraw, preliminaryTitle);
+
+                // 确定激活状态 (非 SelectModeButton)
+                if (configToDraw.ActionType == "TriggerButton" || configToDraw.ActionType == "CombineButton")
+                {
+                    isActive = this._folderItemTemporaryActiveStates.TryGetValue(localId, out var tempState) && tempState;
+                }
+                else if (configToDraw.ActionType == "ToggleButton")
+                { 
+                    if (isStaticButton && !String.IsNullOrEmpty(globalParamForState))
+                    {
+                        isActive = logicManager.GetToggleState(globalParamForState);
+                    }
+                    else if (!isStaticButton) // 动态 ToggleButton, localId 是其全局 actionParameter
+                    {
+                        isActive = logicManager.GetToggleState(localId); 
+                    }
+                }
+                // ParameterButton 的 isActive 状态通常不通过这种瞬时高亮管理，而是由其参数源决定，或固定显示
+            }
             
             return PluginImage.DrawElement(imageSize, configToDraw, mainTitleToDraw, null, isActive, currentModeForDrawing, loadedIcon, false, auxTextToDraw, false );
         }
