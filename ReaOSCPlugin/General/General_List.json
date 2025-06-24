@@ -591,7 +591,12 @@
         "-100",
         "100"
       ],
-      "ParameterDefault": "0"
+      "Unit": [
+        "L&R",
+        "L100",
+        "R100"
+      ],
+      "UnitDefault": "C"
     },
     {
       "ActionType": "ControlDial",

@@ -1346,130 +1346,221 @@ namespace Loupedeck.ReaOSCPlugin.Base
 
         #region ControlDial Unit Conversion and Display Helpers
 
-        private const Single PARAM_FOR_0DB_CALIBRATION = 0.716f; // 校准点：参数值0.716f (0.0-1.0范围) 对应0dB
+        private const Single PARAM_FOR_0DB_CALIBRATION = 0.716f; 
+        private const Single EFFECTIVE_MIN_DB_FOR_INF_INTERPOLATION = -144.0f; 
 
-        // 将内部参数值 (Single, 0.0f-1.0f) 转换为用户显示的单位值
         private Single ConvertParameterToUnit(Single parameterValue, ControlDialParsedConfig dialConfig) 
         {
-            if (!dialConfig.HasUnitConversion) 
-            {
-                return parameterValue; 
-            }
+            if (!dialConfig.HasUnitConversion) { return parameterValue; }
 
-            Single paramMin = dialConfig.MinValue; // 通常是 0.0f
-            Single paramMax = dialConfig.MaxValue; // 通常是 1.0f
-            Single unitMin = dialConfig.UnitMin; 
-            Single unitMax = dialConfig.UnitMax; 
+            // 【新增】处理 L&R 单位类型
+            if (dialConfig.DisplayUnitString.Equals("L&R", StringComparison.OrdinalIgnoreCase))
+            {
+                // 对于 L&R 类型，单位值直接映射到参数值，但需要确保在参数范围内。
+                // dialConfig.MinValue 和 dialConfig.MaxValue 是从 Parameter 数组解析得到的参数范围 (例如 -100f, 100f for Pan)。
+                return Math.Clamp(parameterValue, dialConfig.MinValue, dialConfig.MaxValue);
+            }
+            // 【结束新增】
+
+            Single paramMin = dialConfig.MinValue; 
+            Single paramMax = dialConfig.MaxValue; 
+            Single unitMin = dialConfig.UnitMin;   
+            Single unitMax = dialConfig.UnitMax;   
 
             if (dialConfig.DisplayUnitString.Equals("dB", StringComparison.OrdinalIgnoreCase))
             {
-                // PluginLog.Verbose($"[ConvertParameterToUnit][dB] Input Param: {parameterValue}, ParamRange: [{paramMin}-{paramMax}], UnitRange: [{unitMin}-{unitMax}], 0dB@Param: {PARAM_FOR_0DB_CALIBRATION}");
+                const Single epsilon = 0.00001f;
+                if (parameterValue <= paramMin + epsilon) { return Single.NegativeInfinity; }
+                if (Math.Abs(parameterValue - 0.005f) < epsilon) { return -132.0f; } // 新增校准点
+                if (Math.Abs(parameterValue - 0.01f) < epsilon) { return -114.0f; }
+                if (Math.Abs(parameterValue - 0.05f) < epsilon) { return -72.0f; }
+                if (Math.Abs(parameterValue - 0.1f)  < epsilon) { return -54.0f; }
+                if (Math.Abs(parameterValue - 0.25f) < epsilon) { return -30.0f; }
+                if (Math.Abs(parameterValue - 0.5f)  < epsilon) { return -11.0f; }
+                if (Math.Abs(parameterValue - PARAM_FOR_0DB_CALIBRATION) < epsilon) { return 0.0f; }
+                if (parameterValue >= paramMax - epsilon) { return unitMax; }
 
-                if (parameterValue <= paramMin) { return Single.NegativeInfinity; }
-                if (Math.Abs(parameterValue - PARAM_FOR_0DB_CALIBRATION) < 0.0001f) { return 0.0f; } // 0dB校准点
-                if (parameterValue >= paramMax) { return unitMax; }
+                Single effectiveMinInterpolationDb = Single.IsNegativeInfinity(unitMin) ? EFFECTIVE_MIN_DB_FOR_INF_INTERPOLATION : unitMin;
 
-                Single effectiveUnitMinForInterpolation = Single.IsNegativeInfinity(unitMin) ? -60.0f : unitMin;
-                Single calculatedUnitValue;
-
-                // 区间1: (paramMin, PARAM_FOR_0DB_CALIBRATION) 映射到 (effectiveUnitMinForInterpolation, 0dB)
-                if (parameterValue > paramMin && parameterValue < PARAM_FOR_0DB_CALIBRATION)
+                // 段0: (paramMin, 0.005f) -> (effectiveMinInterpolationDb, -132dB)
+                if (parameterValue > paramMin && parameterValue < 0.005f)
                 {
-                    // 确保插值范围有效
-                    if (PARAM_FOR_0DB_CALIBRATION - paramMin <= 0.00001f) return effectiveUnitMinForInterpolation; 
-                    Single proportion = (parameterValue - paramMin) / (PARAM_FOR_0DB_CALIBRATION - paramMin);
-                    calculatedUnitValue = effectiveUnitMinForInterpolation + proportion * (0.0f - effectiveUnitMinForInterpolation);
+                    if (0.005f - paramMin <= epsilon) return effectiveMinInterpolationDb; 
+                    Single proportion = (parameterValue - paramMin) / (0.005f - paramMin);
+                    return effectiveMinInterpolationDb + proportion * (-132.0f - effectiveMinInterpolationDb);
                 }
-                // 区间2: (PARAM_FOR_0DB_CALIBRATION, paramMax) 映射到 (0dB, unitMax)
-                else if (parameterValue > PARAM_FOR_0DB_CALIBRATION && parameterValue < paramMax)
+                // 段1: (0.005f, 0.01f) -> (-132dB, -114dB)
+                else if (parameterValue > 0.005f && parameterValue < 0.01f)
                 {
-                    // 确保插值范围有效
-                    if (paramMax - PARAM_FOR_0DB_CALIBRATION <= 0.00001f) return 0.0f; 
-                    Single proportion = (parameterValue - PARAM_FOR_0DB_CALIBRATION) / (paramMax - PARAM_FOR_0DB_CALIBRATION);
-                    calculatedUnitValue = 0.0f + proportion * (unitMax - 0.0f);
+                    if (0.01f - 0.005f <= epsilon) return -132.0f; 
+                    Single proportion = (parameterValue - 0.005f) / (0.01f - 0.005f);
+                    return -132.0f + proportion * (-114.0f - (-132.0f));
                 }
-                else
+                // 段2: (0.01f, 0.05f) -> (-114dB, -72dB)
+                else if (parameterValue > 0.01f && parameterValue < 0.05f)
                 {
-                    // 参数值恰好等于paramMin, PARAM_FOR_0DB_CALIBRATION, 或 paramMax 的情况已在前面处理
-                    // 此处理论上不应到达，但作为回退，可以返回一个基于输入参数比例的估算或错误指示
-                    // 例如，如果 parameterValue 非常接近校准点但由于浮点精度问题未完全匹配。
-                    // 为了简单，我们依赖上面的精确检查。如果到了这里，可能是逻辑边缘情况。
-                    // 尝试一个更广泛的线性插值作为非常粗略的回退（或者记录错误）
-                    if (paramMax - paramMin <= 0.00001f) return (unitMin + unitMax) / 2f; // 避免除零
-                    Single proportionFallback = (parameterValue - paramMin) / (paramMax - paramMin);
-                    calculatedUnitValue = unitMin + proportionFallback * (unitMax - unitMin); 
-                     PluginLog.Warning($"[ConvertParameterToUnit][dB] Reached fallback interpolation for param {parameterValue}. Output: {calculatedUnitValue}");
+                    if (0.05f - 0.01f <= epsilon) return -114.0f;
+                    Single proportion = (parameterValue - 0.01f) / (0.05f - 0.01f);
+                    return -114.0f + proportion * (-72.0f - (-114.0f));
                 }
-                return calculatedUnitValue;
+                // 段3: (0.05f, 0.1f) -> (-72dB, -54dB)
+                else if (parameterValue > 0.05f && parameterValue < 0.1f) 
+                { 
+                    if (0.1f - 0.05f <= epsilon) return -72.0f; 
+                    Single proportion = (parameterValue - 0.05f) / (0.1f - 0.05f); 
+                    return -72.0f + proportion * (-54.0f - (-72.0f)); 
+                }
+                // 段4: (0.1f, 0.25f) -> (-54dB, -30dB)
+                else if (parameterValue > 0.1f && parameterValue < 0.25f) 
+                { 
+                    if (0.25f - 0.1f <= epsilon) return -54.0f; 
+                    Single proportion = (parameterValue - 0.1f) / (0.25f - 0.1f); 
+                    return -54.0f + proportion * (-30.0f - (-54.0f)); 
+                }
+                // 段5: (0.25f, 0.5f) -> (-30dB, -11dB)
+                else if (parameterValue > 0.25f && parameterValue < 0.5f) 
+                { 
+                    if (0.5f - 0.25f <= epsilon) return -30.0f; 
+                    Single proportion = (parameterValue - 0.25f) / (0.5f - 0.25f); 
+                    return -30.0f + proportion * (-11.0f - (-30.0f)); 
+                }
+                // 段6: (0.5f, PARAM_FOR_0DB_CALIBRATION) -> (-11dB, 0dB)
+                else if (parameterValue > 0.5f && parameterValue < PARAM_FOR_0DB_CALIBRATION) 
+                { 
+                    if (PARAM_FOR_0DB_CALIBRATION - 0.5f <= epsilon) return -11.0f; 
+                    Single proportion = (parameterValue - 0.5f) / (PARAM_FOR_0DB_CALIBRATION - 0.5f); 
+                    return -11.0f + proportion * (0.0f - (-11.0f)); 
+                }
+                // 段7: (PARAM_FOR_0DB_CALIBRATION, paramMax) -> (0dB, unitMax)
+                else if (parameterValue > PARAM_FOR_0DB_CALIBRATION && parameterValue < paramMax) 
+                { 
+                    if (paramMax - PARAM_FOR_0DB_CALIBRATION <= epsilon) return 0.0f; 
+                    Single proportion = (parameterValue - PARAM_FOR_0DB_CALIBRATION) / (paramMax - PARAM_FOR_0DB_CALIBRATION); 
+                    return 0.0f + proportion * (unitMax - 0.0f); 
+                }
+                
+                PluginLog.Warning($"[ConvertParameterToUnit][dB] Parameter {parameterValue:F5} did not fit into any defined interpolation segment. Clamping to nearest known boundary.");
+                if (parameterValue < 0.005f) return -132f; // 更新的 fallback
+                if (parameterValue < 0.01f) return -114f; 
+                if (parameterValue < 0.05f) return -72f;
+                if (parameterValue < 0.1f) return -54f;
+                if (parameterValue < 0.25f) return -30f;
+                if (parameterValue < 0.5f) return -11f;
+                if (parameterValue < PARAM_FOR_0DB_CALIBRATION) return 0f;
+                return unitMax; 
             }
-            else // 其他标准线性单位转换
-            { 
-                if (Math.Abs(paramMax - paramMin) < 0.00001f) return unitMin; // 避免除以零或无效范围
-                Single proportion = (parameterValue - paramMin) / (paramMax - paramMin); 
-                return unitMin + proportion * (unitMax - unitMin); 
-            }
+            else { if (Math.Abs(paramMax - paramMin) < 0.00001f) return unitMin; Single proportion = (parameterValue - paramMin) / (paramMax - paramMin); return unitMin + proportion * (unitMax - unitMin); }
         }
 
-        // 将用户显示的单位值转换回内部参数值 (Single, 0.0f-1.0f)
         private Single ConvertUnitToParameter(Single unitValue, ControlDialParsedConfig dialConfig) 
         {
-            if (!dialConfig.HasUnitConversion)
-            {
-                return unitValue; 
-            }
+            if (!dialConfig.HasUnitConversion) { return unitValue; }
 
-            Single paramMin = dialConfig.MinValue; // 通常 0.0f
-            Single paramMax = dialConfig.MaxValue; // 通常 1.0f
-            Single unitMin = dialConfig.UnitMin;
+            // 【新增】处理 L&R 单位类型
+            if (dialConfig.DisplayUnitString.Equals("L&R", StringComparison.OrdinalIgnoreCase))
+            {
+                // 对于 L&R 类型，单位值直接映射到参数值，但需要确保在参数范围内。
+                // dialConfig.MinValue 和 dialConfig.MaxValue 是从 Parameter 数组解析得到的参数范围 (例如 -100f, 100f for Pan)。
+                return Math.Clamp(unitValue, dialConfig.MinValue, dialConfig.MaxValue);
+            }
+            // 【结束新增】
+
+            Single paramMin = dialConfig.MinValue; 
+            Single paramMax = dialConfig.MaxValue; 
+            Single unitMin = dialConfig.UnitMin;   
             Single unitMax = dialConfig.UnitMax;
 
             if (dialConfig.DisplayUnitString.Equals("dB", StringComparison.OrdinalIgnoreCase))
             {
-                // PluginLog.Verbose($"[ConvertUnitToParameter][dB] Input Unit: {unitValue}, ParamRange: [{paramMin}-{paramMax}], UnitRange: [{unitMin}-{unitMax}], 0dB@Param: {PARAM_FOR_0DB_CALIBRATION}");
-
+                const Single dbEpsilon = 0.01f; 
                 if (Single.IsNegativeInfinity(unitValue)) { return paramMin; }
-                if (Math.Abs(unitValue - 0.0f) < 0.001f) { return PARAM_FOR_0DB_CALIBRATION; } // 0dB 校准点
-                if (unitValue >= unitMax) { return paramMax; }
+                if (Math.Abs(unitValue - (-132.0f)) < dbEpsilon) { return 0.005f; } // 新增
+                if (Math.Abs(unitValue - (-114.0f)) < dbEpsilon) { return 0.01f; }
+                if (Math.Abs(unitValue - (-72.0f)) < dbEpsilon) { return 0.05f; }
+                if (Math.Abs(unitValue - (-54.0f)) < dbEpsilon) { return 0.1f; }
+                if (Math.Abs(unitValue - (-30.0f)) < dbEpsilon) { return 0.25f; }
+                if (Math.Abs(unitValue - (-11.0f)) < dbEpsilon) { return 0.5f; }
+                if (Math.Abs(unitValue - 0.0f) < dbEpsilon) { return PARAM_FOR_0DB_CALIBRATION; }
+                if (unitValue >= unitMax - dbEpsilon) { return paramMax; }
+                
+                Single effectiveMinDbForInf = Single.IsNegativeInfinity(unitMin) ? EFFECTIVE_MIN_DB_FOR_INF_INTERPOLATION : unitMin;
+                // 如果 unitValue 比我们定义的最低有效dB还小 (但不是-inf)，则钳位到paramMin
+                if (unitValue < effectiveMinDbForInf && !Single.IsNegativeInfinity(unitValue)) { return paramMin; } 
 
-                Single effectiveUnitMinForInterpolation = Single.IsNegativeInfinity(unitMin) ? -60.0f : unitMin;
                 Single calculatedParamValue;
 
-                // 区间1: [effectiveUnitMinForInterpolation, 0dB) 映射到 [paramMin, PARAM_FOR_0DB_CALIBRATION)
-                if (unitValue < 0.0f && unitValue >= effectiveUnitMinForInterpolation)
+                // 段0: (effectiveMinDbForInf, -132dB] -> (paramMin, 0.005f]
+                if (unitValue > effectiveMinDbForInf && unitValue <= -132.0f)
                 {
-                    if (0.0f - effectiveUnitMinForInterpolation <= 0.00001f) return paramMin; 
-                    Single proportion = (unitValue - effectiveUnitMinForInterpolation) / (0.0f - effectiveUnitMinForInterpolation);
-                    calculatedParamValue = paramMin + proportion * (PARAM_FOR_0DB_CALIBRATION - paramMin);
+                    if (-132.0f - effectiveMinDbForInf <= dbEpsilon) return paramMin; 
+                    Single proportion = (unitValue - effectiveMinDbForInf) / (-132.0f - effectiveMinDbForInf);
+                    calculatedParamValue = paramMin + proportion * (0.005f - paramMin);
                 }
-                // 小于有效插值下限 (但不是-inf)
-                else if (unitValue < effectiveUnitMinForInterpolation && !Single.IsNegativeInfinity(unitValue))
+                // 段1: (-132dB, -114dB] -> (0.005f, 0.01f]
+                else if (unitValue > -132.0f && unitValue <= -114.0f)
                 {
-                    calculatedParamValue = paramMin; 
+                    if (-114.0f - (-132.0f) <= dbEpsilon) return 0.005f; 
+                    Single proportion = (unitValue - (-132.0f)) / (-114.0f - (-132.0f));
+                    calculatedParamValue = 0.005f + proportion * (0.01f - 0.005f);
                 }
-                // 区间2: (0dB, unitMax) 映射到 (PARAM_FOR_0DB_CALIBRATION, paramMax)
+                // 段2: (-114dB, -72dB] -> (0.01f, 0.05f]
+                else if (unitValue > -114.0f && unitValue <= -72.0f)
+                {
+                    if (-72.0f - (-114.0f) <= dbEpsilon) return 0.01f;
+                    Single proportion = (unitValue - (-114.0f)) / (-72.0f - (-114.0f));
+                    calculatedParamValue = 0.01f + proportion * (0.05f - 0.01f);
+                }
+                // 段3: (-72dB, -54dB] -> (0.05f, 0.1f]
+                else if (unitValue > -72.0f && unitValue <= -54.0f) 
+                { 
+                    if (-54.0f - (-72.0f) <= dbEpsilon) return 0.05f; 
+                    Single proportion = (unitValue - (-72.0f)) / (-54.0f - (-72.0f)); 
+                    calculatedParamValue = 0.05f + proportion * (0.1f - 0.05f); 
+                }
+                // 段4: (-54dB, -30dB] -> (0.1f, 0.25f]
+                else if (unitValue > -54.0f && unitValue <= -30.0f) 
+                { 
+                    if (-30.0f - (-54.0f) <= dbEpsilon) return 0.1f; 
+                    Single proportion = (unitValue - (-54.0f)) / (-30.0f - (-54.0f)); 
+                    calculatedParamValue = 0.1f + proportion * (0.25f - 0.1f); 
+                }
+                // 段5: (-30dB, -11dB] -> (0.25f, 0.5f]
+                else if (unitValue > -30.0f && unitValue <= -11.0f) 
+                { 
+                    if (-11.0f - (-30.0f) <= dbEpsilon) return 0.25f; 
+                    Single proportion = (unitValue - (-30.0f)) / (-11.0f - (-30.0f)); 
+                    calculatedParamValue = 0.25f + proportion * (0.5f - 0.25f); 
+                }
+                // 段6: (-11dB, 0dB) -> (0.5f, PARAM_FOR_0DB_CALIBRATION)
+                else if (unitValue > -11.0f && unitValue < 0.0f) 
+                { 
+                    if (0.0f - (-11.0f) <= dbEpsilon) return 0.5f; 
+                    Single proportion = (unitValue - (-11.0f)) / (0.0f - (-11.0f)); 
+                    calculatedParamValue = 0.5f + proportion * (PARAM_FOR_0DB_CALIBRATION - 0.5f); 
+                }
+                // 段7: (0dB, unitMax) -> (PARAM_FOR_0DB_CALIBRATION, paramMax)
                 else if (unitValue > 0.0f && unitValue < unitMax) 
-                {
-                    if (unitMax - 0.0f <= 0.00001f) return PARAM_FOR_0DB_CALIBRATION;
+                { 
+                    if (unitMax - 0.0f <= dbEpsilon) return PARAM_FOR_0DB_CALIBRATION;
                     Single proportion = (unitValue - 0.0f) / (unitMax - 0.0f);
                     calculatedParamValue = PARAM_FOR_0DB_CALIBRATION + proportion * (paramMax - PARAM_FOR_0DB_CALIBRATION);
                 }
-                else
+                else 
                 {
-                    // unitValue 等于 0dB, unitMax 或 -inf 已处理。这里可能是等于 effectiveUnitMin 或超出 unitMax 的情况
-                    // 或者由于浮点精度未能匹配特定区间，回退到基于整个范围的粗略估算或钳位。
-                    if (unitValue <= effectiveUnitMinForInterpolation) { calculatedParamValue = paramMin; } // 再次捕获比effMin小的情况
-                    else { calculatedParamValue = paramMax; } // 如果大于等于unitMax (已被处理) 或落在其他未明确覆盖的区间，则钳到paramMax
-                    PluginLog.Warning($"[ConvertUnitToParameter][dB] Reached fallback logic for unitValue {unitValue}. Output: {calculatedParamValue}");
+                    PluginLog.Warning($"[ConvertUnitToParameter][dB] Unit value {unitValue:F1} did not fit interpolation. Clamping to bounds.");
+                    if (unitValue < EFFECTIVE_MIN_DB_FOR_INF_INTERPOLATION && !Single.IsNegativeInfinity(unitValue)) calculatedParamValue = paramMin;
+                    else if (unitValue < -132.0f) calculatedParamValue = 0.005f; 
+                    else if (unitValue < -114.0f) calculatedParamValue = 0.01f;
+                    else if (unitValue < -72.0f) calculatedParamValue = 0.05f;
+                    else if (unitValue < -54.0f) calculatedParamValue = 0.1f;
+                    else if (unitValue < -30.0f) calculatedParamValue = 0.25f;
+                    else if (unitValue < -11.0f) calculatedParamValue = 0.5f;
+                    else if (unitValue < 0.0f) calculatedParamValue = PARAM_FOR_0DB_CALIBRATION; 
+                    else calculatedParamValue = paramMax; 
                 }
                 return Math.Clamp(calculatedParamValue, paramMin, paramMax);
             }
-            else // 其他标准线性单位转换
-            { 
-                if (Math.Abs(unitMax - unitMin) < 0.00001f) return paramMin; 
-                Single proportion = (unitValue - unitMin) / (unitMax - unitMin); 
-                Single result = paramMin + proportion * (paramMax - paramMin); 
-                return Math.Clamp(result, paramMin, paramMax); 
-            }
+            else { if (Math.Abs(unitMax - unitMin) < 0.00001f) return paramMin; Single proportion = (unitValue - unitMin) / (unitMax - unitMin); Single result = paramMin + proportion * (paramMax - paramMin); return Math.Clamp(result, paramMin, paramMax); }
         }
 
         // 获取 ControlDial 在设备上应显示的文本
@@ -1491,18 +1582,37 @@ namespace Loupedeck.ReaOSCPlugin.Base
 
             if (parsedDialConfig.HasUnitConversion)
             {
-                Single unitValue = this.ConvertParameterToUnit(currentParameterValue, parsedDialConfig); 
-                String valueText;
-                if (Single.IsNegativeInfinity(unitValue))
+                if (parsedDialConfig.DisplayUnitString.Equals("L&R", StringComparison.OrdinalIgnoreCase))
                 {
-                    valueText = "-inf";
+                    Int32 intValue = (Int32)Math.Round(currentParameterValue);
+                    if (intValue == 0)
+                    {
+                        return "C";
+                    }
+                    else if (intValue < 0)
+                    {
+                        return $"L{-intValue}";
+                    }
+                    else // intValue > 0
+                    {
+                        return $"R{intValue}";
+                    }
                 }
-                else
-                {
-                    // 对于带单位的转换，通常保留一位小数比较常见，特别是dB
-                    valueText = unitValue.ToString("F1", System.Globalization.CultureInfo.InvariantCulture);
+                else // Existing logic for other unit types like dB
+                { 
+                    Single unitValue = this.ConvertParameterToUnit(currentParameterValue, parsedDialConfig); 
+                    String valueText;
+                    if (Single.IsNegativeInfinity(unitValue))
+                    {
+                        valueText = "-inf";
+                    }
+                    else
+                    {
+                        // 对于带单位的转换，通常保留一位小数比较常见，特别是dB
+                        valueText = unitValue.ToString("F1", System.Globalization.CultureInfo.InvariantCulture);
+                    }
+                    return $"{valueText}{parsedDialConfig.UnitLabel}"; 
                 }
-                return $"{valueText}{parsedDialConfig.UnitLabel}"; 
             }
             else // 没有单位转换
             {
@@ -1683,12 +1793,71 @@ namespace Loupedeck.ReaOSCPlugin.Base
             // Unit 和 UnitDefault 的处理 (此部分逻辑不变，但会基于新的 DefaultValue 类型进行操作)
             if (config.Unit != null && config.Unit.Count >= 3)
             {
-                parsedDialConfig.DisplayUnitString = config.Unit[0];
-                parsedDialConfig.UnitLabel = parsedDialConfig.DisplayUnitString; 
+                parsedDialConfig.DisplayUnitString = config.Unit[0]; // 首先设置 DisplayUnitString
 
-                if (TryParseSingleExtended(config.Unit[1], out var unitMin) &&
+                if (parsedDialConfig.DisplayUnitString.Equals("L&R", StringComparison.OrdinalIgnoreCase))
+                {
+                    parsedDialConfig.HasUnitConversion = true;
+                    parsedDialConfig.UnitLabel = ""; // L&R 的值是自解释的，不需要额外标签
+
+                    // 解析 UnitMin from config.Unit[1] (例如 "L100")
+                    if (config.Unit[1] != null && config.Unit[1].ToUpperInvariant().StartsWith("L") &&
+                        Single.TryParse(config.Unit[1].Substring(1), NumberStyles.Any, CultureInfo.InvariantCulture, out var lVal))
+                    {
+                        parsedDialConfig.UnitMin = -lVal;
+                    }
+                    else
+                    {
+                        PluginLog.Warning($"[LogicManager] ControlDial '{config.DisplayName}' L&R UnitMin '{config.Unit[1]}' 无效。默认设为 -100f。");
+                        parsedDialConfig.UnitMin = -100f; // 回退值
+                    }
+
+                    // 解析 UnitMax from config.Unit[2] (例如 "R100")
+                    if (config.Unit[2] != null && config.Unit[2].ToUpperInvariant().StartsWith("R") &&
+                        Single.TryParse(config.Unit[2].Substring(1), NumberStyles.Any, CultureInfo.InvariantCulture, out var rVal))
+                    {
+                        parsedDialConfig.UnitMax = rVal;
+                    }
+                    else
+                    {
+                        PluginLog.Warning($"[LogicManager] ControlDial '{config.DisplayName}' L&R UnitMax '{config.Unit[2]}' 无效。默认设为 100f。");
+                        parsedDialConfig.UnitMax = 100f; // 回退值
+                    }
+                    PluginLog.Info($"[LogicManager] ControlDial '{config.DisplayName}' (action: {actionParameter}) 配置为 L&R 单位转换。Unit: {parsedDialConfig.DisplayUnitString}, Min: {parsedDialConfig.UnitMin}, Max: {parsedDialConfig.UnitMax}");
+
+                    // 解析 UnitDefault from config.UnitDefault (例如 "C")
+                    if (!String.IsNullOrEmpty(config.UnitDefault))
+                    {
+                        if (config.UnitDefault.ToUpperInvariant() == "C")
+                        {
+                            parsedDialConfig.ParsedUnitDefault = 0f;
+                        }
+                        // 也允许数字 "0" 代表 L&R 的中间值
+                        else if (Single.TryParse(config.UnitDefault, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsedNumericDef) && parsedNumericDef == 0f)
+                        {
+                             parsedDialConfig.ParsedUnitDefault = 0f;
+                        }
+                        else
+                        {
+                            PluginLog.Warning($"[LogicManager] ControlDial '{config.DisplayName}' L&R UnitDefault '{config.UnitDefault}' 无效。默认设为 0f (Center)。");
+                            parsedDialConfig.ParsedUnitDefault = 0f; // 回退到中间值
+                        }
+                        PluginLog.Info($"[LogicManager] ControlDial '{config.DisplayName}' (action: {actionParameter}) L&R ParsedUnitDefault (单位刻度): {parsedDialConfig.ParsedUnitDefault}.");
+
+                        // 将单位默认值应用到参数刻度的 DefaultValue
+                        // 这一步依赖 ConvertUnitToParameter 方法后续的更新以支持 L&R
+                        Single newDefaultValue = this.ConvertUnitToParameter(parsedDialConfig.ParsedUnitDefault, parsedDialConfig);
+                        PluginLog.Info($"[LogicManager] ControlDial '{config.DisplayName}' (action: {actionParameter}): L&R UnitDefault ('{config.UnitDefault}' -> 单位刻度 {parsedDialConfig.ParsedUnitDefault}) 被转换为参数刻度 DefaultValue。旧参数 DefaultValue: {parsedDialConfig.DefaultValue:F3}, 新参数 DefaultValue: {newDefaultValue:F3}.");
+                        parsedDialConfig.DefaultValue = newDefaultValue;
+                    }
+                    // else: 如果没有提供 UnitDefault，则 DefaultValue 保持基于 Parameter 数组的初始计算值。
+                    // 例如 Pan 的 Parameter 为 ["true", "-100", "100"], 初始 DefaultValue 为 -100f。
+                    // 如果 UnitDefault 为 "C", ParsedUnitDefault 为 0f, ConvertUnitToParameter(0f, L&R_config) 应返回 0f, 因此 DefaultValue 会被更新为 0f。
+                }
+                else if (TryParseSingleExtended(config.Unit[1], out var unitMin) &&
                     TryParseSingleExtended(config.Unit[2], out var unitMax))
                 {
+                    parsedDialConfig.UnitLabel = parsedDialConfig.DisplayUnitString; // 其他类型单位的默认标签
                     parsedDialConfig.HasUnitConversion = true;
                     parsedDialConfig.UnitMin = unitMin;
                     parsedDialConfig.UnitMax = unitMax;
@@ -1703,7 +1872,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                             if(parsedDialConfig.HasUnitConversion) 
                             {
                                 Single newDefaultValue = this.ConvertUnitToParameter(parsedDialConfig.ParsedUnitDefault, parsedDialConfig);
-                                PluginLog.Info($"[LogicManager] ControlDial '{config.DisplayName}' (action: {actionParameter}): UnitDefault ('{config.UnitDefault}' -> unit scale {parsedDialConfig.ParsedUnitDefault}) being converted to parameter scale DefaultValue. Old param DefaultValue: {parsedDialConfig.DefaultValue}, New (target) param DefaultValue: {newDefaultValue}.");
+                                PluginLog.Info($"[LogicManager] ControlDial '{config.DisplayName}' (action: {actionParameter}): UnitDefault ('{config.UnitDefault}' -> unit scale {parsedDialConfig.ParsedUnitDefault}) being converted to parameter scale DefaultValue. Old param DefaultValue: {parsedDialConfig.DefaultValue:F3}, New (target) param DefaultValue: {newDefaultValue:F3}.");
                                 parsedDialConfig.DefaultValue = newDefaultValue; // DefaultValue (0.0-1.0f) 被单位默认值覆盖
                             }
                             else
@@ -1719,7 +1888,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 }
                 else
                 {
-                    PluginLog.Warning($"[LogicManager] ControlDial '{config.DisplayName}' (action: {actionParameter}) has invalid Unit Min/Max strings: '{config.Unit[1]}', '{config.Unit[2]}'. Unit conversion will NOT be enabled.");
+                    PluginLog.Warning($"[LogicManager] ControlDial '{config.DisplayName}' (action: {actionParameter}) has invalid Unit Min/Max strings: '{config.Unit[1]}', '{config.Unit[2]}' for unit type '{parsedDialConfig.DisplayUnitString}'. Unit conversion will NOT be enabled.");
                     parsedDialConfig.HasUnitConversion = false; 
                 }
             }
