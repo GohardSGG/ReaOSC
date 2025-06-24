@@ -107,7 +107,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
         public String UnitDefault { get; set; } // 例如: "0" (代表单位刻度下的0dB)
 
         // 【新增】标志位，指示当此按钮在动态文件夹内且定义了GroupName时，是否应将其GroupName作为OSC地址的根
-        public bool UseOwnGroupAsRoot { get; set; } = false;
+        public Boolean UseOwnGroupAsRoot { get; set; } = false;
 
         // === 【新增】用于捕获JSON中未明确定义的其他属性 ===
         // Newtonsoft.Json.JsonExtensionDataAttribute 标签可以自动捕获额外数据到字典
@@ -655,9 +655,9 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 case "ToggleButton":
                     this.SetToggleState(actionParameter, !this.GetToggleState(actionParameter)); 
                     oscValueToSend = this.GetToggleState(actionParameter) ? 1.0f : 0.0f;
-                    sendOsc = true; 
+                    sendOsc = true;
 
-                    string toggleButtonOscTemplate = null;
+                    String toggleButtonOscTemplate = null;
                     if (!String.IsNullOrEmpty(config.ModeName) && config.OscAddresses != null && config.OscAddresses.Any())
                     {
                         var currentModeIndex = this.GetCurrentModeIndex(config.ModeName);
@@ -686,7 +686,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     if (itemConfig != null && !String.IsNullOrEmpty(dynamicFolderDisplayName)) // 动态文件夹列表项的特殊处理
                     {
                         // 确定动作特定部分的模板，新优先级：OscAddress > DisplayName > Title
-                        string actionSegmentTemplate = itemConfig.OscAddress;
+                        var actionSegmentTemplate = itemConfig.OscAddress;
                         if (String.IsNullOrEmpty(actionSegmentTemplate))
                         {
                             actionSegmentTemplate = itemConfig.DisplayName; 
@@ -706,9 +706,9 @@ namespace Loupedeck.ReaOSCPlugin.Base
                         else
                         {
                             // 情况2: 按钮 GroupName 是派生的或不作为根 (通常是 _List.json 加载的项，或 Content.Buttons 中无 GroupName 的项)
-                            string folderPart = FormatTopLevelOscPathSegment(dynamicFolderDisplayName);
-                            string itemGroupPart = SanitizeOscPathSegment(itemConfig.GroupName); // 按钮自己的 GroupName (可能是派生的或默认的)
-                            string resolvedActionSegment = ResolveTextWithMode(itemConfig, actionSegmentTemplate); // 解析模板中的{mode}
+                            var folderPart = FormatTopLevelOscPathSegment(dynamicFolderDisplayName);
+                            var itemGroupPart = SanitizeOscPathSegment(itemConfig.GroupName); // 按钮自己的 GroupName (可能是派生的或默认的)
+                            var resolvedActionSegment = ResolveTextWithMode(itemConfig, actionSegmentTemplate); // 解析模板中的{mode}
 
                             if (!String.IsNullOrEmpty(resolvedActionSegment) && resolvedActionSegment.StartsWith("/"))
                             {
@@ -720,8 +720,8 @@ namespace Loupedeck.ReaOSCPlugin.Base
                                 List<String> pathParts = new List<String>();
                                 if (!String.IsNullOrEmpty(folderPart) && folderPart != "/") pathParts.Add(folderPart);
                                 if (!String.IsNullOrEmpty(itemGroupPart) && itemGroupPart != "/") pathParts.Add(itemGroupPart);
-                                
-                                string sanitizedActionSegmentForPath = SanitizeOscPathSegment(resolvedActionSegment);
+
+                                var sanitizedActionSegmentForPath = SanitizeOscPathSegment(resolvedActionSegment);
                                 if (!String.IsNullOrEmpty(sanitizedActionSegmentForPath) && sanitizedActionSegmentForPath != "/") pathParts.Add(sanitizedActionSegmentForPath);
 
                                 if (pathParts.Any())
@@ -731,7 +731,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                                     if (oscAddressToSend == "/") oscAddressToSend = ""; 
                                 }
                                 else { oscAddressToSend = ""; }
-                                PluginLog.Info($"[LogicManager|ProcessUserAction] Dynamic TriggerButton '{itemConfig.DisplayName}' (Folder: '{dynamicFolderDisplayName}', ItemGroup: '{itemConfig.GroupName ?? "null"}'). PathParts: [{string.Join(", ", pathParts)}]. Constructed OSC: '{oscAddressToSend}'");
+                                PluginLog.Info($"[LogicManager|ProcessUserAction] Dynamic TriggerButton '{itemConfig.DisplayName}' (Folder: '{dynamicFolderDisplayName}', ItemGroup: '{itemConfig.GroupName ?? "null"}'). PathParts: [{String.Join(", ", pathParts)}]. Constructed OSC: '{oscAddressToSend}'");
                             }
                         }
                         
@@ -742,7 +742,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     }
                     else // 普通 TriggerButton (非动态列表项)
                     {
-                        string triggerButtonOscTemplate = config.OscAddress;
+                        var triggerButtonOscTemplate = config.OscAddress;
                         oscAddressToSend = this.GetResolvedOscAddress(config, triggerButtonOscTemplate); 
                         PluginLog.Info($"[LogicManager|ProcessUserAction] Static TriggerButton '{config.DisplayName}', resolved OSC address: '{oscAddressToSend}'");
                     }
@@ -900,7 +900,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                             {
                                 const Single tolerance = 0.0001f;
                                 Int32 discreteFloatCurrentIndex = -1; 
-                                for(int i=0; i < controlConfig.DiscreteValues.Count; i++)
+                                for(var i =0; i < controlConfig.DiscreteValues.Count; i++)
                                 {
                                     if(Math.Abs(controlConfig.DiscreteValues[i] - currentParamValue) < tolerance)
                                     {
@@ -1555,9 +1555,9 @@ namespace Loupedeck.ReaOSCPlugin.Base
             }
 
             var parsedDialConfig = new ControlDialParsedConfig();
-            Single initialParameterDefaultValue = 0.0f; 
+            Single initialParameterDefaultValue = 0.0f;
             // 默认 IsParameterIntegerBased 为false，除非所有相关参数都被成功解析为整数且无浮点特征
-            bool allParamsLookLikeIntegers = true; 
+            var allParamsLookLikeIntegers = true; 
 
             if (config.Parameter.Count > 0 && config.Parameter[0]?.ToLower() == "true") // 连续模式
             {
@@ -1566,8 +1566,8 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 {
                     String minStr = config.Parameter[1];
                     String maxStr = config.Parameter[2];
-                    bool minIsInt = Int32.TryParse(minStr, out _) && !minStr.Contains(".") && !minStr.ToLowerInvariant().Contains("e");
-                    bool maxIsInt = Int32.TryParse(maxStr, out _) && !maxStr.Contains(".") && !maxStr.ToLowerInvariant().Contains("e");
+                    var minIsInt = Int32.TryParse(minStr, out _) && !minStr.Contains(".") && !minStr.ToLowerInvariant().Contains("e");
+                    var maxIsInt = Int32.TryParse(maxStr, out _) && !maxStr.Contains(".") && !maxStr.ToLowerInvariant().Contains("e");
                     allParamsLookLikeIntegers = minIsInt && maxIsInt;
 
                     if (Single.TryParse(minStr, NumberStyles.Any, CultureInfo.InvariantCulture, out var minFloat) &&
@@ -1599,7 +1599,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
             {
                 parsedDialConfig.Mode = ControlDialMode.Discrete;
                 parsedDialConfig.DiscreteValues = new List<Single>();
-                bool firstDiscreteValue = true;
+                var firstDiscreteValue = true;
                 // 对于离散模式，如果所有值都是整数形式，则整体视为整数基准
                 foreach (var paramStr in config.Parameter) 
                 {
@@ -1638,7 +1638,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
             if (!String.IsNullOrEmpty(config.ParameterDefault))
             {
                 String defaultParamStr = config.ParameterDefault;
-                bool defaultIsInt = Int32.TryParse(defaultParamStr, out _) && !defaultParamStr.Contains(".") && !defaultParamStr.ToLowerInvariant().Contains("e");
+                var defaultIsInt = Int32.TryParse(defaultParamStr, out _) && !defaultParamStr.Contains(".") && !defaultParamStr.ToLowerInvariant().Contains("e");
 
                 if (Single.TryParse(defaultParamStr, NumberStyles.Any, CultureInfo.InvariantCulture, out var explicitParamDefaultFloat))
                 {
@@ -1657,7 +1657,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     else // Discrete
                     {
                         const Single tolerance = 0.0001f;
-                        bool foundInDiscrete = false;
+                        var foundInDiscrete = false;
                         foreach(var discreteVal in parsedDialConfig.DiscreteValues)
                         {
                             if (Math.Abs(explicitParamDefaultFloat - discreteVal) < tolerance)
@@ -1758,31 +1758,31 @@ namespace Loupedeck.ReaOSCPlugin.Base
         /// <param name="itemConfig">按钮或旋钮的配置，包含 ModeName。</param>
         /// <param name="textTemplate">可能包含 "{mode}" 的文本模板。</param>
         /// <returns>已解析的文本，或在无法解析时返回经过处理的模板。</returns>
-        public string ResolveTextWithMode(ButtonConfig itemConfig, string textTemplate)
+        public String ResolveTextWithMode(ButtonConfig itemConfig, String textTemplate)
         {
             // 如果配置为空、模板为空或模板中不包含"{mode}"占位符，则直接返回原始模板
-            if (itemConfig == null || string.IsNullOrEmpty(textTemplate) || !textTemplate.Contains("{mode}"))
+            if (itemConfig == null || String.IsNullOrEmpty(textTemplate) || !textTemplate.Contains("{mode}"))
             {
                 return textTemplate;
             }
 
             // 如果配置中没有定义ModeName，则无法解析"{mode}"
-            if (string.IsNullOrEmpty(itemConfig.ModeName))
+            if (String.IsNullOrEmpty(itemConfig.ModeName))
             {
                 PluginLog.Warning($"[LogicManager|ResolveTextWithMode] 项目 '{itemConfig.DisplayName}' 的模板 '{textTemplate}' 包含 '{{mode}}' 但其配置中未定义 ModeName。将 '{{mode}}' 视为空字符串。");
                 return textTemplate.Replace("{mode}", ""); // 将 {mode} 替换为空字符串
             }
 
             // 获取当前模式的原始字符串
-            string currentModeActual = this.GetCurrentModeString(itemConfig.ModeName);
-            
+            var currentModeActual = this.GetCurrentModeString(itemConfig.ModeName);
+
             // 对模式字符串进行清理，使其适用于OSC路径和可能的显示
             // 注意: SanitizeOscPathSegment 主要用于OSC路径，对于纯显示文本可能需要调整
-            string sanitizedMode = SanitizeOscPathSegment(currentModeActual); 
+            var sanitizedMode = SanitizeOscPathSegment(currentModeActual); 
 
             // 如果清理后的模式字符串为空 (例如，原始模式名为空或清理后变为空)
             // 并且模板中确实需要 "{mode}"
-            if (string.IsNullOrEmpty(sanitizedMode) && textTemplate.Contains("{mode}"))
+            if (String.IsNullOrEmpty(sanitizedMode) && textTemplate.Contains("{mode}"))
             {
                  PluginLog.Warning($"[LogicManager|ResolveTextWithMode] 项目 '{itemConfig.DisplayName}' (ModeName: '{itemConfig.ModeName}') 的当前模式名 '{currentModeActual}' 解析/清理后为空。模板是 '{textTemplate}'。将 '{{mode}}' 视为空字符串。");
                  return textTemplate.Replace("{mode}", ""); // 将 {mode} 替换为空字符串
@@ -1798,7 +1798,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
         /// <param name="itemConfig">按钮或旋钮的配置。</param>
         /// <param name="oscAddressTemplateFromSource">原始的 OSC 地址模板，可能包含 {mode}。</param>
         /// <returns>最终的 OSC 地址字符串。</returns>
-        public string GetResolvedOscAddress(ButtonConfig itemConfig, string oscAddressTemplateFromSource)
+        public String GetResolvedOscAddress(ButtonConfig itemConfig, String oscAddressTemplateFromSource)
         {
             if (itemConfig == null)
             {
@@ -1807,36 +1807,36 @@ namespace Loupedeck.ReaOSCPlugin.Base
             }
 
             // 1. 首先尝试解析传入的 oscAddressTemplateFromSource
-            string resolvedSegment = ResolveTextWithMode(itemConfig, oscAddressTemplateFromSource);
+            String resolvedSegment = ResolveTextWithMode(itemConfig, oscAddressTemplateFromSource);
 
             // 2. 如果原始模板解析后为空，则尝试使用 itemConfig.Title 作为模板
-            if (string.IsNullOrEmpty(resolvedSegment) && !string.IsNullOrEmpty(itemConfig.Title))
+            if (String.IsNullOrEmpty(resolvedSegment) && !String.IsNullOrEmpty(itemConfig.Title))
             {
                 PluginLog.Verbose($"[LogicManager|GetResolvedOscAddress] Original template for '{itemConfig.DisplayName}' was empty or resolved to empty. Trying Title: '{itemConfig.Title}'");
                 resolvedSegment = ResolveTextWithMode(itemConfig, itemConfig.Title);
             }
 
             // 3. 如果 Title 解析后仍为空，则尝试使用 itemConfig.DisplayName 作为模板
-            if (string.IsNullOrEmpty(resolvedSegment) && !string.IsNullOrEmpty(itemConfig.DisplayName))
+            if (String.IsNullOrEmpty(resolvedSegment) && !String.IsNullOrEmpty(itemConfig.DisplayName))
             {
                 PluginLog.Verbose($"[LogicManager|GetResolvedOscAddress] Title for '{itemConfig.DisplayName}' also resolved to empty. Trying DisplayName: '{itemConfig.DisplayName}'");
                 resolvedSegment = ResolveTextWithMode(itemConfig, itemConfig.DisplayName);
             }
-            
+
             // 4. 应用 GroupName 前缀逻辑
-            string groupNameForPath = itemConfig.GroupName;
-            string basePart = FormatTopLevelOscPathSegment(groupNameForPath);
+            var groupNameForPath = itemConfig.GroupName;
+            var basePart = FormatTopLevelOscPathSegment(groupNameForPath);
 
             // 如果最终的 resolvedSegment 仍然为空 (意味着所有来源都无效)
-            if (string.IsNullOrEmpty(resolvedSegment))
+            if (String.IsNullOrEmpty(resolvedSegment))
             {
                 PluginLog.Warning($"[LogicManager|GetResolvedOscAddress] All potential sources (template, Title, DisplayName) for '{itemConfig.DisplayName}' resolved to an empty segment. Base part is '{basePart ?? "null"}'.");
-                if (string.IsNullOrEmpty(basePart) || basePart == "/")
+                if (String.IsNullOrEmpty(basePart) || basePart == "/")
                 {
                     return "/"; // GroupName 也无效，返回根
                 }
-                string onlyBaseAddress = $"/{basePart}".Replace("//", "/").TrimEnd('/');
-                return string.IsNullOrEmpty(onlyBaseAddress) ? "/" : onlyBaseAddress; // 只返回 GroupName 部分
+                var onlyBaseAddress = $"/{basePart}".Replace("//", "/").TrimEnd('/');
+                return String.IsNullOrEmpty(onlyBaseAddress) ? "/" : onlyBaseAddress; // 只返回 GroupName 部分
             }
 
             // 如果 resolvedSegment 是绝对路径 (以 "/" 开头)
@@ -1846,17 +1846,17 @@ namespace Loupedeck.ReaOSCPlugin.Base
             }
 
             // 否则，它是一个相对路径段，需要与 basePart (GroupName) 组合
-            string actionSpecificPart = SanitizeOscPathSegment(resolvedSegment); 
+            var actionSpecificPart = SanitizeOscPathSegment(resolvedSegment); 
 
-            if (string.IsNullOrEmpty(basePart) || basePart == "/") // 如果没有有效的 GroupName
+            if (String.IsNullOrEmpty(basePart) || basePart == "/") // 如果没有有效的 GroupName
             {
                 var finalAddressNoBase = $"/{actionSpecificPart}".Replace("//", "/").TrimEnd('/');
-                return string.IsNullOrEmpty(finalAddressNoBase) || finalAddressNoBase == "/" ? "/" : finalAddressNoBase;
+                return String.IsNullOrEmpty(finalAddressNoBase) || finalAddressNoBase == "/" ? "/" : finalAddressNoBase;
             }
             else // 有 GroupName，组合它们
             {   
                 var finalAddressWithBase = $"/{basePart}/{actionSpecificPart}".Replace("//", "/").TrimEnd('/');
-                return string.IsNullOrEmpty(finalAddressWithBase) || finalAddressWithBase == "/" ? "/" : finalAddressWithBase;
+                return String.IsNullOrEmpty(finalAddressWithBase) || finalAddressWithBase == "/" ? "/" : finalAddressWithBase;
             }
         }
 
