@@ -644,7 +644,10 @@
     },
     {
       "DisplayName": "Arm Auto",
-      "ActionType": "ToggleButton"
+      "ActionType": "ToggleDial",
+      "Title": "Arm Auto",
+      "ResetOscAddress": "Arm/Delete_All",
+      "ActiveColor": "#FF0000"
     },
     {
       "DisplayName": "Disable",
@@ -688,7 +691,7 @@
     {
       "DisplayName": "Track Select",
       "ActionType": "TickDial",
-      "Title": "Track",
+      "Title": "/Track/Name",
       "IncreaseOSCAddress": "Down",
       "DecreaseOSCAddress": "Up"
     }

@@ -715,7 +715,8 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     // 例如，如果 ToggleDial 按下要发送一个特定的、与旋转无关的OSC消息，且该消息由 RunCommand(localId) 处理
                     else if (dialConfig.ActionType == "ToggleDial" || 
                              dialConfig.ActionType == "2ModeTickDial" ||
-                             dialConfig.ActionType == "ControlDial")
+                             dialConfig.ActionType == "ControlDial" ||
+                             dialConfig.ActionType == "ModeControlDial") // 【新增】 ModeControlDial 按下也通过此机制
                     {
                         // 如果这些类型的旋钮按下确实需要一个由 RunCommand(localId) 处理的独立命令：
                         var localId = this.GetLocalDialId(dialConfig);
@@ -809,6 +810,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 case "2ModeTickDial":
                 case "TickDial":
                 case "ControlDial": 
+                case "ModeControlDial": // 【新增】将 ModeControlDial 添加到这里
                     String groupNameToMatchForGlobalLookup = dialConfig.GroupName ?? this.DisplayName;
                     var globalParamKvp = Logic_Manager_Base.Instance.GetAllConfigs().FirstOrDefault(kvp => 
                         kvp.Value.GroupName == groupNameToMatchForGlobalLookup && 
@@ -820,9 +822,10 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     {
                         String globalActionParameterForLogicManager = globalParamKvp.Key;
                         Logic_Manager_Base.Instance.ProcessDialAdjustment(globalActionParameterForLogicManager, ticks);
-                        if(dialConfig.ActionType == "ParameterDial" || dialConfig.ActionType == "ControlDial" || dialConfig.ActionType == "ToggleDial" || dialConfig.ActionType == "2ModeTickDial")
+                        // 【修改】ParameterDial, ControlDial, ModeControlDial, ToggleDial, 2ModeTickDial 调整后其值可能改变
+                        if(dialConfig.ActionType == "ParameterDial" || dialConfig.ActionType == "ControlDial" || dialConfig.ActionType == "ModeControlDial" || dialConfig.ActionType == "ToggleDial" || dialConfig.ActionType == "2ModeTickDial")
                         {
-                            valueChanged = true; // These types change their display value on adjustment
+                            valueChanged = true; 
                         }
                     }
                     else
@@ -871,7 +874,8 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 if (dialConfigPressed.ActionType == "Placeholder") { PluginLog.Info($"[{this.DisplayName}] Placeholder旋钮 '{dialConfigPressed.DisplayName}' 被按下，无操作。"); return; } 
                 if (dialConfigPressed.ActionType == "NavigationDial" && dialConfigPressed.DisplayName == "Back") { this.Close(); return; }
                 
-                if (dialConfigPressed.ActionType == "ToggleDial" || dialConfigPressed.ActionType == "2ModeTickDial" || dialConfigPressed.ActionType == "ControlDial")
+                // 【修改】将 ModeControlDial 添加到此处的按下处理逻辑
+                if (dialConfigPressed.ActionType == "ToggleDial" || dialConfigPressed.ActionType == "2ModeTickDial" || dialConfigPressed.ActionType == "ControlDial" || dialConfigPressed.ActionType == "ModeControlDial")
                 {
                     String groupNameToMatchForGlobalLookup = dialConfigPressed.GroupName ?? this.DisplayName;
                     var globalParamKvp = Logic_Manager_Base.Instance.GetAllConfigs().FirstOrDefault(kvp => 
@@ -1206,14 +1210,14 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     }
                     break;
                 case "ControlDial": 
+                case "ModeControlDial": // 【新增】ModeControlDial 的显示值也通过 GetControlDialDisplayText 获取
                     if (!String.IsNullOrEmpty(globalParamForState)) 
                     {
-                        // 【修正】调用 GetControlDialDisplayText 来获取包含单位的、格式化好的文本
                         valueTextToDisplay = logicManager.GetControlDialDisplayText(globalParamForState); 
                     }
                     else
                     {
-                        PluginLog.Warning($"[{this.DisplayName}|GetAdjustmentImage] ControlDial '{dialConfig.DisplayName}' (localId: {localDialId}) 无法获取 globalParamForState 以查询值。");
+                        PluginLog.Warning($"[{this.DisplayName}|GetAdjustmentImage] {dialConfig.ActionType} '{dialConfig.DisplayName}' (localId: {localDialId}) 无法获取 globalParamForState 以查询值。");
                         valueTextToDisplay = "ERR"; 
                     }
                     break;

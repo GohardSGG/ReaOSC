@@ -23,6 +23,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
         public String ActionType { get; set; }
         // 可能的值: "TriggerButton", "ToggleButton", "TickDial", "ToggleDial", "2ModeTickDial", "SelectModeButton",
         // 【新增】 "ParameterDial", "ParameterButton", "CombineButton", "FilterDial", "PageDial", "PlaceholderDial", "NavigationDial", "ControlDial"
+        // 【新增】 "ModeControlDial"
         public String Description { get; set; }
 
         // --- OSC 相关 ---
@@ -33,6 +34,13 @@ namespace Loupedeck.ReaOSCPlugin.Base
         public List<String> Modes { get; set; } // For SelectModeButton: 定义可选模式
         public List<String> Titles { get; set; } // For ParameterDial: 定义可选参数值; For SelectModeButton & controlled buttons: 定义不同模式下的显示标题
         public List<String> OscAddresses { get; set; } // For SelectModeButton & controlled buttons: 定义不同模式下的OSC地址
+        
+        // 【新增】专门用于 ModeControlDial 的多模式列表属性
+        public List<List<String>> ParametersByMode { get; set; } 
+        public List<List<String>> UnitsByMode { get; set; }
+        public List<String> UnitDefaultsByMode { get; set; } // 注意：这个对应的是之前单数的 UnitDefault，但现在是每个模式一个
+        // public List<String> OscAddressesForListenersByMode { get; set; } // 【已移除】不再需要用户在JSON中为每个内部模式定义监听地址
+        public List<String> ParameterDefaultsByMode { get; set; } // 【修正】确保与JSON中的 ParameterDefaultsByMode (有s) 匹配
 
         // === 按钮相关 ===
         // --- ToggleButton 和 ToggleDial 特有 (也可能被ParameterDial用于不同状态的显示) ---
@@ -174,6 +182,12 @@ namespace Loupedeck.ReaOSCPlugin.Base
         private readonly Dictionary<String, Single> _controlDialCurrentValues = new Dictionary<String, Single>();
         private readonly Dictionary<String, ControlDialParsedConfig> _controlDialConfigs = new Dictionary<String, ControlDialParsedConfig>();
 
+        // 【新增】ModeControlDial 相关数据结构
+        private readonly Dictionary<String, List<ControlDialParsedConfig>> _modeControlDialParsedConfigs = new Dictionary<String, List<ControlDialParsedConfig>>();
+        private readonly Dictionary<String, List<String>> _modeControlDialOscListenerAddresses = new Dictionary<String, List<String>>();
+        private readonly Dictionary<String, List<Single>> _modeControlDialCurrentValuesByMode = new Dictionary<String, List<Single>>();
+        private readonly Dictionary<String, List<Single>> _modeControlDialInitialParameterDefaultsByMode = new Dictionary<String, List<Single>>();
+
         private Logic_Manager_Base() { }
 
         public void Initialize()
@@ -190,28 +204,38 @@ namespace Loupedeck.ReaOSCPlugin.Base
         }
 
         #region 模式管理
-        public void RegisterModeGroup(ButtonConfig config) { var modeName = config.DisplayName; var modes = config.Modes; if (String.IsNullOrEmpty(modeName) || modes == null || modes.Count == 0) { return; } if (!this._modeOptions.ContainsKey(modeName)) { this._modeOptions[modeName] = modes; this._currentModes[modeName] = 0; this._modeChangedEvents[modeName] = null; PluginLog.Info($"[LogicManager][Mode] 模式组 '{modeName}' 已注册，包含模式: {String.Join(", ", modes)}"); } }
+        public void RegisterModeGroup(ButtonConfig config) { var modeName = config.DisplayName; var modes = config.Modes; if (String.IsNullOrEmpty(modeName) || modes == null || modes.Count == 0) { return; } if (!this._modeOptions.ContainsKey(modeName)) { this._modeOptions[modeName] = modes; this._currentModes[modeName] = 0; this._modeChangedEvents[modeName] = null; PluginLog.Info($"[LogicManager][Mode] 模式组 '{modeName}' 已注册，包含模式: {String.Join(", ", modes)}。"); } }
         public void ToggleMode(String modeName) 
         { 
-            if (this._currentModes.TryGetValue(modeName, out _) && this._modeOptions.TryGetValue(modeName, out var options)) 
+            if (this._currentModes.TryGetValue(modeName, out _) && this._modeOptions.TryGetValue(modeName, out var options))
             { 
+                var oldModeIndex = this._currentModes[modeName];
                 this._currentModes[modeName] = (this._currentModes[modeName] + 1) % options.Count; 
+                var newModeIndex = this._currentModes[modeName];
+                PluginLog.Info($"[LogicManager][Mode] 模式组 '{modeName}' 从索引 {oldModeIndex} ('{options[oldModeIndex]}') 切换到索引 {newModeIndex} ('{options[newModeIndex]}').");
+
                 this._modeChangedEvents[modeName]?.Invoke(); 
 
-                // 【新增的全局刷新逻辑应在此处】
+                // 刷新所有受此模式组影响的控件 (包括按钮和ModeControlDial等)
                 foreach (var kvp in this._allConfigs)
                 {
                     if (kvp.Value != null && kvp.Value.ModeName == modeName)
                     {
-                        PluginLog.Info($"[LogicManager|ToggleMode] 模式组 '{modeName}' 已改变，触发依赖项 '{kvp.Key}' (Display: {kvp.Value.DisplayName}) 的状态刷新。");
-                        this.CommandStateNeedsRefresh?.Invoke(this, kvp.Key);
+                        PluginLog.Info($"[LogicManager|ToggleMode] 模式组 '{modeName}' 已改变，触发依赖项 '{kvp.Key}' (Display: {kvp.Value.DisplayName}, Type: {kvp.Value.ActionType}) 的状态刷新。");
+                        this.CommandStateNeedsRefresh?.Invoke(this, kvp.Key); 
                     }
                 }
-                // 【全局刷新逻辑结束】
-
-                PluginLog.Info($"[LogicManager][Mode] 模式组 '{modeName}' 已切换到: {this.GetCurrentModeString(modeName)}"); 
-                this.CommandStateNeedsRefresh?.Invoke(this, this.GetActionParameterForModeController(modeName)); 
+                // SelectModeButton 自身也需要刷新，以显示新的当前模式名
+                var modeControllerActionParam = this.GetActionParameterForModeController(modeName);
+                if (!String.IsNullOrEmpty(modeControllerActionParam))
+                {
+                     this.CommandStateNeedsRefresh?.Invoke(this, modeControllerActionParam); 
+                }
             } 
+            else
+            {
+                PluginLog.Warning($"[LogicManager|ToggleMode] 尝试切换未注册或无效的模式组: '{modeName}'");
+            }
         }
         private String GetActionParameterForModeController(String modeName) => this._allConfigs.FirstOrDefault(kvp => kvp.Value.ActionType == "SelectModeButton" && kvp.Value.DisplayName == modeName).Key;
         public String GetCurrentModeString(String modeName) 
@@ -242,27 +266,22 @@ namespace Loupedeck.ReaOSCPlugin.Base
         private void LoadAllConfigs()
         {
             var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            // 根据您的要求，使用 AppData 下的特定目录作为自定义配置的根目录
             this._customConfigBasePath = Path.Combine(localAppData, "Loupedeck", "Plugins", "ReaOSC");
-
             PluginLog.Info($"[LogicManager] 使用自定义配置的基础路径: '{this._customConfigBasePath}'");
 
-            // 为每个配置文件调用新的加载方法，该方法会自动处理外部覆盖和内部回退
+            // 加载 General_List.json
             var generalConfigs = this.LoadConfigFile<Dictionary<String, List<ButtonConfig>>>("General/General_List.json");
-            this.ProcessGroupedConfigs(generalConfigs);
+            this.ProcessGroupedConfigs(generalConfigs, isDynamicFolderContent: false);
             
-            // 【修改】Dynamic_List.json 现在是一个对象，键是文件夹名，值是文件夹定义
+            // 加载 Dynamic_List.json (文件夹定义)
             var dynamicFolderDefsObject = this.LoadConfigFile<JObject>("Dynamic/Dynamic_List.json");
             this.ProcessDynamicFolderDefs(dynamicFolderDefsObject);
         }
         
         private T LoadConfigFile<T>(String relativePath) where T : class
         {
-            // 将路径分隔符统一为当前系统的格式
             var platformRelativePath = relativePath.Replace('/', Path.DirectorySeparatorChar);
             var customFilePath = Path.Combine(this._customConfigBasePath, platformRelativePath);
-
-            // 1. 优先尝试从外部自定义路径加载
             if (File.Exists(customFilePath))
             {
                 try
@@ -276,15 +295,50 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     PluginLog.Error(ex, $"[LogicManager] 读取或解析自定义配置文件 '{customFilePath}' 失败。将回退到内置版本。");
                 }
             }
-
-            // 2. 如果外部文件加载失败或不存在，则回退到加载内嵌资源
-            // 将相对路径转换为资源名称, e.g., "General/General_List.json" -> "Loupedeck.ReaOSCPlugin.General.General_List.json"
             var resourceName = $"Loupedeck.ReaOSCPlugin.{relativePath.Replace('/', '.')}";
             return this.LoadAndDeserialize<T>(Assembly.GetExecutingAssembly(), resourceName);
         }
 
-        // 辅助方法，用于处理从 Dynamic_List.json 或自定义文件中加载的文件夹定义
-        // 【修改】参数类型从 List<ButtonConfig> 改为 JObject
+        private T LoadAndDeserialize<T>(Assembly assembly, String resourceName) where T : class 
+        { 
+            try 
+            { 
+                using (var stream = assembly.GetManifestResourceStream(resourceName)) 
+                { 
+                    if (stream == null) 
+                    { 
+                        PluginLog.Info($"[LogicManager] 内嵌资源 '{resourceName}' 未找到或加载失败。"); 
+                        return null; 
+                    } 
+                    using (var reader = new StreamReader(stream)) 
+                    { 
+                        return JsonConvert.DeserializeObject<T>(reader.ReadToEnd()); 
+                    } 
+                } 
+            } 
+            catch (Exception ex) 
+            { 
+                PluginLog.Error(ex, $"[LogicManager] 读取或解析内嵌资源 '{resourceName}' 失败。"); 
+                return null; 
+            } 
+        }
+
+        private void ProcessGroupedConfigs(Dictionary<String, List<ButtonConfig>> groupedConfigs, bool isDynamicFolderContent, String folderDisplayNameForContext = null)
+        { 
+            if (groupedConfigs == null) { return; } 
+            foreach (var group in groupedConfigs) 
+            { 
+                var configsInGroup = group.Value.Select(config => 
+                { 
+                    config.GroupName = group.Key; // 组名来自字典的键
+                    return config; 
+                }).ToList(); 
+                // 对于非文件夹内容（例如 General_List.json），isDynamicFolderEntry 总是 false，defaultGroupName 应该是 group.Key
+                // 对于文件夹内容，isDynamicFolderEntry 也是 false（因为处理的是文件夹内的控件，而非文件夹入口本身），defaultGroupName 应该是 folderDisplayNameForContext
+                this.RegisterConfigs(configsInGroup, isDynamicFolderEntry: false, defaultGroupName: isDynamicFolderContent ? folderDisplayNameForContext : group.Key);
+            } 
+        }
+
         private void ProcessDynamicFolderDefs(JObject dynamicFolderDefsObject)
         {
             if (dynamicFolderDefsObject == null) 
@@ -295,41 +349,32 @@ namespace Loupedeck.ReaOSCPlugin.Base
             
             var folderEntriesToRegister = new List<ButtonConfig>();
 
-            foreach (var property in dynamicFolderDefsObject.Properties()) // 遍历JObject的属性
+            foreach (var property in dynamicFolderDefsObject.Properties())
             {
-                var folderDisplayNameFromKey = property.Name; // JSON中的键，例如 "Add Track"
+                var folderDisplayNameFromKey = property.Name; 
                 JObject folderDefJson = property.Value as JObject;
-
-                if (folderDefJson == null)
-                {
-                    PluginLog.Warning($"[LogicManager] ProcessDynamicFolderDefs: 文件夹 '{folderDisplayNameFromKey}' 的值不是一个有效的JSON对象，已跳过。");
-                    continue;
-                }
-
-                // 将文件夹的JObject定义转换为ButtonConfig对象 (代表文件夹入口)
+                if (folderDefJson == null) { PluginLog.Warning($"[LogicManager|ProcessDynamicFolderDefs] Folder '{folderDisplayNameFromKey}' has non-object value, skipping."); continue; }
                 ButtonConfig folderDef = folderDefJson.ToObject<ButtonConfig>();
-                if (folderDef == null)
+                if (folderDef == null) { PluginLog.Warning($"[LogicManager|ProcessDynamicFolderDefs] Could not deserialize folder '{folderDisplayNameFromKey}' to ButtonConfig, skipping."); continue; }
+                
+                // 【修正的诊断日志】
+                if (folderDef.ActionType == "ModeControlDial")
                 {
-                     PluginLog.Warning($"[LogicManager] ProcessDynamicFolderDefs: 无法将文件夹 '{folderDisplayNameFromKey}' 的JSON定义转换为ButtonConfig对象，已跳过。");
-                     continue;
+                    PluginLog.Info($"[LogicManager|ProcessDynamicFolderDefs|DIAG] ModeControlDial '{folderDef.DisplayName ?? "(null DisplayName)"}' deserialized state: " +
+                                   $"ParametersByMode is null: {folderDef.ParametersByMode == null}, Count: {folderDef.ParametersByMode?.Count ?? -1}. " +
+                                   $"UnitsByMode is null: {folderDef.UnitsByMode == null}, Count: {folderDef.UnitsByMode?.Count ?? -1}. " +
+                                   $"UnitDefaultsByMode is null: {folderDef.UnitDefaultsByMode == null}, Count: {folderDef.UnitDefaultsByMode?.Count ?? -1}. " +
+                                   // OscAddressesForListenersByMode 已移除, 不再诊断
+                                   $"ParameterDefaultsByMode is null: {folderDef.ParameterDefaultsByMode == null}, Count: {folderDef.ParameterDefaultsByMode?.Count ?? -1}.");
                 }
                 
-                // 确保文件夹入口本身的 DisplayName 与JSON键一致，并设置固定的 GroupName
                 folderDef.DisplayName = folderDisplayNameFromKey; 
-                folderDef.GroupName = "Dynamic"; // 所有动态文件夹入口都属于 "Dynamic" 组
+                folderDef.GroupName = "Dynamic"; 
 
-                // Content 字段现在在 folderDefJson (原始JObject) 中，而不是在转换后的 folderDef.Content 中
-                // ButtonConfig 类中的 Content 字段是 JObject 类型，当从 folderDefJson.ToObject<ButtonConfig>() 时，
-                // Newtonsoft.Json 会尝试将 folderDefJson["Content"] 的值赋给 folderDef.Content。
-                // 我们需要确保 ButtonConfig.Content 字段确实被正确赋值了。
-                // 如果 folderDef.Content （即原始JSON中的 "Content" 字段）为 null，则后面的逻辑会处理。
-
-                JObject contentJObject = folderDef.Content; // 这是从 folderDef (转换后的ButtonConfig) 取到的 Content JObject
-
+                JObject contentJObject = folderDef.Content; 
                 if (contentJObject != null) 
                 {
                     FolderContentConfig actualFolderContent = new FolderContentConfig();
-                    
                     var buttonsToken = contentJObject["Buttons"];
                     if (buttonsToken != null)
                     {
@@ -341,188 +386,182 @@ namespace Loupedeck.ReaOSCPlugin.Base
                         else if (buttonsToken.Type == Newtonsoft.Json.Linq.JTokenType.String && buttonsToken.ToString() == "List")
                         {
                             actualFolderContent.IsButtonListDynamic = true;
-                            var fileNamePartList = folderDef.DisplayName.Replace(" ", "_"); // 使用 folderDef.DisplayName
-                            var fxListNameFromContent = $"Dynamic/{fileNamePartList}_List.json";
+                            var fxListNameFromContent = $"Dynamic/{folderDef.DisplayName.Replace(" ", "_")}_List.json";
                             var fxDataFromContent = this.LoadConfigFile<Newtonsoft.Json.Linq.JObject>(fxListNameFromContent);
-                            if (fxDataFromContent != null)
-                            {
-                                this._fxDataCache[folderDef.DisplayName] = fxDataFromContent; // 使用 folderDef.DisplayName 作为键
-                                PluginLog.Info($"[LogicManager] For folder '{folderDef.DisplayName}' (Buttons: \"List\"), successfully loaded data source '{fxListNameFromContent}' into _fxDataCache.");
-                            }
-                            else
-                            {
-                                PluginLog.Warning($"[LogicManager] For folder '{folderDef.DisplayName}' (Buttons: \"List\"), FAILED to load data source '{fxListNameFromContent}'. Folder content might be empty.");
-                            }
-                        }
-                        else
-                        {
-                            PluginLog.Warning($"[LogicManager] ProcessDynamicFolderDefs for folder '{folderDef.DisplayName}': 'Content.Buttons' is of an unexpected type: {buttonsToken.Type}. Assuming no static buttons and not a dynamic list.");
-                            actualFolderContent.IsButtonListDynamic = false; 
+                            if (fxDataFromContent != null) { this._fxDataCache[folderDef.DisplayName] = fxDataFromContent; }
+                            else { PluginLog.Warning($"[LogicManager] For folder '{folderDef.DisplayName}', FAILED to load data source '{fxListNameFromContent}'."); }
                         }
                     }
-                    else
-                    { 
-                        PluginLog.Info($"[LogicManager] ProcessDynamicFolderDefs for folder '{folderDef.DisplayName}': 'Content.Buttons' is missing. Assuming no static buttons.");
-                        actualFolderContent.IsButtonListDynamic = false; 
-                    }
-
                     var dialsToken = contentJObject["Dials"];
                     if (dialsToken != null && dialsToken.Type == Newtonsoft.Json.Linq.JTokenType.Array)
                     {
                         actualFolderContent.Dials = dialsToken.ToObject<List<ButtonConfig>>() ?? new List<ButtonConfig>();
                     }
-                    
-                    this._folderContents[folderDef.DisplayName] = actualFolderContent; // 使用 folderDef.DisplayName 作为键
-                    this.ProcessFolderContentConfigs(actualFolderContent, folderDef.DisplayName); // 使用 folderDef.DisplayName 作为默认组名
+                    this._folderContents[folderDef.DisplayName] = actualFolderContent; 
+                    this.ProcessFolderContentConfigs(actualFolderContent, folderDef.DisplayName); 
                 }
                 else 
                 {
-                    // Content 字段不存在或为null
-                    // 尝试加载外部 _List.json 作为数据源 (类似旧的FX文件夹行为)
-                    var fileNamePart = folderDef.DisplayName.Replace(" ", "_");
-                    var fxListName = $"Dynamic/{fileNamePart}_List.json";
+                    var fxListName = $"Dynamic/{folderDef.DisplayName.Replace(" ", "_")}_List.json";
                     var fxData = this.LoadConfigFile<Newtonsoft.Json.Linq.JObject>(fxListName);
                     if (fxData != null)
                     {
-                        this._fxDataCache[folderDef.DisplayName] = fxData; // 使用 folderDef.DisplayName
-                        PluginLog.Info($"[LogicManager] For folder '{folderDef.DisplayName}' (No Content field or Content is null), successfully loaded data source '{fxListName}' into _fxDataCache.");
-                        
-                        // 【重要】即使没有Content字段，如果这是一个FX_Folder_Base类型的文件夹，它也可能有在Dynamic_List.json中定义的旋钮。
-                        // 这种情况可能需要进一步处理，例如，如果顶层的folderDef (ButtonConfig) 本身就包含了Dials数组，
-                        // 而不是在嵌套的Content对象里。但根据当前JSON结构，Dials在Content内部。
-                        // 所以，如果Content为null，那么我们就假设这个文件夹定义中没有直接定义旋钮。
-                        // 如果希望在这种情况下仍然能定义旋钮，需要在 folderDef (代表文件夹入口的ButtonConfig) 上直接添加Dials属性，
-                        // 并在ButtonConfig类中也定义这个顶层Dials属性，然后在下面folderEntryForRegistration时复制它。
-                        // 或者，更简单的是要求即使是纯外部列表驱动的文件夹，如果想在Dynamic_List.json中定义旋钮，
-                        // 也必须有一个Content对象，其中包含Dials数组。
-                        // 目前，我们假设如果 Content 为 null，则没有内联的按钮或旋钮。
-                        // 如果 _fxDataCache 加载成功了，那么这个文件夹将被视为 IsButtonListDynamic = true。
-                        // 我们需要一个空的 FolderContentConfig 来表示它，并标记 IsButtonListDynamic。
-                        FolderContentConfig emptyContentForDynamicList = new FolderContentConfig
-                        {
-                            IsButtonListDynamic = true, // 因为我们成功加载了 _fxDataCache
-                            Buttons = new List<ButtonConfig>(),
-                            Dials = new List<ButtonConfig>()
-                        };
-                        this._folderContents[folderDef.DisplayName] = emptyContentForDynamicList;
-                        // 不需要调用 ProcessFolderContentConfigs，因为它内部的 Buttons 和 Dials 都是空的
+                        this._fxDataCache[folderDef.DisplayName] = fxData;
+                        this._folderContents[folderDef.DisplayName] = new FolderContentConfig { IsButtonListDynamic = true };
                     }
-                    else
-                    {
-                        PluginLog.Warning($"[LogicManager] For folder '{folderDef.DisplayName}' (No Content field or Content is null), FAILED to load data source '{fxListName}'. Folder will likely be empty.");
-                        // 即使加载失败，也创建一个空的FolderContentConfig，标记为非动态，以防后续逻辑出错
-                        this._folderContents[folderDef.DisplayName] = new FolderContentConfig { IsButtonListDynamic = false };
-                    }
+                    else { this._folderContents[folderDef.DisplayName] = new FolderContentConfig { IsButtonListDynamic = false }; }
                 }
                 
-                // 准备文件夹入口本身的ButtonConfig进行注册
-                // 这个folderEntryForRegistration不应该包含Content JObject，因为它已被处理或不应直接注册
-                var folderEntryForRegistration = new ButtonConfig {
-                    DisplayName = folderDef.DisplayName, // 已设置为JSON键
-                    Title = folderDef.Title,
-                    TitleColor = folderDef.TitleColor,
-                    GroupName = folderDef.GroupName, // 已设置为 "Dynamic"
-                    ActionType = folderDef.ActionType, // 通常是 "DynamicFolder" 或类似，由JSON定义
-                    Description = folderDef.Description,
-                    Text = folderDef.Text,
-                    TextColor = folderDef.TextColor,
-                    TextSize = folderDef.TextSize,
-                    TextX = folderDef.TextX,
-                    TextY = folderDef.TextY,
-                    TextWidth = folderDef.TextWidth,
-                    TextHeight = folderDef.TextHeight,
-                    BackgroundColor = folderDef.BackgroundColor,
-                    ButtonImage = folderDef.ButtonImage,
+                var folderEntryForRegistration = new ButtonConfig { /* ... copy relevant fields from folderDef ... */ 
+                    DisplayName = folderDef.DisplayName, Title = folderDef.Title, TitleColor = folderDef.TitleColor,
+                    GroupName = folderDef.GroupName, ActionType = folderDef.ActionType, Description = folderDef.Description,
+                    Text = folderDef.Text, TextColor = folderDef.TextColor, TextSize = folderDef.TextSize,
+                    TextX = folderDef.TextX, TextY = folderDef.TextY, TextWidth = folderDef.TextWidth, TextHeight = folderDef.TextHeight,
+                    BackgroundColor = folderDef.BackgroundColor, ButtonImage = folderDef.ButtonImage,
                     PreserveBrandOrderInJson = folderDef.PreserveBrandOrderInJson
-                    // 不复制 folderDef.Content (JObject)
                 };
                 folderEntriesToRegister.Add(folderEntryForRegistration);
             }
-            // 注册文件夹入口本身 (这些是顶级命令，如 "Add Track", "Render" 等)
-            // isDynamicFolderEntry = true 表示这些是文件夹入口，它们的 actionParameter 将直接是 DisplayName
             this.RegisterConfigs(folderEntriesToRegister, isDynamicFolderEntry: true, defaultGroupName: "Dynamic");
         }
-
-        private T LoadAndDeserialize<T>(Assembly assembly, String resourceName) where T : class { try { using (var stream = assembly.GetManifestResourceStream(resourceName)) { if (stream == null) { PluginLog.Info($"[LogicManager] 内嵌资源 '{resourceName}' 未找到或加载失败。"); return null; } using (var reader = new StreamReader(stream)) { return JsonConvert.DeserializeObject<T>(reader.ReadToEnd()); } } } catch (Exception ex) { PluginLog.Error(ex, $"[LogicManager] 读取或解析内嵌资源 '{resourceName}' 失败。"); return null; } }
-        private void ProcessGroupedConfigs(Dictionary<String, List<ButtonConfig>> groupedConfigs) { if (groupedConfigs == null) { return; } foreach (var group in groupedConfigs) { var configs = group.Value.Select(config => { config.GroupName = group.Key; return config; }).ToList(); this.RegisterConfigs(configs); } }
+        
         private void ProcessFolderContentConfigs(FolderContentConfig folderContent, String folderDisplayNameAsDefaultGroupName) 
         { 
             if (folderContent == null) { return; } 
-
-            // 【新增】在注册前，为直接在 Content.Buttons 中定义且拥有显式 GroupName 的按钮设置 UseOwnGroupAsRoot
             if (folderContent.Buttons != null)
             {
                 foreach (var buttonCfgInContent in folderContent.Buttons)
                 {
-                    // 检查 GroupName 是否在 JSON 中明确提供，而不是依赖后续的默认值
-                    // 这里的 buttonCfgInContent.GroupName 是从 JSON 直接反序列化得到的值
-                    if (!String.IsNullOrEmpty(buttonCfgInContent.GroupName))
-                    {
-                        buttonCfgInContent.UseOwnGroupAsRoot = true;
-                        PluginLog.Info($"[LogicManager|ProcessFolderContentConfigs] Button '{buttonCfgInContent.DisplayName}' in folder '{folderDisplayNameAsDefaultGroupName}' has explicit GroupName '{buttonCfgInContent.GroupName}'. Setting UseOwnGroupAsRoot=true.");
-                    }
-                    // 如果 buttonCfgInContent.GroupName 为空，则其 UseOwnGroupAsRoot 保持默认的 false
-                    // RegisterConfigs 稍后可能会为其设置一个默认的 GroupName (folderDisplayNameAsDefaultGroupName)
+                    if (!String.IsNullOrEmpty(buttonCfgInContent.GroupName)) { buttonCfgInContent.UseOwnGroupAsRoot = true; }
                 }
+                this.RegisterConfigs(folderContent.Buttons, isDynamicFolderEntry: false, defaultGroupName: folderDisplayNameAsDefaultGroupName);
+            }
+            if (folderContent.Dials != null)
+            {
+                 this.RegisterConfigs(folderContent.Dials, isDynamicFolderEntry: false, defaultGroupName: folderDisplayNameAsDefaultGroupName);
+            }
+        }
+
+        // Helper to generate action parameter consistently
+        private String GenerateActionParameter(ButtonConfig config, bool isDynamicFolderEntry, string defaultGroupNameForContext)
+        {
+            string effectiveGroupName = String.IsNullOrEmpty(config.GroupName) ? defaultGroupNameForContext : config.GroupName;
+
+            if (isDynamicFolderEntry) 
+            {
+                // For dynamic folder entries, ActionParameter is just its DisplayName.
+                // Their GroupName is "Dynamic" (set in ProcessDynamicFolderDefs).
+                return config.DisplayName; 
             }
 
-            // Pass the folder's DisplayName as the default GroupName for its buttons and dials
-            this.RegisterConfigs(folderContent.Buttons, isDynamicFolderEntry: false, defaultGroupName: folderDisplayNameAsDefaultGroupName); 
-            this.RegisterConfigs(folderContent.Dials, isDynamicFolderEntry: false, defaultGroupName: folderDisplayNameAsDefaultGroupName); 
+            if (String.IsNullOrEmpty(effectiveGroupName))
+            { 
+                PluginLog.Warning($"[LogicManager|GenerateActionParameter] Config '{config.DisplayName ?? "(No DisplayName)"}' (Type: {config.ActionType ?? "N/A"}) has no effective GroupName. Cannot generate action parameter."); 
+                return null; 
+            }
+
+            String groupNameForPath = SanitizeOscPathSegment(effectiveGroupName);
+            String displayNameForPath = SanitizeOscPathSegment(config.DisplayName);
+            String parameter = $"/{groupNameForPath}/{displayNameForPath}";
+            
+            // IMPORTANT: Ensure ModeControlDial also gets /DialAction suffix for consistency if other dials do.
+            if (config.ActionType != null && (config.ActionType.Contains("Dial") /* || config.ActionType == "ModeControlDial" */) )
+            {
+                parameter += "/DialAction";
+            }
+            parameter = parameter.Replace("//", "/").TrimEnd('/');
+            return String.IsNullOrEmpty(parameter) || parameter == "/" ? null : parameter;
         }
 
         private void RegisterConfigs(List<ButtonConfig> configs, Boolean isDynamicFolderEntry = false, String defaultGroupName = null)
         {
-            if (configs == null)
-            {
-                return;
-            }
+            if (configs == null || !configs.Any()) { return; }
+
+            // Stage 1: Register all SelectModeButtons to populate _modeOptions
             foreach (var config in configs)
             {
-                // 【新增】Assign default GroupName if current one is empty and a default is provided
+                if (config.ActionType == "SelectModeButton")
+                {
+                    // Ensure GroupName is assigned before generating actionParameter for _allConfigs key
+                    if (String.IsNullOrEmpty(config.GroupName) && !String.IsNullOrEmpty(defaultGroupName))
+                    {
+                        config.GroupName = defaultGroupName;
+                    }
+                    String actionParameter = this.GenerateActionParameter(config, isDynamicFolderEntry, defaultGroupName);
+                    if (String.IsNullOrEmpty(actionParameter)) 
+                    {
+                        PluginLog.Warning($"[LogicManager|RegisterConfigs Stage1] Could not generate actionParameter for SelectModeButton '{config.DisplayName}'. Skipping its _allConfigs registration.");
+                        // Still attempt to register mode group if DisplayName and Modes are valid
+                        if (!String.IsNullOrEmpty(config.DisplayName) && config.Modes != null && config.Modes.Any())
+                        {
+                             this.RegisterModeGroup(config);
+                        }
+                        continue;
+                    }
+
+                    if (!this._allConfigs.ContainsKey(actionParameter))
+                    {
+                        this._allConfigs[actionParameter] = config;
+                        PluginLog.Info($"[LogicManager|RegisterConfigs Stage1] Added SelectModeButton '{config.DisplayName}' (ActionParam: '{actionParameter}') to _allConfigs.");
+                    }
+                    else if (this._allConfigs[actionParameter].ActionType != "SelectModeButton")
+                    {
+                        PluginLog.Warning($"[LogicManager|RegisterConfigs Stage1] ActionParameter '{actionParameter}' for SelectModeButton '{config.DisplayName}' already exists in _allConfigs with a different ActionType ('{this._allConfigs[actionParameter].ActionType}'). Overwriting with SelectModeButton.");
+                        this._allConfigs[actionParameter] = config; // Overwrite if different type, assuming SelectModeButton definition is more critical here.
+                    }
+                    this.RegisterModeGroup(config);
+                }
+            }
+
+            // Stage 2: Register all other types of configurations
+            foreach (var config in configs)
+            {
+                if (config.ActionType == "SelectModeButton")
+                {
+                    continue; // Already processed
+                }
+
                 if (String.IsNullOrEmpty(config.GroupName) && !String.IsNullOrEmpty(defaultGroupName))
                 {
                     config.GroupName = defaultGroupName;
                 }
+                
+                String actionParameter = this.GenerateActionParameter(config, isDynamicFolderEntry, defaultGroupName);
 
-                if (String.IsNullOrEmpty(config.GroupName))
+                if (String.IsNullOrEmpty(actionParameter))
                 { 
-                    // If still no GroupName, log and skip (unless it's a folder entry that uses DisplayName as key)
-                    if (!isDynamicFolderEntry) // Dynamic folder entries use DisplayName as key, GroupName "Dynamic" is set earlier
-                    {
-                        PluginLog.Warning($"[LogicManager] RegisterConfigs: 配置 '{config.DisplayName}' 缺少 GroupName，已跳过。"); 
-                        continue; 
-                    }
+                    PluginLog.Warning($"[LogicManager|RegisterConfigs Stage2] Could not generate actionParameter for '{config.DisplayName}' (Type: {config.ActionType}). Skipping registration.");
+                    continue; 
                 }
-                String actionParameter;
-                if (isDynamicFolderEntry)
-                { 
-                    actionParameter = config.DisplayName; // 对于文件夹入口，直接使用其DisplayName作为actionParameter
-                    // GroupName 应该已经是 "Dynamic" (在 ProcessDynamicFolderDefs 中设置)
-                    if (String.IsNullOrEmpty(config.GroupName)) // 双重保险
-                    {
-                        config.GroupName = "Dynamic";
-                    }
-                }
-                else
-                {
-                    String groupNameForPath = SanitizeOscPathSegment(config.GroupName);
-                    String displayNameForPath = SanitizeOscPathSegment(config.DisplayName);
-                    actionParameter = $"/{groupNameForPath}/{displayNameForPath}";
-                    if (config.ActionType != null && config.ActionType.Contains("Dial"))
-                    {
-                        actionParameter += "/DialAction";
-                    }
-                }
-                actionParameter = actionParameter.Replace("//", "/").TrimEnd('/');
+
                 if (this._allConfigs.ContainsKey(actionParameter))
-                { continue; }
+                { 
+                    // If it was already added as a SelectModeButton in Stage 1, that's an error in config (same name for different types)
+                    // Or, if this list of configs is somehow processed multiple times leading to true duplicates.
+                    if (this._allConfigs[actionParameter].ActionType != config.ActionType) {
+                        PluginLog.Error($"[LogicManager|RegisterConfigs Stage2] ActionParameter '{actionParameter}' for '{config.DisplayName}' (Type: {config.ActionType}) was already registered with a different type ('{this._allConfigs[actionParameter].ActionType}'). This indicates a configuration error. Skipping this item.");
+                    }
+                    // If same actionParameter and same type, assume it's a duplicate pass and skip silently or log verbose.
+                    // PluginLog.Verbose($"[LogicManager|RegisterConfigs Stage2] ActionParameter '{actionParameter}' for '{config.DisplayName}' (Type: {config.ActionType}) already processed. Skipping duplicate.");
+                    continue; 
+                }
+                
                 this._allConfigs[actionParameter] = config;
+                PluginLog.Info($"[LogicManager|RegisterConfigs Stage2] Registered '{config.ActionType}': '{config.DisplayName}' with ActionParameter: '{actionParameter}' (GroupName: '{config.GroupName ?? "N/A"}')");
 
+                // Specific initialization based on ActionType
                 if (config.ActionType == "ToggleButton" || config.ActionType == "ToggleDial")
                 { 
                     this._toggleStates[actionParameter] = false; 
-                    PluginLog.Info($"[LogicManager|RegisterConfigs] Initialized toggle state for '{actionParameter}' to false."); // 保留原有日志或调整
+                    PluginLog.Verbose($"[LogicManager|RegisterConfigs Stage2] Initialized toggle state for '{actionParameter}' to false."); 
+                    String listenAddrToggle = this.DetermineOscAddressForAction(config, config.GroupName, config.OscAddress); // Use JSON GroupName
+                    if (!String.IsNullOrEmpty(listenAddrToggle) && listenAddrToggle != "/")
+                    {
+                        this._oscAddressToActionParameterMap[listenAddrToggle] = actionParameter;
+                        var initialState = OSCStateManager.Instance?.GetState(listenAddrToggle) > 0.5f;
+                        this._toggleStates[actionParameter] = initialState;
+                        PluginLog.Info($"[LogicManager|RegisterConfigs Stage2] Mapped OSC listen '{listenAddrToggle}' to '{actionParameter}' for '{config.DisplayName}'. Initial state from OSC: {initialState}");
+                    }
                 }
                 else if (config.ActionType == "2ModeTickDial")
                 { this._dialModes[actionParameter] = 0; }
@@ -530,42 +569,11 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 { this._parameterDialSelectedIndexes[actionParameter] = 0; }
                 else if (config.ActionType == "ControlDial")
                 {
-                    this.ParseAndStoreControlDialConfig(config, actionParameter);
+                    this.ParseAndStoreControlDialConfig(config, actionParameter); // This now calls the core segment parser
                 }
-
-                String effectiveOscAddressForStateListener = null;
-                if (!String.IsNullOrEmpty(config.OscAddress))
+                else if (config.ActionType == "ModeControlDial") 
                 {
-                    // 【修正】确保用于监听的地址是基于JSON GroupName（如果OscAddress是相对的）
-                    // 或者如果OscAddress是绝对的，则直接使用。
-                    // DetermineOscAddressForAction 会处理这个问题。
-                    effectiveOscAddressForStateListener = this.DetermineOscAddressForAction(config, config.GroupName, config.OscAddress);
-                }
-                else if (config.ActionType == "ToggleButton" || config.ActionType == "ToggleDial")
-                {
-                    effectiveOscAddressForStateListener = this.DetermineOscAddressForAction(config, config.GroupName); // 使用JSON GroupName
-                }
-
-                if (!String.IsNullOrEmpty(effectiveOscAddressForStateListener) && effectiveOscAddressForStateListener != "/")
-                {
-                    if (config.ActionType == "ToggleButton" || config.ActionType == "ToggleDial")
-                    {
-                        this._oscAddressToActionParameterMap[effectiveOscAddressForStateListener] = actionParameter;
-                        PluginLog.Info($"[LogicManager|RegisterConfigs] Mapping OSC listen address \'{effectiveOscAddressForStateListener}\' to actionParameter \'{actionParameter}\' for ToggleButton/Dial \'{config.DisplayName}\' (JSON Group: \'{config.GroupName}\')."); // 新增日志记录监听地址和actionParameter
-                        // 初始化状态时也考虑当前OSC设备的状态
-                        // 【修正】确保 GetState 的调用不会因为 OSCStateManager 未初始化而异常 (虽然不太可能，但保险起见)
-                        var initialStateFromDevice = OSCStateManager.Instance?.GetState(effectiveOscAddressForStateListener) > 0.5f;
-                        if (this._toggleStates.TryGetValue(actionParameter, out var currentState) && currentState != initialStateFromDevice)
-                        {
-                            this._toggleStates[actionParameter] = initialStateFromDevice;
-                            PluginLog.Info($"[LogicManager|RegisterConfigs] Initial toggle state for '{actionParameter}' (from device) set to {initialStateFromDevice}. Overwrote previous default.");
-                        }
-                        else if (!this._toggleStates.ContainsKey(actionParameter)) // 避免覆盖上面已设置的false，除非来自设备
-                        {
-                             this._toggleStates[actionParameter] = initialStateFromDevice;
-                             PluginLog.Info($"[LogicManager|RegisterConfigs] Initial toggle state for '{actionParameter}' (from device) set to {initialStateFromDevice}.");
-                        }
-                    }
+                    this.ParseAndStoreModeControlDialConfig(config, actionParameter); // This also calls the core segment parser for its internal modes
                 }
             }
         }
@@ -612,17 +620,27 @@ namespace Loupedeck.ReaOSCPlugin.Base
             if (this._oscAddressToActionParameterMap.TryGetValue(e.Address, out String mappedActionParameter))
             {
                 var config = this.GetConfig(mappedActionParameter);
+                if (config == null && mappedActionParameter.Contains("#")) // 可能是 ModeControlDial 的内部模式
+                {
+                    var parts = mappedActionParameter.Split('#');
+                    if (parts.Length == 2)
+                    {
+                        config = this.GetConfig(parts[0]); // 获取 ModeControlDial 的顶层配置
+                    }
+                }
+
                 if (config == null)
                 {
-                    PluginLog.Warning($"[LogicManager|OnOSCStateChanged] Matched OSC Address '{e.Address}' to actionParameter '{mappedActionParameter}', but config is null."); 
+                    PluginLog.Warning($"[LogicManager|OnOSCStateChanged] Matched OSC Address '{e.Address}' to mappedKey '{mappedActionParameter}', but config is null."); 
                     return;
                 }
-                PluginLog.Info($"[LogicManager|OnOSCStateChanged] Matched OSC Address '{e.Address}' to actionParameter '{mappedActionParameter}' (Config: '{config.DisplayName}', Type: '{config.ActionType}')."); 
+                PluginLog.Info($"[LogicManager|OnOSCStateChanged] Matched OSC Address '{e.Address}' to mappedKey '{mappedActionParameter}' (Config: '{config.DisplayName}', Type: '{config.ActionType}')."); 
 
                 if (config.ActionType == "ToggleButton" || config.ActionType == "ToggleDial")
                 {
                     var newState = e.Value > 0.5f;
-                    if (!this._toggleStates.ContainsKey(mappedActionParameter) || this._toggleStates[mappedActionParameter] != newState)
+                    // mappedActionParameter 就是 ToggleButton/Dial 的全局 actionParameter
+                    if (!this._toggleStates.ContainsKey(mappedActionParameter) || this._toggleStates[mappedActionParameter] != newState) 
                     {
                         this._toggleStates[mappedActionParameter] = newState;
                         PluginLog.Info($"[LogicManager|OnOSCStateChanged] State for '{mappedActionParameter}' ('{config.DisplayName}') changed to {newState}. Invoking CommandStateNeedsRefresh."); 
@@ -633,12 +651,12 @@ namespace Loupedeck.ReaOSCPlugin.Base
                         PluginLog.Verbose($"[LogicManager|OnOSCStateChanged] State for '{mappedActionParameter}' ('{config.DisplayName}') already {newState}. No change needed."); 
                     }
                 }
-                else if (config.ActionType == "ControlDial")
+                else if (config.ActionType == "ControlDial") // 普通 ControlDial
                 {
                     if (this._controlDialConfigs.TryGetValue(mappedActionParameter, out var parsedDialConfig) && 
                         this._controlDialCurrentValues.ContainsKey(mappedActionParameter))
                     {
-                        Single incomingFloatValue = e.Value; // OSC值通常是float，无需转换
+                        Single incomingFloatValue = e.Value; 
                         Single validatedValue = incomingFloatValue;
                         Single currentStoredValue = this._controlDialCurrentValues[mappedActionParameter];
 
@@ -648,28 +666,89 @@ namespace Loupedeck.ReaOSCPlugin.Base
                         }
                         else // Discrete Mode
                         {
-                            if (!parsedDialConfig.DiscreteValues.Contains(incomingFloatValue))
+                            // 对于离散值，通常期望精确匹配。如果OSC传入的值不在列表中，则忽略。
+                            const Single tolerance = 0.0001f; // 浮点数比较容差
+                            if (!parsedDialConfig.DiscreteValues.Any(dv => Math.Abs(dv - incomingFloatValue) < tolerance))
                             {
-                                PluginLog.Warning($"[LogicManager|OnOSCStateChanged] ControlDial '{config.DisplayName}' (action: {mappedActionParameter}) received OSC value {incomingFloatValue} which is not in its discrete list of values. Ignoring update from OSC.");
-                                return; // 忽略无效的离散值
+                                PluginLog.Warning($"[LogicManager|OnOSCStateChanged] ControlDial '{config.DisplayName}' (action: {mappedActionParameter}) received OSC value {incomingFloatValue} which is not in its discrete list of values (with tolerance). Ignoring update from OSC.");
+                                return; 
                             }
-                            // validatedValue 已经是 incomingFloatValue，且已确认在列表中
+                            // 如果找到了，使用列表中的精确值以避免浮点误差累积
+                            validatedValue = parsedDialConfig.DiscreteValues.First(dv => Math.Abs(dv - incomingFloatValue) < tolerance);
                         }
 
-                        if (validatedValue != currentStoredValue)
+                        if (Math.Abs(validatedValue - currentStoredValue) > 0.00001f) // 只有当值确实改变时才更新和通知
                         {
                             this._controlDialCurrentValues[mappedActionParameter] = validatedValue;
-                            PluginLog.Info($"[LogicManager|OnOSCStateChanged] ControlDial '{config.DisplayName}' (action: {mappedActionParameter}) state updated via OSC from {currentStoredValue} to {validatedValue}. Address: {e.Address}");
+                            PluginLog.Info($"[LogicManager|OnOSCStateChanged] ControlDial '{config.DisplayName}' (action: {mappedActionParameter}) state updated via OSC from {currentStoredValue:F3} to {validatedValue:F3}. Address: {e.Address}");
                             this.CommandStateNeedsRefresh?.Invoke(this, mappedActionParameter);
                         }
                         else
                         {
-                            PluginLog.Verbose($"[LogicManager|OnOSCStateChanged] ControlDial '{config.DisplayName}' (action: {mappedActionParameter}) received OSC value {validatedValue} which matches current state. No change needed from OSC.");
+                            PluginLog.Verbose($"[LogicManager|OnOSCStateChanged] ControlDial '{config.DisplayName}' (action: {mappedActionParameter}) received OSC value {validatedValue:F3} which matches current state. No change needed from OSC.");
                         }
                     }
                     else
                     {
                         PluginLog.Warning($"[LogicManager|OnOSCStateChanged] ControlDial '{config.DisplayName}' (action: {mappedActionParameter}) received OSC for address '{e.Address}', but its internal config or current value was not found.");
+                    }
+                }
+                else if (config.ActionType == "ModeControlDial") // 【新增】处理 ModeControlDial
+                {
+                    var parts = mappedActionParameter.Split('#'); // mappedActionParameter is compoundKey actionParam#internalIdx
+                    if (parts.Length == 2 && Int32.TryParse(parts[1], out var internalModeIdx))
+                    {
+                        String modeDialActionParam = parts[0];
+                        // 顶层 ModeControlDial 的配置 (config 变量已经是它了)
+                        if (this._modeControlDialParsedConfigs.TryGetValue(modeDialActionParam, out var internalConfigsList) &&
+                            internalModeIdx >= 0 && internalModeIdx < internalConfigsList.Count &&
+                            this._modeControlDialCurrentValuesByMode.TryGetValue(modeDialActionParam, out var internalValuesList) &&
+                            internalModeIdx < internalValuesList.Count)
+                        {
+                            ControlDialParsedConfig targetInternalConfig = internalConfigsList[internalModeIdx];
+                            Single incomingOscValue = e.Value; // 外部OSC值是参数刻度值
+                            Single validatedParamValueForStorage = incomingOscValue; 
+
+                            if (targetInternalConfig.Mode == ControlDialMode.Continuous)
+                            {
+                                validatedParamValueForStorage = Math.Clamp(incomingOscValue, targetInternalConfig.MinValue, targetInternalConfig.MaxValue);
+                            }
+                            else // Discrete Mode
+                            {
+                                const Single tolerance = 0.0001f;
+                                if (!targetInternalConfig.DiscreteValues.Any(dv => Math.Abs(dv - incomingOscValue) < tolerance))
+                                {
+                                    PluginLog.Warning($"[LogicManager|OnOSCStateChanged] ModeControlDial '{config.DisplayName}' (action: {modeDialActionParam}, internalMode: {internalModeIdx}) received OSC value {incomingOscValue} which is not in its discrete list (with tolerance). Ignoring.");
+                                    return;
+                                }
+                                validatedParamValueForStorage = targetInternalConfig.DiscreteValues.First(dv => Math.Abs(dv - incomingOscValue) < tolerance);
+                            }
+
+                            if (Math.Abs(internalValuesList[internalModeIdx] - validatedParamValueForStorage) > 0.00001f)
+                            {
+                                internalValuesList[internalModeIdx] = validatedParamValueForStorage;
+                                PluginLog.Info($"[LogicManager|OnOSCStateChanged] ModeControlDial '{config.DisplayName}' (action: {modeDialActionParam}, internalMode: {internalModeIdx}, ExtMode: {this.GetCurrentModeString(config.ModeName)}) value updated to {validatedParamValueForStorage:F3} via OSC from {e.Address}.");
+
+                                Int32 activeExternalModeIndex = this.GetCurrentModeIndex(config.ModeName);
+                                if (activeExternalModeIndex == internalModeIdx)
+                                {
+                                    this.CommandStateNeedsRefresh?.Invoke(this, modeDialActionParam); // 使用 ModeControlDial 的顶层 actionParameter 刷新
+                                    PluginLog.Info($"[LogicManager|OnOSCStateChanged] ModeControlDial '{config.DisplayName}' (action: {modeDialActionParam}): Active internal mode ({internalModeIdx}) updated. Triggering UI refresh.");
+                                }
+                                else
+                                {
+                                    PluginLog.Info($"[LogicManager|OnOSCStateChanged] ModeControlDial '{config.DisplayName}' (action: {modeDialActionParam}): Internal mode ({internalModeIdx}) updated, but it is not the currently active external mode ({activeExternalModeIndex}). UI not refreshed immediately.");
+                                }
+                            }
+                        }
+                        else
+                        {
+                             PluginLog.Warning($"[LogicManager|OnOSCStateChanged] ModeControlDial '{config.DisplayName}': Could not find parsed internal config or values list for compound key '{mappedActionParameter}'. ActionParam: {modeDialActionParam}, InternalIdx: {internalModeIdx}");
+                        }
+                    }
+                    else
+                    {
+                        PluginLog.Warning($"[LogicManager|OnOSCStateChanged] ModeControlDial '{config.DisplayName}': Could not parse compound key '{mappedActionParameter}' from OSC map for an incoming message. This internal mode might not have been registered for listening, or the compound key format is unexpected.");
                     }
                 }
             }
@@ -930,116 +1009,10 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     this.CommandStateNeedsRefresh?.Invoke(this, globalActionParameter); 
                     break;
                 case "ControlDial":
-                    PluginLog.Info($"[ControlDialDebug] Adjustment for: {globalActionParameter}, ticks: {ticks}");
-                    if (this._controlDialConfigs.TryGetValue(globalActionParameter, out var controlConfig) &&
-                        this._controlDialCurrentValues.TryGetValue(globalActionParameter, out var currentParamValue)) 
-                    {
-                        PluginLog.Info($"[ControlDialDebug] Config: IsIntBased={controlConfig.IsParameterIntegerBased}, MinVal={controlConfig.MinValue:F3}, MaxVal={controlConfig.MaxValue:F3}, Unit: {controlConfig.DisplayUnitString}, CurrentParam: {currentParamValue:F3}");
-                        Single newParamValue = currentParamValue;
-
-                        if (controlConfig.HasUnitConversion && controlConfig.DisplayUnitString.Equals("dB", StringComparison.OrdinalIgnoreCase))
-                        {
-                            Single currentUnitValue = this.ConvertParameterToUnit(currentParamValue, controlConfig);
-                            PluginLog.Info($"[ControlDialDebug][dBMode] Current Param: {currentParamValue:F3} -> Current UnitVal: {currentUnitValue:F1}dB");
-                            Single targetUnitValue;
-                            if (Single.IsNegativeInfinity(currentUnitValue))
-                            {
-                                if (ticks > 0) 
-                                {
-                                    const Single firstStepParamOffset = 0.001f; 
-                                    targetUnitValue = this.ConvertParameterToUnit(controlConfig.MinValue + firstStepParamOffset, controlConfig);
-                                    if (Single.IsNegativeInfinity(targetUnitValue)) { targetUnitValue = controlConfig.UnitMin; if(Single.IsNegativeInfinity(targetUnitValue))
-                                        {
-                                            targetUnitValue = -60.0f;
-                                        }
-                                    }
-                                    if (ticks > 1) { targetUnitValue += (ticks - 1) * 0.1f; }
-                                    PluginLog.Info($"[ControlDialDebug][dBMode] From -inf, ticks: {ticks}. Target UnitVal: {targetUnitValue:F1}");
-                                }
-                                else { targetUnitValue = Single.NegativeInfinity; PluginLog.Info($"[ControlDialDebug][dBMode] At -inf, ticks <= 0. Stays -inf."); }
-                            }
-                            else 
-                            {
-                                targetUnitValue = currentUnitValue + (ticks * 0.1f);
-                                PluginLog.Info($"[ControlDialDebug][dBMode] Standard step. Current UnitVal: {currentUnitValue:F1}, Ticks: {ticks}, Target UnitVal: {targetUnitValue:F1}");
-                            }
-                            if (!Single.IsNegativeInfinity(targetUnitValue))
-                            {
-                                targetUnitValue = Math.Min(targetUnitValue, controlConfig.UnitMax);
-                                if (!Single.IsNegativeInfinity(controlConfig.UnitMin)) { targetUnitValue = Math.Max(targetUnitValue, controlConfig.UnitMin); }
-                            }
-                            newParamValue = this.ConvertUnitToParameter(targetUnitValue, controlConfig);
-                            PluginLog.Info($"[ControlDialDebug][dBMode] Target UnitVal: {targetUnitValue:F1}dB -> New Param PreClamp: {newParamValue:F3}");
-                        }
-                        else if (controlConfig.Mode == ControlDialMode.Continuous)
-                        {
-                            if (controlConfig.IsParameterIntegerBased) // 整数型参数，直接加减ticks
-                            {
-                                newParamValue = currentParamValue + ticks;
-                                newParamValue = (Single)Math.Round(newParamValue); // 确保逻辑上是整数
-                                PluginLog.Info($"[ControlDialDebug][ContinuousInt] New Param PreClamp: {newParamValue:F0}");
-                            }
-                            else // 浮点型参数 (0.0-1.0)，ticks需要缩放
-                            {
-                                Single scaledAdjustment = ticks * 0.01f; 
-                                newParamValue = currentParamValue + scaledAdjustment;
-                                PluginLog.Info($"[ControlDialDebug][ContinuousFloat] ScaledAdj: {scaledAdjustment:F3}, New Param PreClamp: {newParamValue:F3}");
-                            }
-                        }
-                        else // Discrete Mode
-                        {
-                            if (controlConfig.DiscreteValues != null && controlConfig.DiscreteValues.Any())
-                            {
-                                const Single tolerance = 0.0001f;
-                                Int32 discreteFloatCurrentIndex = -1; 
-                                for(var i =0; i < controlConfig.DiscreteValues.Count; i++)
-                                {
-                                    if(Math.Abs(controlConfig.DiscreteValues[i] - currentParamValue) < tolerance)
-                                    {
-                                        discreteFloatCurrentIndex = i;
-                                        break;
-                                    }
-                                }
-                                if (discreteFloatCurrentIndex == -1) 
-                                {
-                                    PluginLog.Warning($"[ControlDialDebug][DiscreteFloat] Current param value {currentParamValue:F3} not in discrete list. Resetting index to 0.");
-                                    discreteFloatCurrentIndex = 0; 
-                                }
-                                Int32 count = controlConfig.DiscreteValues.Count;
-                                Int32 newIndex = (discreteFloatCurrentIndex + ticks % count + count) % count; 
-                                newParamValue = controlConfig.DiscreteValues[newIndex];
-                                PluginLog.Info($"[ControlDialDebug][DiscreteFloat] CurrentIdx: {discreteFloatCurrentIndex}, NewIdx: {newIndex}, New Param PreClamp: {newParamValue:F3}");
-                            }
-                            else
-                            {
-                                PluginLog.Warning($"[ControlDialDebug][DiscreteFloat] DiscreteValues list empty for {globalActionParameter}. No change.");
-                                newParamValue = currentParamValue;
-                            }
-                        }
-                        
-                        // 核心：严格范围钳位
-                        newParamValue = Math.Clamp(newParamValue, controlConfig.MinValue, controlConfig.MaxValue);
-                        PluginLog.Info($"[ControlDialDebug] Final New Param (PostClamp): {newParamValue:F3}, Old Param: {currentParamValue:F3}");
-
-                        if (Math.Abs(newParamValue - currentParamValue) > 0.00001f) 
-                        {
-                            this._controlDialCurrentValues[globalActionParameter] = newParamValue;
-                            String oscAddress = this.GetResolvedOscAddress(config, config.OscAddress ?? config.Title ?? config.DisplayName);
-                            if (!String.IsNullOrEmpty(oscAddress) && oscAddress != "/")
-                            {
-                                Single valueToSend = newParamValue;
-                                if(controlConfig.IsParameterIntegerBased && !controlConfig.HasUnitConversion) // 对于纯整数型（非dB），发送四舍五入的整数对应的float
-                                {
-                                    valueToSend = (Single)Math.Round(newParamValue);
-                                }
-                                ReaOSCPlugin.SendOSCMessage(oscAddress, valueToSend); 
-                                PluginLog.Info($"[LogicManager] ControlDial '{config.DisplayName}' OSC sent to '{oscAddress}' -> {valueToSend:F3} (Original NewParam: {newParamValue:F3})");
-                            }
+                case "ModeControlDial": // 【新增】ModeControlDial 路由到新的处理逻辑
+                    PluginLog.Info($"[LogicManager|ProcessDialAdjustment] Routing '{config.ActionType}' '{globalActionParameter}' to specific handler.");
+                    this.ProcessAdvancedDialAdjustment(globalActionParameter, ticks); // 新的方法处理 ControlDial 和 ModeControlDial
                             this.CommandStateNeedsRefresh?.Invoke(this, globalActionParameter);
-                        }
-                        else { PluginLog.Info($"[ControlDialDebug] Param value did not change significantly. No OSC sent."); }
-                    }
-                    else { PluginLog.Warning($"[ControlDialDebug] Config or current value not found for {globalActionParameter}."); }
                     break;
                 default:
                     PluginLog.Warning($"[LogicManager] ProcessDialAdjustment (New): Unhandled ActionType '{config.ActionType}' for '{globalActionParameter}'");
@@ -1066,7 +1039,8 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     break;
                 // 【新增】确保 ControlDial 被路由到新版 ProcessDialAdjustment
                 case "ControlDial": 
-                    this.ProcessDialAdjustment(actionParameter, ticks); // 调用新版，只传 actionParameter 和 ticks
+                case "ModeControlDial": // 【新增】ModeControlDial 路由到新逻辑
+                    this.ProcessDialAdjustment(actionParameter, ticks); 
                     break;
                 default:
                     PluginLog.Warning($"[LogicManager] ProcessDialAdjustment (Legacy): 未处理的 ActionType '{config.ActionType}' for '{actionParameter}'");
@@ -1096,34 +1070,18 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     if (!String.IsNullOrEmpty(config.ResetOscAddress)) { this.SendResetOscForDial(config, globalActionParameter); }
                     break;
                 case "ControlDial":
-                    if (this._controlDialConfigs.TryGetValue(globalActionParameter, out var controlConfigToReset) &&
-                        this._controlDialCurrentValues.ContainsKey(globalActionParameter)) 
-                    {
-                        Single oldValue = this._controlDialCurrentValues[globalActionParameter];
-                        Single newParamValueFromDefault = controlConfigToReset.DefaultValue; // DefaultValue已经是Single (0.0-1.0f)
-
-                        if (controlConfigToReset.IsParameterIntegerBased && !controlConfigToReset.HasUnitConversion) 
-                        {
-                            newParamValueFromDefault = (Single)Math.Round(newParamValueFromDefault);
-                        }
-                        
-                        this._controlDialCurrentValues[globalActionParameter] = newParamValueFromDefault;
-                        PluginLog.Info($"[LogicManager|ProcessDialPress] ControlDial '{config.DisplayName}' reset to ParamDefault: {newParamValueFromDefault:F3} (Original Default: {controlConfigToReset.DefaultValue:F3})");
-                        
-                        String oscAddressReset = this.GetResolvedOscAddress(config, config.OscAddress ?? config.Title ?? config.DisplayName);
-                        if (!String.IsNullOrEmpty(oscAddressReset) && oscAddressReset != "/")
-                        {   
-                            ReaOSCPlugin.SendOSCMessage(oscAddressReset, newParamValueFromDefault); 
-                            PluginLog.Info($"[LogicManager] ControlDial '{config.DisplayName}' Reset OSC sent to '{oscAddressReset}' -> {newParamValueFromDefault:F3}");
-                        }
-
-                        if (Math.Abs(oldValue - newParamValueFromDefault) > 0.00001f) 
-                        { uiShouldRefresh = true; }
-                        else { PluginLog.Info($"[LogicManager] ControlDial '{config.DisplayName}' was already at its default value {newParamValueFromDefault:F3}. Press did not change value significantly.");}
-                    }
+                case "ModeControlDial": // 【新增】ModeControlDial 路由到新逻辑
+                    this.ProcessAdvancedDialPress(globalActionParameter); // 新的方法处理 ControlDial 和 ModeControlDial 按下
+                    // ProcessAdvancedDialPress 内部会处理UI刷新
                     break;
+                default:
+                    PluginLog.Warning($"[LogicManager] ProcessDialPress (Legacy): 未处理的 ActionType '{config.ActionType}' for '{globalActionParameter}'");
+                    break;
+                        }
+            if (uiShouldRefresh && config.ActionType != "ControlDial" && config.ActionType != "ModeControlDial") 
+            { 
+                this.CommandStateNeedsRefresh?.Invoke(this, globalActionParameter); 
             }
-            if (uiShouldRefresh) { this.CommandStateNeedsRefresh?.Invoke(this, globalActionParameter); }
             return uiShouldRefresh; 
         }
 
@@ -1167,7 +1125,11 @@ namespace Loupedeck.ReaOSCPlugin.Base
             }
             else if (config.ActionType == "ControlDial") // 【新增】适配旧版 ProcessDialPress
             {
-                return this.ProcessDialPress(actionParameter);
+                return this.ProcessDialPress(actionParameter); // 这会调用到上面的新版 ProcessDialPress
+            }
+            else if (config.ActionType == "ModeControlDial") // 【新增】
+            {
+                return this.ProcessDialPress(actionParameter); // 这会调用到上面的新版 ProcessDialPress
             }
             return modeChanged;
         }
@@ -1627,65 +1589,64 @@ namespace Loupedeck.ReaOSCPlugin.Base
         public String GetControlDialDisplayText(String actionParameter)
         {
             var config = this.GetConfig(actionParameter);
-            if (config == null || config.ActionType != "ControlDial")
-            {
-                PluginLog.Warning($"[LogicManager|GetControlDialDisplayText] Config not found or not a ControlDial for action: {actionParameter}");
-                return actionParameter; 
-            }
+            if (config == null) { return actionParameter; /* or some error string */ }
 
+            if (config.ActionType == "ControlDial")
+            {
             if (!this._controlDialConfigs.TryGetValue(actionParameter, out var parsedDialConfig) ||
                 !this._controlDialCurrentValues.TryGetValue(actionParameter, out var currentParameterValue)) 
             {
                 PluginLog.Warning($"[LogicManager|GetControlDialDisplayText] Parsed config or current value not found for ControlDial: {actionParameter}");
                 return config.Title ?? config.DisplayName ?? actionParameter;
             }
+                return FormatDisplayTextInternal(currentParameterValue, parsedDialConfig);
+            }
+            else if (config.ActionType == "ModeControlDial")
+            {
+                if (TryGetCurrentModeControlDialContext(actionParameter, out var activeInternalConfig, out var currentInternalValue, out _))
+                {
+                    return FormatDisplayTextInternal(currentInternalValue, activeInternalConfig);
+                    }
+                else
+                {
+                    PluginLog.Warning($"[LogicManager|GetControlDialDisplayText] Could not get current mode context for ModeControlDial: {actionParameter}");
+                    return config.Title ?? config.DisplayName ?? actionParameter; // Fallback to top-level title
+                    }
+                }
+            else
+            {
+                 PluginLog.Warning($"[LogicManager|GetControlDialDisplayText] Called for non-ControlDial/ModeControlDial type: {config.ActionType}");
+                 return config.Title ?? config.DisplayName ?? actionParameter;
+            }
+        }
 
+        // 【新增】内部辅助方法，用于格式化 ControlDial 和 ModeControlDial 的显示文本
+        private String FormatDisplayTextInternal(Single parameterValue, ControlDialParsedConfig parsedDialConfig)
+        {
             if (parsedDialConfig.HasUnitConversion)
             {
                 if (parsedDialConfig.DisplayUnitString.Equals("L&R", StringComparison.OrdinalIgnoreCase))
                 {
-                    Int32 intValue = (Int32)Math.Round(currentParameterValue);
-                    if (intValue == 0)
-                    {
-                        return "C";
-                    }
-                    else if (intValue < 0)
-                    {
-                        return $"L{-intValue}";
-                    }
-                    else // intValue > 0
-                    {
-                        return $"R{intValue}";
-                    }
-                }
-                else // Existing logic for other unit types like dB
-                { 
-                    Single unitValue = this.ConvertParameterToUnit(currentParameterValue, parsedDialConfig); 
-                    String valueText;
-                    if (Single.IsNegativeInfinity(unitValue))
-                    {
-                        valueText = "-inf";
+                    Int32 intValue = (Int32)Math.Round(parameterValue);
+                    if (intValue == 0) { return "C"; }
+                    else if (intValue < 0) { return $"L{-intValue}"; }
+                    else { return $"R{intValue}"; }
                     }
                     else
                     {
-                        // 对于带单位的转换，通常保留一位小数比较常见，特别是dB
-                        valueText = unitValue.ToString("F1", System.Globalization.CultureInfo.InvariantCulture);
-                    }
+                    Single unitValue = this.ConvertParameterToUnit(parameterValue, parsedDialConfig); 
+                    String valueText;
+                    if (Single.IsNegativeInfinity(unitValue)) { valueText = "-inf"; }
+                    else { valueText = unitValue.ToString("F1", System.Globalization.CultureInfo.InvariantCulture); }
                     return $"{valueText}{parsedDialConfig.UnitLabel}"; 
                 }
             }
-            else // 没有单位转换
+            else 
             {
                 if (parsedDialConfig.IsParameterIntegerBased)
-                {
-                    // 参数是整数型的，四舍五入并显示为整数
-                    return ((Int32)Math.Round(currentParameterValue)).ToString();
-                }
+                { return ((Int32)Math.Round(parameterValue)).ToString(); }
                 else
-                {
-                    // 参数是浮点型的 (通常0.0-1.0)，格式化以显示几位小数
-                    return currentParameterValue.ToString("F3", System.Globalization.CultureInfo.InvariantCulture); 
-                }
+                { return parameterValue.ToString("F3", System.Globalization.CultureInfo.InvariantCulture); }
             }
         }
 
@@ -1718,215 +1679,17 @@ namespace Loupedeck.ReaOSCPlugin.Base
         // 【新增】辅助方法：解析并存储 ControlDial 的配置
         private void ParseAndStoreControlDialConfig(ButtonConfig config, String actionParameter)
         {
-            if (config.Parameter == null || !config.Parameter.Any())
+            ControlDialParsedConfig parsedConfig = this.ParseSingleControlDialConfigSegment(config, actionParameter);
+
+            if (parsedConfig == null)
             {
-                PluginLog.Warning($"[LogicManager] ControlDial '{config.DisplayName}' (action: {actionParameter}) has no 'Parameter' array defined. Cannot initialize.");
+                PluginLog.Error($"[LogicManager|ParseAndStoreControlDialConfig] Failed to parse ControlDial '{config.DisplayName}' (action: {actionParameter}). It will not be available.");
                 return;
             }
 
-            var parsedDialConfig = new ControlDialParsedConfig();
-            Single initialParameterDefaultValue = 0.0f;
-            // 默认 IsParameterIntegerBased 为false，除非所有相关参数都被成功解析为整数且无浮点特征
-            var allParamsLookLikeIntegers = true; 
-
-            if (config.Parameter.Count > 0 && config.Parameter[0]?.ToLower() == "true") // 连续模式
-            {
-                parsedDialConfig.Mode = ControlDialMode.Continuous;
-                if (config.Parameter.Count >= 3)
-                {
-                    String minStr = config.Parameter[1];
-                    String maxStr = config.Parameter[2];
-                    var minIsInt = Int32.TryParse(minStr, out _) && !minStr.Contains(".") && !minStr.ToLowerInvariant().Contains("e");
-                    var maxIsInt = Int32.TryParse(maxStr, out _) && !maxStr.Contains(".") && !maxStr.ToLowerInvariant().Contains("e");
-                    allParamsLookLikeIntegers = minIsInt && maxIsInt;
-
-                    if (Single.TryParse(minStr, NumberStyles.Any, CultureInfo.InvariantCulture, out var minFloat) &&
-                        Single.TryParse(maxStr, NumberStyles.Any, CultureInfo.InvariantCulture, out var maxFloat))
-                    {
-                        parsedDialConfig.MinValue = Math.Min(minFloat, maxFloat);
-                        parsedDialConfig.MaxValue = Math.Max(minFloat, maxFloat);
-                        initialParameterDefaultValue = parsedDialConfig.MinValue; 
-                    }
-                    else // 解析失败，使用默认浮点范围
-                    {
-                        PluginLog.Warning($"[LogicManager] ControlDial '{config.DisplayName}' (action: {actionParameter}) continuous mode min/max parameters ('{minStr}', '{maxStr}') are invalid. Using 0.0f-1.0f default.");
-                        parsedDialConfig.MinValue = 0.0f;
-                        parsedDialConfig.MaxValue = 1.0f;
-                        initialParameterDefaultValue = 0.0f;
-                        allParamsLookLikeIntegers = false; // 解析失败，不能认为是整数基准
-                    }
-                }
-                else // 参数数量不足，使用默认浮点范围
-                {
-                    PluginLog.Warning($"[LogicManager] ControlDial '{config.DisplayName}' (action: {actionParameter}) continuous mode parameters missing. Expected [\"true\", \"min_str\", \"max_str\"]. Using 0.0f-1.0f default.");
-                    parsedDialConfig.MinValue = 0.0f;
-                    parsedDialConfig.MaxValue = 1.0f;
-                    initialParameterDefaultValue = 0.0f;
-                    allParamsLookLikeIntegers = false;
-                }
-            }
-            else // 离散模式
-            {
-                parsedDialConfig.Mode = ControlDialMode.Discrete;
-                parsedDialConfig.DiscreteValues = new List<Single>();
-                var firstDiscreteValue = true;
-                // 对于离散模式，如果所有值都是整数形式，则整体视为整数基准
-                foreach (var paramStr in config.Parameter) 
-                {
-                    if (Single.TryParse(paramStr, NumberStyles.Any, CultureInfo.InvariantCulture, out var valFloat))
-                    {
-                        parsedDialConfig.DiscreteValues.Add(valFloat);
-                        if (firstDiscreteValue) 
-                        { 
-                            initialParameterDefaultValue = valFloat; 
-                            firstDiscreteValue = false; 
-                        }
-                        // 更新 allParamsLookLikeIntegers 状态
-                        if (!Int32.TryParse(paramStr, out _) || paramStr.Contains(".") || paramStr.ToLowerInvariant().Contains("e"))
-                        {
-                            allParamsLookLikeIntegers = false;
-                        }
-                    }
-                    else
-                    {
-                        PluginLog.Warning($"[LogicManager] ControlDial '{config.DisplayName}' (action: {actionParameter}) discrete mode parameter '{paramStr}' is not a valid float. Skipping.");
-                        allParamsLookLikeIntegers = false; // 一旦有解析失败，则不视为纯整数基准
-                    }
-                }
-                if (!parsedDialConfig.DiscreteValues.Any())
-                {
-                    PluginLog.Warning($"[LogicManager] ControlDial '{config.DisplayName}' (action: {actionParameter}) discrete mode has no valid float parameters. Adding 0.0f as default.");
-                    parsedDialConfig.DiscreteValues.Add(0.0f);
-                    initialParameterDefaultValue = 0.0f;
-                    allParamsLookLikeIntegers = false;
-                }
-            }
-            parsedDialConfig.IsParameterIntegerBased = allParamsLookLikeIntegers;
-
-            // 首先，基于 config.ParameterDefault (参数刻度, 0.0-1.0f 或整数) 设置 DefaultValue
-            parsedDialConfig.DefaultValue = initialParameterDefaultValue; 
-            if (!String.IsNullOrEmpty(config.ParameterDefault))
-            {
-                String defaultParamStr = config.ParameterDefault;
-                bool defaultIsIntStyled = Int32.TryParse(defaultParamStr, out _) && !defaultParamStr.Contains(".") && !defaultParamStr.ToLowerInvariant().Contains("e");
-
-                if (Single.TryParse(defaultParamStr, NumberStyles.Any, CultureInfo.InvariantCulture, out var explicitParamDefaultFloat))
-                {
-                    if (parsedDialConfig.IsParameterIntegerBased && !defaultIsIntStyled && (defaultParamStr.Contains(".") || defaultParamStr.ToLowerInvariant().Contains("e")))
-                    {
-                        PluginLog.Warning($"[LogicManager] ControlDial '{config.DisplayName}': Parameters appear integer-based, but ParameterDefault ('{defaultParamStr}') looks like a float. The dial will be treated as float-based for default value purposes if not overridden by UnitDefault.");
-                        // No change to IsParameterIntegerBased itself, just influences how this default is interpreted if not overridden
-                    }
-                    if (parsedDialConfig.Mode == ControlDialMode.Continuous)
-                    {
-                        parsedDialConfig.DefaultValue = Math.Clamp(explicitParamDefaultFloat, parsedDialConfig.MinValue, parsedDialConfig.MaxValue);
-                    }
-                    else // Discrete
-                    {
-                        const Single tolerance = 0.0001f;
-                        bool foundInDiscrete = parsedDialConfig.DiscreteValues?.Any(dv => Math.Abs(explicitParamDefaultFloat - dv) < tolerance) ?? false;
-                        if (foundInDiscrete)
-                        {
-                            // 如果找到，则设置为列表中的精确值以避免微小差异
-                            parsedDialConfig.DefaultValue = parsedDialConfig.DiscreteValues.First(dv => Math.Abs(explicitParamDefaultFloat - dv) < tolerance);
-                        }
-                        else
-                        {
-                             PluginLog.Warning($"[LogicManager] ControlDial '{config.DisplayName}' ParameterDefault '{defaultParamStr}' not found (with tolerance) in discrete values. Using first discrete value or initial calc as default.");
-                        }
-                    }
-                }
-                else { PluginLog.Warning($"[LogicManager] ControlDial '{config.DisplayName}': Could not parse ParameterDefault '{defaultParamStr}'. Using initial default."); }
-            }
-            
-            // 接下来，处理 Unit 和 UnitDefault (这可能会覆盖上面基于 ParameterDefault 设置的 DefaultValue)
-            if (config.Unit != null && config.Unit.Any() && !String.IsNullOrEmpty(config.Unit[0]))
-            {
-                parsedDialConfig.DisplayUnitString = config.Unit[0];
-                // 对于L&R这类，UnitLabel可以为空，因为显示格式是L100/C/R100
-                // 对于dB这类，UnitLabel就是dB
-                parsedDialConfig.UnitLabel = parsedDialConfig.DisplayUnitString.Equals("L&R", StringComparison.OrdinalIgnoreCase) ? "" : parsedDialConfig.DisplayUnitString;
-                parsedDialConfig.HasUnitConversion = true; // 只要Unit[0]有效，就认为有单位转换意图
-
-                if (config.Unit.Count >= 3)
-                {
-                    if (TryParseSingleExtended(config.Unit[1], out var unitMinNumeric) &&
-                        TryParseSingleExtended(config.Unit[2], out var unitMaxNumeric))
-                    {
-                        parsedDialConfig.UnitMin = unitMinNumeric; 
-                        parsedDialConfig.UnitMax = unitMaxNumeric; 
-                    }
-                    else
-                    {
-                        PluginLog.Warning($"[LogicManager] ControlDial '{config.DisplayName}' (action: {actionParameter}) Unit Min/Max strings ('{config.Unit[1]}', '{config.Unit[2]}') not standard numbers. Expected for some types (e.g. L&R). UnitMin/Max default to 0f.");
-                        parsedDialConfig.UnitMin = 0f; 
-                        parsedDialConfig.UnitMax = 0f;
-                    }
-                    PluginLog.Info($"[LogicManager] ControlDial '{config.DisplayName}' (action: {actionParameter}) configured with Unit: {parsedDialConfig.DisplayUnitString}, NumericMin: {parsedDialConfig.UnitMin:F1}, NumericMax: {parsedDialConfig.UnitMax:F1}, HasUnitConversion: {parsedDialConfig.HasUnitConversion}");
-                }
-                else
-                {
-                    PluginLog.Warning($"[LogicManager] ControlDial '{config.DisplayName}' (action: {actionParameter}) 'Unit' array has < 3 elements. Expected [\"Name\", \"MinStr\", \"MaxStr\"]. Using Unit Name '{parsedDialConfig.DisplayUnitString}'. Numeric UnitMin/Max default to 0f.");
-                    parsedDialConfig.UnitMin = 0f; 
-                    parsedDialConfig.UnitMax = 0f;
-                     PluginLog.Info($"[LogicManager] ControlDial '{config.DisplayName}' (action: {actionParameter}) configured with Unit: {parsedDialConfig.DisplayUnitString}, HasUnitConversion: {parsedDialConfig.HasUnitConversion} (Min/Max from Unit array missing/invalid).");
-                }
-
-                // 处理 UnitDefault，它会覆盖 ParameterDefault 设定的 DefaultValue
-                if (!String.IsNullOrEmpty(config.UnitDefault))
-                {
-                    Single newDefaultValueBasedOnUnit = parsedDialConfig.DefaultValue; // 先保留当前值
-                    bool unitDefaultApplied = false;
-
-                    if (parsedDialConfig.DisplayUnitString.Equals("L&R", StringComparison.OrdinalIgnoreCase))
-                    {
-                        string ud = config.UnitDefault.ToUpperInvariant();
-                        if (ud == "C") { newDefaultValueBasedOnUnit = 0.0f; unitDefaultApplied = true; }
-                        else if (ud.StartsWith("L") && Single.TryParse(ud.Substring(1), NumberStyles.Any, CultureInfo.InvariantCulture, out var lVal))
-                            { newDefaultValueBasedOnUnit = -lVal; unitDefaultApplied = true; }
-                        else if (ud.StartsWith("R") && Single.TryParse(ud.Substring(1), NumberStyles.Any, CultureInfo.InvariantCulture, out var rVal))
-                            { newDefaultValueBasedOnUnit = rVal; unitDefaultApplied = true; }
-                        else
-                        {
-                            PluginLog.Warning($"[LogicManager] ControlDial '{config.DisplayName}' (L&R) has unrecognised UnitDefault: '{config.UnitDefault}'");
-                        }
-
-                    }
-                    else if (TryParseSingleExtended(config.UnitDefault, out var parsedNumericUnitDefault)) // 对于dB等期望数字UnitDefault的
-                    {
-                        parsedDialConfig.ParsedUnitDefault = parsedNumericUnitDefault; // 存储单位刻度的默认值
-                        // 使用 ConvertUnitToParameter 将单位刻度的默认值转回参数刻度 (0.0-1.0 或 整数范围)
-                        newDefaultValueBasedOnUnit = this.ConvertUnitToParameter(parsedDialConfig.ParsedUnitDefault, parsedDialConfig);
-                        unitDefaultApplied = true;
-                        PluginLog.Info($"[LogicManager] ControlDial '{config.DisplayName}' UnitDefault ('{config.UnitDefault}' -> unit val {parsedDialConfig.ParsedUnitDefault}) converted to param scale target: {newDefaultValueBasedOnUnit:F3}.");
-                    }
-                    else
-                    {
-                        PluginLog.Warning($"[LogicManager] ControlDial '{config.DisplayName}' has invalid UnitDefault string: '{config.UnitDefault}' for unit type '{parsedDialConfig.DisplayUnitString}'. UnitDefault will not be applied.");
-                    }
-
-                    if (unitDefaultApplied)
-                    {
-                        // 确保最终的DefaultValue在参数自身的Min/Max范围内，并符合整数特性（如果适用）
-                        if (parsedDialConfig.IsParameterIntegerBased) 
-                        { 
-                            newDefaultValueBasedOnUnit = (Single)Math.Round(newDefaultValueBasedOnUnit);
-                        }
-                        parsedDialConfig.DefaultValue = Math.Clamp(newDefaultValueBasedOnUnit, parsedDialConfig.MinValue, parsedDialConfig.MaxValue);
-                        PluginLog.Info($"[LogicManager] ControlDial '{config.DisplayName}': ParameterDefault was '{initialParameterDefaultValue:F3}'. UnitDefault ('{config.UnitDefault}') applied, resulting in final ParamDefault: {parsedDialConfig.DefaultValue:F3}");
-                    }
-                }
-            }
-            else if (config.Unit != null && config.Unit.Any() && String.IsNullOrEmpty(config.Unit[0]))
-            {
-                PluginLog.Warning($"[LogicManager] ControlDial '{config.DisplayName}' (action: {actionParameter}) 'Unit' array provided but Unit[0] (Name) is empty. Unit conversion will NOT be enabled.");
-                // parsedDialConfig.HasUnitConversion 保持 false
-            }
-            // 如果 config.Unit == null，则 HasUnitConversion 保持默认的 false
-
-            this._controlDialConfigs[actionParameter] = parsedDialConfig;
-            this._controlDialCurrentValues[actionParameter] = parsedDialConfig.DefaultValue; 
-            PluginLog.Info($"[LogicManager] ControlDial '{config.DisplayName}' (action: {actionParameter}) FINALIZED registration. Mode: {parsedDialConfig.Mode}, ParamDefault (0-1 scale): {parsedDialConfig.DefaultValue:F3}, HasUnitConversion: {parsedDialConfig.HasUnitConversion}. Current Param Value (0-1 scale): {this._controlDialCurrentValues[actionParameter]:F3}");
+            this._controlDialConfigs[actionParameter] = parsedConfig;
+            this._controlDialCurrentValues[actionParameter] = parsedConfig.DefaultValue; 
+            PluginLog.Info($"[LogicManager|ParseAndStoreControlDialConfig] ControlDial '{config.DisplayName}' (action: {actionParameter}) FINALIZED registration. Mode: {parsedConfig.Mode}, ParamDefault (0-1 scale): {parsedConfig.DefaultValue:F3}, HasUnitConversion: {parsedConfig.HasUnitConversion}. Current Param Value (0-1 scale): {this._controlDialCurrentValues[actionParameter]:F3}");
 
             String oscAddressForListening = this.DetermineOscAddressForAction(config, config.GroupName, config.OscAddress ?? config.Title ?? config.DisplayName);
             if (!String.IsNullOrEmpty(oscAddressForListening) && oscAddressForListening != "/")
@@ -1946,6 +1709,335 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 PluginLog.Warning($"[LogicManager|ParseAndStoreControlDialConfig] ControlDial '{config.DisplayName}' (action: {actionParameter}) could not determine a valid OSC address for listening. It will not be updated by incoming OSC messages if address was '{oscAddressForListening ?? "null"}'.");
             }
         }
+
+        // 【新增】辅助方法：解析并存储 ModeControlDial 的配置
+        private void ParseAndStoreModeControlDialConfig(ButtonConfig config, String actionParameter)
+        {
+            PluginLog.Info($"[LogicManager|ParseAndStoreModeControlDialConfig] Parsing ModeControlDial '{config.DisplayName}' (ActionParameter: {actionParameter}, ModeName: '{config.ModeName}')");
+
+            if (String.IsNullOrEmpty(config.ModeName) || !this._modeOptions.TryGetValue(config.ModeName, out var externalModes) || !externalModes.Any())
+            {
+                PluginLog.Error($"[LogicManager|ParseAndStoreModeControlDialConfig] ModeControlDial '{config.DisplayName}' (action: {actionParameter}) has invalid or unregistered ModeName '{config.ModeName ?? "null"}'. Skipping registration.");
+                return;
+            }
+            int expectedModeCount = externalModes.Count;
+
+            // 严格校验列表长度
+            bool isValid = true;
+            if (config.ParametersByMode == null || config.ParametersByMode.Count != expectedModeCount) { PluginLog.Error($"[LogicManager|ParseAndStoreModeControlDialConfig] '{config.DisplayName}': ParametersByMode count mismatch. Expected {expectedModeCount}, Got {config.ParametersByMode?.Count ?? 0}."); isValid = false; }
+            if (config.UnitsByMode == null || config.UnitsByMode.Count != expectedModeCount) { PluginLog.Error($"[LogicManager|ParseAndStoreModeControlDialConfig] '{config.DisplayName}': UnitsByMode count mismatch. Expected {expectedModeCount}, Got {config.UnitsByMode?.Count ?? 0}."); isValid = false; }
+            if (config.UnitDefaultsByMode == null || config.UnitDefaultsByMode.Count != expectedModeCount) { PluginLog.Error($"[LogicManager|ParseAndStoreModeControlDialConfig] '{config.DisplayName}': UnitDefaultsByMode count mismatch. Expected {expectedModeCount}, Got {config.UnitDefaultsByMode?.Count ?? 0}."); isValid = false; }
+            if (config.ParameterDefaultsByMode == null || config.ParameterDefaultsByMode.Count != expectedModeCount) { PluginLog.Error($"[LogicManager|ParseAndStoreModeControlDialConfig] '{config.DisplayName}': ParameterDefaultsByMode count mismatch. Expected {expectedModeCount}, Got {config.ParameterDefaultsByMode?.Count ?? 0}."); isValid = false; }
+
+            if (!isValid)
+            {
+                PluginLog.Error($"[LogicManager|ParseAndStoreModeControlDialConfig] ModeControlDial '{config.DisplayName}' (action: {actionParameter}) failed validation due to mismatched list counts. Skipping registration.");
+                return;
+            }
+
+            // 初始化存储结构
+            this._modeControlDialParsedConfigs[actionParameter] = new List<ControlDialParsedConfig>(expectedModeCount);
+            this._modeControlDialOscListenerAddresses[actionParameter] = new List<String>(expectedModeCount);
+            this._modeControlDialCurrentValuesByMode[actionParameter] = new List<Single>(expectedModeCount);
+            this._modeControlDialInitialParameterDefaultsByMode[actionParameter] = new List<Single>(expectedModeCount);
+
+            for (int i = 0; i < expectedModeCount; i++)
+            {
+                var internalSegmentConfig = new ButtonConfig
+                {
+                    DisplayName = $"{config.DisplayName}_Mode{i}", 
+                    GroupName = config.GroupName, 
+                    ActionType = "ControlDial", 
+                    Parameter = config.ParametersByMode[i],
+                    Unit = config.UnitsByMode[i],
+                    UnitDefault = config.UnitDefaultsByMode[i],
+                    ParameterDefault = config.ParameterDefaultsByMode[i]
+                };
+
+                ControlDialParsedConfig parsedInternalConfig = this.ParseSingleControlDialConfigSegment(internalSegmentConfig, $"{actionParameter}_InternalMode{i} (ExtMode: {externalModes[i]})");
+
+                if (parsedInternalConfig == null)
+                {
+                    PluginLog.Error($"[LogicManager|ParseAndStoreModeControlDialConfig] ModeControlDial '{config.DisplayName}', internal mode {i} (External: '{externalModes[i]}'): Failed to parse segment. Skipping registration of this entire ModeControlDial.");
+                    this._modeControlDialParsedConfigs.Remove(actionParameter);
+                    this._modeControlDialOscListenerAddresses.Remove(actionParameter); // 清理已部分初始化的列表
+                    this._modeControlDialCurrentValuesByMode.Remove(actionParameter);
+                    this._modeControlDialInitialParameterDefaultsByMode.Remove(actionParameter);
+                    return; 
+                }
+                
+                this._modeControlDialParsedConfigs[actionParameter].Add(parsedInternalConfig);
+                
+                // 【修改】自动生成并注册监听地址
+                String externalModeName = externalModes[i];
+                String sanitizedModeName = SanitizeOscPathSegment(externalModeName);
+                String baseOscPathForListener = DetermineBaseOscPathForModeControlDialSend(config, actionParameter); // 使用发送基础路径作为监听基础
+                String generatedListenerAddress = $"{baseOscPathForListener}/{sanitizedModeName}/feedback".Replace("//", "/").TrimEnd('/');
+                if (String.IsNullOrEmpty(generatedListenerAddress) || generatedListenerAddress == "/")
+                {
+                    PluginLog.Warning($"[LogicManager|ParseAndStoreModeControlDialConfig] ModeControlDial '{config.DisplayName}', internal mode {i} (Ext: '{externalModes[i]}'): Generated listener OSC address was empty or invalid ('{generatedListenerAddress ?? "null"}'). This mode will not receive external OSC updates via this auto-generated path.");
+                    this._modeControlDialOscListenerAddresses[actionParameter].Add(null); 
+                }
+                else
+                {
+                    this._modeControlDialOscListenerAddresses[actionParameter].Add(generatedListenerAddress);
+                    String compoundKey = $"{actionParameter}#{i}";
+                    if (!this._oscAddressToActionParameterMap.ContainsKey(generatedListenerAddress))
+                    {
+                        this._oscAddressToActionParameterMap[generatedListenerAddress] = compoundKey;
+                        PluginLog.Info($"[LogicManager|ParseAndStoreModeControlDialConfig] ModeControlDial '{config.DisplayName}', internal mode {i} (Ext: '{externalModes[i]}'): Auto-generated listener on '{generatedListenerAddress}' (mapped to '{compoundKey}')");
+                    }
+                    else if (this._oscAddressToActionParameterMap[generatedListenerAddress] != compoundKey)
+                    {
+                         PluginLog.Error($"[LogicManager|ParseAndStoreModeControlDialConfig] ModeControlDial '{config.DisplayName}', internal mode {i} (Ext: '{externalModes[i]}'): OSC Address Conflict for auto-generated listener. Address '{generatedListenerAddress}' is already mapped to '{this._oscAddressToActionParameterMap[generatedListenerAddress]}'.");
+                    }
+                }
+                
+                this._modeControlDialInitialParameterDefaultsByMode[actionParameter].Add(parsedInternalConfig.DefaultValue);
+                this._modeControlDialCurrentValuesByMode[actionParameter].Add(parsedInternalConfig.DefaultValue); // 初始化当前值
+                PluginLog.Info($"[LogicManager|ParseAndStoreModeControlDialConfig] ModeControlDial '{config.DisplayName}', internal mode {i} (Ext: '{externalModes[i]}') parsed. ParamDefault: {parsedInternalConfig.DefaultValue:F3}");
+            }
+            PluginLog.Info($"[LogicManager|ParseAndStoreModeControlDialConfig] Successfully parsed and stored ModeControlDial '{config.DisplayName}' (action: {actionParameter}) with {expectedModeCount} internal modes.");
+
+            // 【关键新增】将 ModeControlDial 的顶层配置注册到 _allConfigs
+            // 确保后续 GetConfig(actionParameter) 能正确取回此 ModeControlDial 的顶层定义
+            if (!this._allConfigs.ContainsKey(actionParameter))
+            {
+                this._allConfigs[actionParameter] = config; // 存储原始传入的 config
+                PluginLog.Info($"[LogicManager|ParseAndStoreModeControlDialConfig] Registered top-level ModeControlDial config for '{actionParameter}' into _allConfigs.");
+            }
+            else
+            {
+                // 通常不应该发生，因为 actionParameter 应该是唯一的
+                // 但是，如果在 RegisterConfigs 主循环中，一个非 ModeControlDial 的项恰好生成了相同的 actionParameter，
+                // 并且先于这个 ModeControlDial 被添加到 _allConfigs，那么这里可能会出现日志。
+                // 这暗示着 actionParameter 的生成策略可能需要进一步审视以保证全局唯一性，
+                // 或者接受后注册的同名项（如果类型不同）会覆盖前者（取决于 _allConfigs 的设计意图）。
+                // 目前，如果发生这种情况，我们仅记录警告，顶层的 _allConfigs 仍将保留先注册的那个。
+                // 但 _modeControlDialParsedConfigs 等专用字典已经填充了这个 actionParameter 的 ModeControlDial 数据。
+                PluginLog.Warning($"[LogicManager|ParseAndStoreModeControlDialConfig] ActionParameter '{actionParameter}' for ModeControlDial '{config.DisplayName}' was ALREADY in _allConfigs (possibly from a non-ModeControlDial item or duplicate definition). The _allConfigs entry was NOT updated, but ModeControlDial-specific dictionaries ARE populated.");
+            }
+        }
+
+        // 【重构】核心解析逻辑，用于单个ControlDial或ModeControlDial的内部模式
+        private ControlDialParsedConfig ParseSingleControlDialConfigSegment(ButtonConfig segmentConfig, String loggingContext)
+        {
+            PluginLog.Info($"[LogicManager|ParseSingleControlDialConfigSegment] START ({loggingContext}) - DisplayName: '{segmentConfig.DisplayName}', ActionType: '{segmentConfig.ActionType}'");
+
+            if (segmentConfig.Parameter == null || !segmentConfig.Parameter.Any())
+            {
+                PluginLog.Warning($"[LogicManager|ParseSingleControlDialConfigSegment] ({loggingContext}) 'Parameter' array is missing or empty. Cannot parse. Returning null.");
+                return null;
+            }
+
+            var parsedDialConfig = new ControlDialParsedConfig();
+            Single initialParameterDefaultValue = 0.0f;
+            var allParamsLookLikeIntegers = true; 
+
+            if (segmentConfig.Parameter.Count > 0 && segmentConfig.Parameter[0]?.ToLower() == "true") // 连续模式
+            {
+                parsedDialConfig.Mode = ControlDialMode.Continuous;
+                PluginLog.Verbose($"[LogicManager|ParseSingleControlDialConfigSegment] ({loggingContext}) Mode: Continuous");
+                if (segmentConfig.Parameter.Count >= 3)
+                {
+                    String minStr = segmentConfig.Parameter[1];
+                    String maxStr = segmentConfig.Parameter[2];
+                    var minIsInt = Int32.TryParse(minStr, NumberStyles.Integer, CultureInfo.InvariantCulture, out _) && !minStr.Contains(".") && !minStr.ToLowerInvariant().Contains("e");
+                    var maxIsInt = Int32.TryParse(maxStr, NumberStyles.Integer, CultureInfo.InvariantCulture, out _) && !maxStr.Contains(".") && !maxStr.ToLowerInvariant().Contains("e");
+                    allParamsLookLikeIntegers = minIsInt && maxIsInt;
+                    PluginLog.Verbose($"[LogicManager|ParseSingleControlDialConfigSegment] ({loggingContext}) MinStr: '{minStr}' (IsInt: {minIsInt}), MaxStr: '{maxStr}' (IsInt: {maxIsInt}). AllParamsLookLikeIntegers: {allParamsLookLikeIntegers}");
+
+                    if (Single.TryParse(minStr, NumberStyles.Any, CultureInfo.InvariantCulture, out var minFloat) &&
+                        Single.TryParse(maxStr, NumberStyles.Any, CultureInfo.InvariantCulture, out var maxFloat))
+                    {
+                        parsedDialConfig.MinValue = Math.Min(minFloat, maxFloat);
+                        parsedDialConfig.MaxValue = Math.Max(minFloat, maxFloat);
+                        initialParameterDefaultValue = parsedDialConfig.MinValue; 
+                        PluginLog.Verbose($"[LogicManager|ParseSingleControlDialConfigSegment] ({loggingContext}) Parsed MinValue: {parsedDialConfig.MinValue:F3}, MaxValue: {parsedDialConfig.MaxValue:F3}, InitialDefault: {initialParameterDefaultValue:F3}");
+                    }
+                    else 
+                    {
+                        PluginLog.Warning($"[LogicManager|ParseSingleControlDialConfigSegment] ({loggingContext}) Continuous mode min/max parameters ('{minStr}', '{maxStr}') are invalid. Using 0.0f-1.0f default.");
+                        parsedDialConfig.MinValue = 0.0f;
+                        parsedDialConfig.MaxValue = 1.0f;
+                        initialParameterDefaultValue = 0.0f;
+                        allParamsLookLikeIntegers = false; 
+                    }
+                }
+                else 
+                {
+                    PluginLog.Warning($"[LogicManager|ParseSingleControlDialConfigSegment] ({loggingContext}) Continuous mode parameters missing. Expected [\"true\", \"min_str\", \"max_str\"]. Using 0.0f-1.0f default.");
+                    parsedDialConfig.MinValue = 0.0f;
+                    parsedDialConfig.MaxValue = 1.0f;
+                    initialParameterDefaultValue = 0.0f;
+                    allParamsLookLikeIntegers = false;
+                }
+            }
+            else // 离散模式
+            {
+                parsedDialConfig.Mode = ControlDialMode.Discrete;
+                parsedDialConfig.DiscreteValues = new List<Single>();
+                var firstDiscreteValue = true;
+                PluginLog.Verbose($"[LogicManager|ParseSingleControlDialConfigSegment] ({loggingContext}) Mode: Discrete. Processing {segmentConfig.Parameter.Count} parameters.");
+                foreach (var paramStr in segmentConfig.Parameter) 
+                {
+                    if (Single.TryParse(paramStr, NumberStyles.Any, CultureInfo.InvariantCulture, out var valFloat))
+                    {
+                        parsedDialConfig.DiscreteValues.Add(valFloat);
+                        PluginLog.Verbose($"[LogicManager|ParseSingleControlDialConfigSegment] ({loggingContext}) Added discrete value: {valFloat:F3}");
+                        if (firstDiscreteValue) 
+                        { 
+                            initialParameterDefaultValue = valFloat; 
+                            firstDiscreteValue = false; 
+                        }
+                        if (!Int32.TryParse(paramStr, NumberStyles.Integer, CultureInfo.InvariantCulture, out _) || paramStr.Contains(".") || paramStr.ToLowerInvariant().Contains("e"))
+                        {
+                            allParamsLookLikeIntegers = false;
+                        }
+                    }
+                    else
+                    {
+                        PluginLog.Warning($"[LogicManager|ParseSingleControlDialConfigSegment] ({loggingContext}) Discrete mode parameter '{paramStr}' is not a valid float. Skipping.");
+                        allParamsLookLikeIntegers = false; 
+                    }
+                }
+                if (!parsedDialConfig.DiscreteValues.Any())
+                {
+                    PluginLog.Warning($"[LogicManager|ParseSingleControlDialConfigSegment] ({loggingContext}) Discrete mode has no valid float parameters. Adding 0.0f as default. Returning null.");
+                    // return null; // 之前这里会返回null，现在改为添加默认值并继续，但标记为非整数
+                    parsedDialConfig.DiscreteValues.Add(0.0f);
+                    initialParameterDefaultValue = 0.0f;
+                    allParamsLookLikeIntegers = false; // 如果没有有效离散值，则肯定不是纯整数
+                }
+                PluginLog.Verbose($"[LogicManager|ParseSingleControlDialConfigSegment] ({loggingContext}) Discrete values processed. AllParamsLookLikeIntegers: {allParamsLookLikeIntegers}, InitialDefault: {initialParameterDefaultValue:F3}");
+            }
+            parsedDialConfig.IsParameterIntegerBased = allParamsLookLikeIntegers;
+            parsedDialConfig.DefaultValue = initialParameterDefaultValue; 
+            PluginLog.Verbose($"[LogicManager|ParseSingleControlDialConfigSegment] ({loggingContext}) Initial IsParameterIntegerBased: {parsedDialConfig.IsParameterIntegerBased}, DefaultValue (param scale): {parsedDialConfig.DefaultValue:F3}");
+
+            // 优先应用 UnitDefault (如果存在且有效), 这可能会覆盖上面基于 ParameterDefault 或初始推断的 DefaultValue
+            if (segmentConfig.Unit != null && segmentConfig.Unit.Any() && !String.IsNullOrEmpty(segmentConfig.Unit[0]))
+            {
+                parsedDialConfig.DisplayUnitString = segmentConfig.Unit[0];
+                parsedDialConfig.UnitLabel = parsedDialConfig.DisplayUnitString.Equals("L&R", StringComparison.OrdinalIgnoreCase) ? "" : parsedDialConfig.DisplayUnitString;
+                parsedDialConfig.HasUnitConversion = true;
+                PluginLog.Verbose($"[LogicManager|ParseSingleControlDialConfigSegment] ({loggingContext}) Unit detected: '{parsedDialConfig.DisplayUnitString}'. HasUnitConversion set to true.");
+
+                if (segmentConfig.Unit.Count >= 3)
+                {
+                    if (TryParseSingleExtended(segmentConfig.Unit[1], out var unitMinNumeric) && TryParseSingleExtended(segmentConfig.Unit[2], out var unitMaxNumeric))
+                    { 
+                        parsedDialConfig.UnitMin = unitMinNumeric; 
+                        parsedDialConfig.UnitMax = unitMaxNumeric; 
+                        PluginLog.Verbose($"[LogicManager|ParseSingleControlDialConfigSegment] ({loggingContext}) Parsed UnitMin: {parsedDialConfig.UnitMin:F1}, UnitMax: {parsedDialConfig.UnitMax:F1}");
+                    }
+                    else 
+                    { 
+                        PluginLog.Warning($"[LogicManager|ParseSingleControlDialConfigSegment] ({loggingContext}) Unit Min/Max strings ('{segmentConfig.Unit[1]}', '{segmentConfig.Unit[2]}') are invalid or not standard numbers. Defaulting UnitMin/Max to 0f.");
+                        parsedDialConfig.UnitMin = 0f; 
+                        parsedDialConfig.UnitMax = 0f; 
+                    }
+                }
+                else 
+                { 
+                    PluginLog.Warning($"[LogicManager|ParseSingleControlDialConfigSegment] ({loggingContext}) 'Unit' array has < 3 elements. Expected [Name, MinStr, MaxStr]. Defaulting UnitMin/Max to 0f.");
+                    parsedDialConfig.UnitMin = 0f; 
+                    parsedDialConfig.UnitMax = 0f;
+                }
+
+                if (!String.IsNullOrEmpty(segmentConfig.UnitDefault))
+                {
+                    Single newDefaultValueFromUnit = parsedDialConfig.DefaultValue; // Start with current default
+                    bool unitDefaultWasSuccessfullyApplied = false;
+                    PluginLog.Verbose($"[LogicManager|ParseSingleControlDialConfigSegment] ({loggingContext}) Attempting to apply UnitDefault: '{segmentConfig.UnitDefault}'");
+
+                    if (parsedDialConfig.DisplayUnitString.Equals("L&R", StringComparison.OrdinalIgnoreCase))
+                    {
+                        string ud = segmentConfig.UnitDefault.ToUpperInvariant();
+                        if (ud == "C") { newDefaultValueFromUnit = 0.0f; unitDefaultWasSuccessfullyApplied = true; }
+                        else if (ud.StartsWith("L") && Single.TryParse(ud.Substring(1), NumberStyles.Any, CultureInfo.InvariantCulture, out var lVal)) { newDefaultValueFromUnit = -lVal; unitDefaultWasSuccessfullyApplied = true; }
+                        else if (ud.StartsWith("R") && Single.TryParse(ud.Substring(1), NumberStyles.Any, CultureInfo.InvariantCulture, out var rVal)) { newDefaultValueFromUnit = rVal; unitDefaultWasSuccessfullyApplied = true; }
+                        else { PluginLog.Warning($"[LogicManager|ParseSingleControlDialConfigSegment] ({loggingContext}) (L&R) Unrecognised UnitDefault: '{segmentConfig.UnitDefault}'"); }
+                    }
+                    else if (TryParseSingleExtended(segmentConfig.UnitDefault, out var parsedNumericUnitDefault))
+                    {
+                        parsedDialConfig.ParsedUnitDefault = parsedNumericUnitDefault; // Store the unit-scale default
+                        newDefaultValueFromUnit = this.ConvertUnitToParameter(parsedDialConfig.ParsedUnitDefault, parsedDialConfig); // Convert to parameter-scale
+                        unitDefaultWasSuccessfullyApplied = true;
+                        PluginLog.Verbose($"[LogicManager|ParseSingleControlDialConfigSegment] ({loggingContext}) UnitDefault '{segmentConfig.UnitDefault}' (parsed as {parsedNumericUnitDefault:F1}) converted to param scale: {newDefaultValueFromUnit:F3}");
+                    }
+                    else { PluginLog.Warning($"[LogicManager|ParseSingleControlDialConfigSegment] ({loggingContext}) Invalid UnitDefault string: '{segmentConfig.UnitDefault}' for unit type '{parsedDialConfig.DisplayUnitString}'."); }
+                    
+                    if(unitDefaultWasSuccessfullyApplied)
+                    {
+                        // Clamp the new default to the parameter's own Min/Max (which are 0-1 or int range)
+                        if (parsedDialConfig.IsParameterIntegerBased) { newDefaultValueFromUnit = (Single)Math.Round(newDefaultValueFromUnit); }
+                        parsedDialConfig.DefaultValue = Math.Clamp(newDefaultValueFromUnit, parsedDialConfig.MinValue, parsedDialConfig.MaxValue);
+                        PluginLog.Info($"[LogicManager|ParseSingleControlDialConfigSegment] ({loggingContext}) UnitDefault ('{segmentConfig.UnitDefault}') successfully applied. Final ParamDefault (param scale): {parsedDialConfig.DefaultValue:F3}");
+                    }
+                    else
+                    {
+                        PluginLog.Warning($"[LogicManager|ParseSingleControlDialConfigSegment] ({loggingContext}) UnitDefault ('{segmentConfig.UnitDefault}') could not be applied. DefaultValue remains: {parsedDialConfig.DefaultValue:F3} (from ParameterDefault or initial inference).");
+                    }
+                }
+                else
+                {
+                     PluginLog.Verbose($"[LogicManager|ParseSingleControlDialConfigSegment] ({loggingContext}) Unit defined, but UnitDefault is empty. DefaultValue remains: {parsedDialConfig.DefaultValue:F3} (from ParameterDefault or initial inference).");
+                }
+            }
+            // 如果没有有效的 Unit 定义，或者 UnitDefault 未能覆盖，则检查 ParameterDefault
+            else if (!String.IsNullOrEmpty(segmentConfig.ParameterDefault)) 
+            {
+                PluginLog.Verbose($"[LogicManager|ParseSingleControlDialConfigSegment] ({loggingContext}) No Unit or no UnitDefault applied. Attempting to apply ParameterDefault: '{segmentConfig.ParameterDefault}'");
+                String defaultParamStr = segmentConfig.ParameterDefault;
+                bool defaultIsIntStyled = Int32.TryParse(defaultParamStr, NumberStyles.Integer, CultureInfo.InvariantCulture, out _) && !defaultParamStr.Contains(".") && !defaultParamStr.ToLowerInvariant().Contains("e");
+                
+                if (Single.TryParse(defaultParamStr, NumberStyles.Any, CultureInfo.InvariantCulture, out var explicitParamDefaultFloat))
+                {
+                    if (parsedDialConfig.IsParameterIntegerBased && !defaultIsIntStyled && (defaultParamStr.Contains(".") || defaultParamStr.ToLowerInvariant().Contains("e")))
+                    {
+                        PluginLog.Warning($"[LogicManager|ParseSingleControlDialConfigSegment] ({loggingContext}) Parameters appear integer-based, but ParameterDefault ('{defaultParamStr}') looks like a float. Using float value.");
+                        // Potentially change IsParameterIntegerBased if ParameterDefault strongly indicates float for a previously assumed int range.
+                        // For now, we just use the float value, IsParameterIntegerBased would have been set by min/max.
+                    }
+
+                    Single newDefaultFromParamDefault = explicitParamDefaultFloat;
+                    if (parsedDialConfig.IsParameterIntegerBased) { newDefaultFromParamDefault = (Single)Math.Round(newDefaultFromParamDefault); }
+                    
+                    if (parsedDialConfig.Mode == ControlDialMode.Continuous)
+                    {
+                        parsedDialConfig.DefaultValue = Math.Clamp(newDefaultFromParamDefault, parsedDialConfig.MinValue, parsedDialConfig.MaxValue);
+                    }
+                    else // Discrete
+                    {
+                        const Single tolerance = 0.0001f;
+                        bool foundInDiscrete = parsedDialConfig.DiscreteValues?.Any(dv => Math.Abs(newDefaultFromParamDefault - dv) < tolerance) ?? false;
+                        if (foundInDiscrete)
+                        {
+                            parsedDialConfig.DefaultValue = parsedDialConfig.DiscreteValues.First(dv => Math.Abs(newDefaultFromParamDefault - dv) < tolerance);
+                        }
+                        else
+                        {
+                             PluginLog.Warning($"[LogicManager|ParseSingleControlDialConfigSegment] ({loggingContext}) ParameterDefault '{defaultParamStr}' (parsed as {newDefaultFromParamDefault:F3}) not found in discrete values. Using initial default '{initialParameterDefaultValue:F3}'.");
+                             parsedDialConfig.DefaultValue = initialParameterDefaultValue; // Revert to initial if not found in discrete
+                        }
+                    }
+                    PluginLog.Info($"[LogicManager|ParseSingleControlDialConfigSegment] ({loggingContext}) ParameterDefault ('{segmentConfig.ParameterDefault}') applied. Final ParamDefault (param scale): {parsedDialConfig.DefaultValue:F3}");
+                }
+                else 
+                { 
+                    PluginLog.Warning($"[LogicManager|ParseSingleControlDialConfigSegment] ({loggingContext}) Could not parse ParameterDefault '{defaultParamStr}'. DefaultValue remains: {parsedDialConfig.DefaultValue:F3} (from initial inference).");
+                }
+            }
+            else
+            {
+                 PluginLog.Verbose($"[LogicManager|ParseSingleControlDialConfigSegment] ({loggingContext}) No UnitDefault and no ParameterDefault provided. DefaultValue remains: {parsedDialConfig.DefaultValue:F3} (from initial inference based on Parameter array).");
+            }
+
+            PluginLog.Info($"[LogicManager|ParseSingleControlDialConfigSegment] END ({loggingContext}) - Final Parsed Config: Mode={parsedDialConfig.Mode}, MinV={parsedDialConfig.MinValue:F3}, MaxV={parsedDialConfig.MaxValue:F3}, DefaultV={parsedDialConfig.DefaultValue:F3}, IsInt={parsedDialConfig.IsParameterIntegerBased}, HasUnit={parsedDialConfig.HasUnitConversion}, UnitStr='{parsedDialConfig.DisplayUnitString ?? "N/A"}', UnitMin={parsedDialConfig.UnitMin:F1}, UnitMax={parsedDialConfig.UnitMax:F1}, UnitDefP={parsedDialConfig.ParsedUnitDefault:F1}");
+            return parsedDialConfig;
+        }
+
 
         /// <summary>
         /// 解析包含 "{mode}" 占位符的文本模板。
@@ -2064,6 +2156,311 @@ namespace Loupedeck.ReaOSCPlugin.Base
         private String GetToggleStateKey(String actionParameter)
         {
             return $"{actionParameter}_ToggleState";
+        }
+
+        // 【新增】辅助方法：尝试获取 ModeControlDial 的当前内部模式上下文
+        private Boolean TryGetCurrentModeControlDialContext(String modeControlDialActionParam, 
+                                                        out ControlDialParsedConfig activeInternalConfig, 
+                                                        out Single currentInternalValue, 
+                                                        out Int32 activeExternalModeIndex)
+        {
+            activeInternalConfig = null;
+            currentInternalValue = 0f;
+            activeExternalModeIndex = -1;
+
+            var topLevelConfig = this.GetConfig(modeControlDialActionParam);
+            if (topLevelConfig == null)
+            {
+                PluginLog.Error($"[LogicManager|TryGetCurrentModeControlDialContext] Top-level config not found for actionParameter '{modeControlDialActionParam}'.");
+                return false;
+            }
+
+            if (topLevelConfig.ActionType != "ModeControlDial")
+            {
+                PluginLog.Error($"[LogicManager|TryGetCurrentModeControlDialContext] Action '{modeControlDialActionParam}' (DisplayName: '{topLevelConfig.DisplayName}') is not of type ModeControlDial. Actual type: '{topLevelConfig.ActionType}'.");
+                return false;
+            }
+            
+            if (String.IsNullOrEmpty(topLevelConfig.ModeName))
+            {
+                PluginLog.Error($"[LogicManager|TryGetCurrentModeControlDialContext] ModeControlDial '{modeControlDialActionParam}' (DisplayName: '{topLevelConfig.DisplayName}') has an empty or null ModeName property.");
+                return false;
+            }
+
+            activeExternalModeIndex = this.GetCurrentModeIndex(topLevelConfig.ModeName);
+            if (activeExternalModeIndex == -1)
+            {
+                PluginLog.Error($"[LogicManager|TryGetCurrentModeControlDialContext] ModeControlDial '{modeControlDialActionParam}' (DisplayName: '{topLevelConfig.DisplayName}'): Could not determine a valid active external mode index for ModeName '{topLevelConfig.ModeName}'. GetCurrentModeIndex returned -1.");
+                return false;
+            }
+
+            if (!this._modeControlDialParsedConfigs.TryGetValue(modeControlDialActionParam, out var internalConfigsList))
+            {
+                PluginLog.Error($"[LogicManager|TryGetCurrentModeControlDialContext] ModeControlDial '{modeControlDialActionParam}' (DisplayName: '{topLevelConfig.DisplayName}'): No parsed internal configs list found in _modeControlDialParsedConfigs dictionary.");
+                return false;
+            }
+
+            if (activeExternalModeIndex < 0 || activeExternalModeIndex >= internalConfigsList.Count)
+            {
+                PluginLog.Error($"[LogicManager|TryGetCurrentModeControlDialContext] ModeControlDial '{modeControlDialActionParam}' (DisplayName: '{topLevelConfig.DisplayName}'): Active external mode index {activeExternalModeIndex} is out of bounds for the parsed internal configs list (Count: {internalConfigsList.Count}).");
+                return false;
+            }
+            activeInternalConfig = internalConfigsList[activeExternalModeIndex];
+            if (activeInternalConfig == null) // 双重检查，以防列表中存了null
+            {
+                PluginLog.Error($"[LogicManager|TryGetCurrentModeControlDialContext] ModeControlDial '{modeControlDialActionParam}' (DisplayName: '{topLevelConfig.DisplayName}'): Parsed internal config at index {activeExternalModeIndex} is null.");
+                return false;
+            }
+
+            if (!this._modeControlDialCurrentValuesByMode.TryGetValue(modeControlDialActionParam, out var internalValuesList))
+            {
+                PluginLog.Error($"[LogicManager|TryGetCurrentModeControlDialContext] ModeControlDial '{modeControlDialActionParam}' (DisplayName: '{topLevelConfig.DisplayName}'): No list of current internal values found in _modeControlDialCurrentValuesByMode dictionary.");
+                return false;
+            }
+
+            if (activeExternalModeIndex < 0 || activeExternalModeIndex >= internalValuesList.Count)
+            {
+                PluginLog.Error($"[LogicManager|TryGetCurrentModeControlDialContext] ModeControlDial '{modeControlDialActionParam}' (DisplayName: '{topLevelConfig.DisplayName}'): Active external mode index {activeExternalModeIndex} is out of bounds for the current internal values list (Count: {internalValuesList.Count}).");
+                return false;
+            }
+            currentInternalValue = internalValuesList[activeExternalModeIndex];
+            
+            PluginLog.Verbose($"[LogicManager|TryGetCurrentModeControlDialContext] Successfully retrieved context for ModeControlDial '{modeControlDialActionParam}' (DisplayName: '{topLevelConfig.DisplayName}'): ActiveExternalModeIndex={activeExternalModeIndex}, InternalConfig.Mode={activeInternalConfig.Mode}, CurrentInternalValue={currentInternalValue:F3}");
+            return true;
+        }
+
+        // 【新增】统一处理 ControlDial 和 ModeControlDial 调整的私有方法
+        private void ProcessAdvancedDialAdjustment(String globalActionParameter, Int32 ticks)
+        {
+            var topConfig = this.GetConfig(globalActionParameter);
+            if (topConfig == null) 
+            {
+                PluginLog.Warning($"[LogicManager|ProcessAdvancedDialAdjustment] Top-level config not found for '{globalActionParameter}'.");
+                return; 
+            }
+
+            Single newParamValueToStore; // 参数刻度值 (0-1 or int)
+            Single valueForOsc;        // 发送到OSC的值 (参数刻度值)
+            String oscAddressToSend;
+            ControlDialParsedConfig effectiveConfig; // 当前有效的内部或独立配置
+            // Int32 currentActiveModeIndexForMCD = -1; // 在ModeControlDial分支中局部定义即可
+
+            if (topConfig.ActionType == "ControlDial")
+            {
+                if (!this._controlDialConfigs.TryGetValue(globalActionParameter, out effectiveConfig) ||
+                    !this._controlDialCurrentValues.TryGetValue(globalActionParameter, out var currentParamValue))
+                {
+                    PluginLog.Warning($"[LogicManager|ProcessAdvancedDialAdjustment] ControlDial '{globalActionParameter}' (DisplayName: '{topConfig.DisplayName}'): Config or current value not found.");
+                    return;
+                }
+                newParamValueToStore = CalculateAdjustedParamValue(currentParamValue, ticks, effectiveConfig);
+                this._controlDialCurrentValues[globalActionParameter] = newParamValueToStore;
+                oscAddressToSend = this.GetResolvedOscAddress(topConfig, topConfig.OscAddress ?? topConfig.Title ?? topConfig.DisplayName);
+            }
+            else if (topConfig.ActionType == "ModeControlDial")
+            {
+                if (!TryGetCurrentModeControlDialContext(globalActionParameter, out effectiveConfig, out var currentInternalValue, out var activeExtModeIdx))
+                {
+                    PluginLog.Warning($"[LogicManager|ProcessAdvancedDialAdjustment] ModeControlDial '{globalActionParameter}' (DisplayName: '{topConfig.DisplayName}'): Could not get current mode context.");
+                    return;
+                }
+                newParamValueToStore = CalculateAdjustedParamValue(currentInternalValue, ticks, effectiveConfig);
+                this._modeControlDialCurrentValuesByMode[globalActionParameter][activeExtModeIdx] = newParamValueToStore;
+                
+                // OSC地址构造
+                String baseOscPathSend = DetermineBaseOscPathForModeControlDialSend(topConfig, globalActionParameter);
+                String currentModeStrSend = SanitizeOscPathSegment(this.GetCurrentModeString(topConfig.ModeName));
+                if (!String.IsNullOrEmpty(topConfig.OscAddress)) // 如果顶层OscAddress字段存在
+                {
+                    oscAddressToSend = ResolveTextWithMode(topConfig, topConfig.OscAddress); // {mode} 会被替换
+                    if (!oscAddressToSend.StartsWith("/")) // 如果是相对路径，则拼接
+                    {
+                        oscAddressToSend = $"{baseOscPathSend}/{oscAddressToSend}".Replace("//", "/");
+                    }
+                }
+                else // 顶层OscAddress字段不存在或为空，则使用 基础路径/模式名
+                {
+                    oscAddressToSend = $"{baseOscPathSend}/{currentModeStrSend}".Replace("//", "/");
+                }
+                oscAddressToSend = oscAddressToSend.TrimEnd('/');
+                if (String.IsNullOrEmpty(oscAddressToSend)) { oscAddressToSend = "/"; } // 避免完全空地址
+            }
+            else
+            {
+                PluginLog.Warning($"[LogicManager|ProcessAdvancedDialAdjustment] Called with unhandled ActionType: {topConfig.ActionType} for '{globalActionParameter}'.");
+                return;
+            }
+
+            // 确定发送到OSC的值 (根据您的反馈，是参数刻度值，但需注意整数情况)
+            valueForOsc = newParamValueToStore;
+            if (effectiveConfig.IsParameterIntegerBased && !effectiveConfig.HasUnitConversion) // 如果是纯整数型参数（无单位转换，意味着不应是dB等需要浮点表示的）
+            {
+                valueForOsc = (Single)Math.Round(newParamValueToStore); // 发送四舍五入后的整数对应的浮点数
+            }
+            // 对于有单位转换的 (如dB) 或非整数基准的浮点参数，直接发送参数刻度值 (newParamValueToStore)
+            
+            if (!String.IsNullOrEmpty(oscAddressToSend) && oscAddressToSend != "/")
+            {
+                ReaOSCPlugin.SendOSCMessage(oscAddressToSend, valueForOsc);
+                PluginLog.Info($"[LogicManager|ProcessAdvancedDialAdjustment] '{topConfig.ActionType}' '{topConfig.DisplayName}' OSC sent to '{oscAddressToSend}' -> {valueForOsc:F3} (Stored ParamValue: {newParamValueToStore:F3})");
+            }
+            else { PluginLog.Warning($"[LogicManager|ProcessAdvancedDialAdjustment] '{topConfig.ActionType}' '{topConfig.DisplayName}': Invalid OSC Address '{oscAddressToSend ?? "null"}' for sending."); }
+        }
+
+        // 【新增】计算调整后的参数值的辅助方法
+        private Single CalculateAdjustedParamValue(Single currentParamValue, Int32 ticks, ControlDialParsedConfig dialConfig)
+        {
+            Single newParamValue = currentParamValue;
+            if (dialConfig.HasUnitConversion && dialConfig.DisplayUnitString.Equals("dB", StringComparison.OrdinalIgnoreCase))
+            {
+                Single currentUnitValue = this.ConvertParameterToUnit(currentParamValue, dialConfig);
+                Single targetUnitValue;
+                if (Single.IsNegativeInfinity(currentUnitValue))
+                {
+                    if (ticks > 0) 
+                    { 
+                        const Single firstStepParamOffset = 0.0001f; // 比0.005f小，确保能跳出-inf
+                        var firstParam = dialConfig.MinValue + firstStepParamOffset;
+                        if (firstParam >= 0.005f) { firstParam = 0.0049f; } // 确保在-inf到-132dB区间
+                        targetUnitValue = this.ConvertParameterToUnit(firstParam, dialConfig);
+                        if (Single.IsNegativeInfinity(targetUnitValue)) { targetUnitValue = EFFECTIVE_MIN_DB_FOR_0_TO_0005_INTERPOLATION; } // 回退到定义的有效最小值
+                        if (ticks > 1) { targetUnitValue += (ticks - 1) * 0.1f; } // dB模式下，ticks通常代表0.1dB步进
+                    }
+                    else { targetUnitValue = Single.NegativeInfinity; }
+                }
+                else 
+                { 
+                    targetUnitValue = currentUnitValue + (ticks * 0.1f); 
+                }
+                if (!Single.IsNegativeInfinity(targetUnitValue))
+                {
+                    targetUnitValue = Math.Min(targetUnitValue, dialConfig.UnitMax);
+                    if (!Single.IsNegativeInfinity(dialConfig.UnitMin)) { targetUnitValue = Math.Max(targetUnitValue, dialConfig.UnitMin); }
+                }
+                newParamValue = this.ConvertUnitToParameter(targetUnitValue, dialConfig);
+            }
+            else if (dialConfig.Mode == ControlDialMode.Continuous)
+            {
+                if (dialConfig.IsParameterIntegerBased)
+                {
+                    newParamValue = currentParamValue + ticks;
+                    newParamValue = (Single)Math.Round(newParamValue); 
+                }
+                else 
+                { 
+                    Single scaledAdjustment = ticks * 0.01f; 
+                    newParamValue = currentParamValue + scaledAdjustment;
+                }
+            }
+            else // Discrete Mode
+            {
+                if (dialConfig.DiscreteValues != null && dialConfig.DiscreteValues.Any())
+                {
+                    const Single tolerance = 0.0001f;
+                    Int32 currentIndex = dialConfig.DiscreteValues.FindIndex(dv => Math.Abs(dv - currentParamValue) < tolerance);
+                    if (currentIndex == -1) { currentIndex = 0; /* Default to first if not found */ }
+                    Int32 count = dialConfig.DiscreteValues.Count;
+                    Int32 newIndex = (currentIndex + ticks % count + count) % count; 
+                    newParamValue = dialConfig.DiscreteValues[newIndex];
+                }
+            }
+            return Math.Clamp(newParamValue, dialConfig.MinValue, dialConfig.MaxValue);
+        }
+
+        // 【新增】统一处理 ControlDial 和 ModeControlDial 按下的私有方法
+        private void ProcessAdvancedDialPress(String globalActionParameter)
+        {
+            var topConfig = this.GetConfig(globalActionParameter);
+            if (topConfig == null) 
+            {
+                PluginLog.Warning($"[LogicManager|ProcessAdvancedDialPress] Top-level config not found for '{globalActionParameter}'.");
+                return; 
+            }
+
+            Single valueToStoreAndSend; // 参数刻度值 (0-1 or int)
+            String oscAddressToSend;
+            ControlDialParsedConfig effectiveConfig; 
+
+            if (topConfig.ActionType == "ControlDial")
+            {
+                if (!this._controlDialConfigs.TryGetValue(globalActionParameter, out effectiveConfig))
+                {
+                    PluginLog.Warning($"[LogicManager|ProcessAdvancedDialPress] ControlDial '{globalActionParameter}' (DisplayName: '{topConfig.DisplayName}'): Config not found.");
+                    return;
+                }
+                valueToStoreAndSend = effectiveConfig.DefaultValue; // DefaultValue已经是参数刻度
+                if (effectiveConfig.IsParameterIntegerBased && !effectiveConfig.HasUnitConversion) // 纯整数型
+                {
+                    valueToStoreAndSend = (Single)Math.Round(valueToStoreAndSend);
+                }
+                this._controlDialCurrentValues[globalActionParameter] = valueToStoreAndSend;
+                oscAddressToSend = this.GetResolvedOscAddress(topConfig, topConfig.OscAddress ?? topConfig.Title ?? topConfig.DisplayName);
+            }
+            else if (topConfig.ActionType == "ModeControlDial")
+            {
+                if (!this._modeControlDialInitialParameterDefaultsByMode.TryGetValue(globalActionParameter, out var initialDefaultsList) ||
+                    !TryGetCurrentModeControlDialContext(globalActionParameter, out effectiveConfig, out _, out var activeExtModeIdx) ||
+                    activeExtModeIdx < 0 || activeExtModeIdx >= initialDefaultsList.Count)
+                {
+                    PluginLog.Warning($"[LogicManager|ProcessAdvancedDialPress] ModeControlDial '{globalActionParameter}' (DisplayName: '{topConfig.DisplayName}'): Could not get context or initial defaults.");
+                    return;
+                }
+                valueToStoreAndSend = initialDefaultsList[activeExtModeIdx]; // 获取此内部模式的初始参数默认值
+                 if (effectiveConfig.IsParameterIntegerBased && !effectiveConfig.HasUnitConversion) // 纯整数型
+                {
+                    valueToStoreAndSend = (Single)Math.Round(valueToStoreAndSend);
+                }
+                this._modeControlDialCurrentValuesByMode[globalActionParameter][activeExtModeIdx] = valueToStoreAndSend;
+                
+                // OSC地址构造 (与ProcessAdvancedDialAdjustment中逻辑类似)
+                String baseOscPathPress = DetermineBaseOscPathForModeControlDialSend(topConfig, globalActionParameter);
+                String currentModeStrPress = SanitizeOscPathSegment(this.GetCurrentModeString(topConfig.ModeName));
+                if (!String.IsNullOrEmpty(topConfig.OscAddress))
+                {
+                    oscAddressToSend = ResolveTextWithMode(topConfig, topConfig.OscAddress);
+                    if (!oscAddressToSend.StartsWith("/"))
+                    {
+                        oscAddressToSend = $"{baseOscPathPress}/{oscAddressToSend}".Replace("//", "/");
+                    }
+                }
+                else
+                {
+                    oscAddressToSend = $"{baseOscPathPress}/{currentModeStrPress}".Replace("//", "/");
+                }
+                oscAddressToSend = oscAddressToSend.TrimEnd('/');
+                if (String.IsNullOrEmpty(oscAddressToSend)) { oscAddressToSend = "/"; }
+            }
+            else
+            {
+                PluginLog.Warning($"[LogicManager|ProcessAdvancedDialPress] Called with unhandled ActionType: {topConfig.ActionType} for '{globalActionParameter}'.");
+                return;
+            }
+
+            if (!String.IsNullOrEmpty(oscAddressToSend) && oscAddressToSend != "/")
+            {
+                ReaOSCPlugin.SendOSCMessage(oscAddressToSend, valueToStoreAndSend);
+                PluginLog.Info($"[LogicManager|ProcessAdvancedDialPress] '{topConfig.ActionType}' '{topConfig.DisplayName}' Reset OSC sent to '{oscAddressToSend}' -> {valueToStoreAndSend:F3}");
+            }
+            else { PluginLog.Warning($"[LogicManager|ProcessAdvancedDialPress] '{topConfig.ActionType}' '{topConfig.DisplayName}': Invalid OSC Address '{oscAddressToSend ?? "null"}' for sending on press."); }
+            
+            this.CommandStateNeedsRefresh?.Invoke(this, globalActionParameter); // 确保按下也刷新UI
+        }
+
+        // 【新增】辅助方法，用于确定ModeControlDial发送OSC消息的基础路径
+        private string DetermineBaseOscPathForModeControlDialSend(ButtonConfig modeControlDialConfig, string modeControlDialActionParam)
+        {
+            // 优先使用顶层OscAddress字段，如果它不包含{mode}占位符，说明它可能是一个固定的基础路径
+            if (!String.IsNullOrEmpty(modeControlDialConfig.OscAddress) && !modeControlDialConfig.OscAddress.Contains("{mode}"))
+            {
+                return SanitizeOscAddress(modeControlDialConfig.OscAddress); // 清理并返回它作为基础
+            }
+            // 否则，从actionParameter中提取基础部分 (去掉 /DialAction 后缀)
+            const string dialActionSuffix = "/DialAction";
+            if (modeControlDialActionParam.EndsWith(dialActionSuffix))
+            {
+                return modeControlDialActionParam.Substring(0, modeControlDialActionParam.Length - dialActionSuffix.Length);
+            }
+            return modeControlDialActionParam; // 如果没有后缀，则直接使用actionParameter
         }
 
     }

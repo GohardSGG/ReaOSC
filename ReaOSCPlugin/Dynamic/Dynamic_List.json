@@ -497,7 +497,7 @@
           "Title": "{Mode}",
           "TitleColor": "#000000",
           "DeactiveTextColor": "#FFFFFF",
-          "Text": "Dial",
+          "Text": "Slot 1",
           "TextColor": "#88E2FF"
         },
         {
@@ -539,7 +539,7 @@
           "Title": "{Mode}",
           "TitleColor": "#000000",
           "DeactiveTextColor": "#FFFFFF",
-          "Text": "Dial",
+          "Text": "Slot 2",
           "TextColor": "#88E2FF"
         },
         {
@@ -610,6 +610,169 @@
         }
       ],
       "Dials": [
+        {
+          "ActionType": "ModeControlDial",
+          "DisplayName": "Routing Dial 1",
+          "ShowTitle": "Yes",
+          "ModeName": "Routing Dial Mode 1",
+          "Title": "{Mode}",
+          "ParametersByMode": [
+            [
+              true,
+              "0.0000",
+              "1.0000"
+            ],
+            [
+              true,
+              "-100",
+              "100"
+            ]
+          ],
+          "UnitsByMode": [
+            [
+              "dB",
+              "-inf",
+              "+12"
+            ],
+            [
+              "L&R",
+              "L100",
+              "R100"
+            ]
+          ],
+          "ParameterDefaultsByMode": [
+            "0.716",
+            "0"
+          ],
+          "UnitDefaultsByMode": [
+            "0",
+            "C"
+          ]
+        },
+        {
+          "ActionType": "ModeControlDial",
+          "DisplayName": "Routing Dial 2",
+          "ShowTitle": "Yes",
+          "ModeName": "Routing Dial Mode 2",
+          "Title": "{Mode}",
+          "ParametersByMode": [
+            [
+              true,
+              "0.0000",
+              "1.0000"
+            ],
+            [
+              true,
+              "-100",
+              "100"
+            ]
+          ],
+          "UnitsByMode": [
+            [
+              "dB",
+              "-inf",
+              "+12"
+            ],
+            [
+              "L&R",
+              "L100",
+              "R100"
+            ]
+          ],
+          "ParameterDefaultsByMode": [
+            "0.716",
+            "0"
+          ],
+          "UnitDefaultsByMode": [
+            "0",
+            "C"
+          ]
+        },
+        {
+          "ActionType": "PageDial",
+          "DisplayName": "Page",
+          "ShowTitle": "Yes"
+        },
+        {
+          "ActionType": "ModeControlDial",
+          "DisplayName": "Bus Dial 1",
+          "ShowTitle": "Yes",
+          "ModeName": "Bus Send Mode 1",
+          "OscAddress": "Bus",
+          "Title": "{Mode}",
+          "ParametersByMode": [
+            [
+              true,
+              "-100",
+              "100"
+            ],
+            [
+              true,
+              "-100",
+              "100"
+            ]
+          ],
+          "UnitsByMode": [
+            [
+              "L&R",
+              "L100",
+              "R100"
+            ],
+            [
+              "L&R",
+              "L100",
+              "R100"
+            ]
+          ],
+          "ParameterDefaultsByMode": [
+            "0.716",
+            "0"
+          ],
+          "UnitDefaultsByMode": [
+            "C",
+            "C"
+          ]
+        },
+        {
+          "ActionType": "ModeControlDial",
+          "DisplayName": "Bus Dial 2",
+          "ShowTitle": "Yes",
+          "ModeName": "Bus Send Mode 2",
+          "OscAddress": "Bus",
+          "Title": "{Mode}",
+          "ParametersByMode": [
+            [
+              true,
+              "-100",
+              "100"
+            ],
+            [
+              true,
+              "-100",
+              "100"
+            ]
+          ],
+          "UnitsByMode": [
+            [
+              "L&R",
+              "L100",
+              "R100"
+            ],
+            [
+              "L&R",
+              "L100",
+              "R100"
+            ]
+          ],
+          "ParameterDefaultsByMode": [
+            "0.716",
+            "0"
+          ],
+          "UnitDefaultsByMode": [
+            "C",
+            "C"
+          ]
+        }
       ]
     }
   }
