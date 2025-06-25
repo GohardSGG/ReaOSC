@@ -1041,8 +1041,6 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 using(var bb = new BitmapBuilder(imageSize))
                 {
                     bb.Clear(BitmapColor.Black);
-                    // 使用 PluginImage.GetButtonFontSize 以保持一致性，如果需要的话
-                    // 或者直接使用一个固定的、合适的字体大小
                     bb.DrawText("Up", BitmapColor.White, GetButtonFontSize("Up")); 
                     return bb.ToImage();
                 }
@@ -1050,19 +1048,21 @@ namespace Loupedeck.ReaOSCPlugin.Base
 
             ButtonConfig configToDraw = null;
             String globalParamForState = null; 
-            Boolean isStaticButton = false;
-            Logic_Manager_Base logicManager = Logic_Manager_Base.Instance; // 获取 Logic_Manager 实例
+            bool isStaticButton = false;
+            Logic_Manager_Base logicManager = Logic_Manager_Base.Instance; 
 
-            // 【新增】在此处声明 mainTitleToDraw 以确保其在整个方法中的作用域
             String mainTitleToDraw = null; 
+            String preliminaryTitleTemplate; 
+            String titleFieldNameForLogic;
+            int currentModeIndexForTitlesList = -1; 
 
             if (this._isButtonListDynamic)
             {
                 if (!this._allListItems.TryGetValue(localId, out configToDraw))
                 {
-                    // 动态列表项未找到，绘制默认错误图像
                     return PluginImage.DrawElement(imageSize, null, "Itm?", isActive:true, preferIconOnlyForDial: false);
                 }
+                globalParamForState = localId; 
             }
             else 
             {
@@ -1070,26 +1070,20 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 if (!this._localIdToConfig_Buttons.TryGetValue(localId, out configToDraw) || 
                     !this._localIdToGlobalActionParameter_Buttons.TryGetValue(localId, out globalParamForState))
                 {
-                    // 静态按钮配置未找到，绘制默认错误图像
                     return PluginImage.DrawElement(imageSize, null, "Btn?", isActive:true, preferIconOnlyForDial: false);
                 }
             }
-            if (configToDraw == null)
+            if (configToDraw == null) 
             {
-                 // 理论上不会到这里，因为上面已经处理了未找到的情况
                 return PluginImage.DrawElement(imageSize, null, "Err", isActive:true, preferIconOnlyForDial: false);
             }
 
             BitmapImage loadedIcon = PluginImage.TryLoadIcon(configToDraw, this.DisplayName);
-            String preliminaryTitle = null; 
             Boolean isActive = false;
             Int32 currentModeForDrawing = 0; 
-            String preliminaryAuxText = configToDraw.Text; // 原始辅助文本模板
-
-            // 首先解析通用的辅助文本 (config.Text)
+            String preliminaryAuxText = configToDraw.Text; 
             String auxTextToDraw = logicManager.ResolveTextWithMode(configToDraw, preliminaryAuxText);
 
-            // 【新增】特别处理 SelectModeButton 的标题和激活状态
             if (configToDraw.ActionType == "SelectModeButton")
             {
                 mainTitleToDraw = logicManager.GetCurrentModeString(configToDraw.DisplayName); 
@@ -1099,41 +1093,56 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 }
                 if (String.IsNullOrEmpty(mainTitleToDraw))
                 {
-                    mainTitleToDraw = configToDraw.DisplayName; // 最终回退到 DisplayName
+                    mainTitleToDraw = configToDraw.DisplayName; 
                 }
-                // SelectModeButton 的 isActive 状态：如果当前模式不是列表中的第一个，则视为激活
                 isActive = (configToDraw.Modes?.IndexOf(logicManager.GetCurrentModeString(configToDraw.DisplayName) ?? "") ?? 0) > 0;
             }
-            else // 处理其他类型的按钮
+            else 
             {
-                // 确定初步标题 (非 SelectModeButton)
-                if (configToDraw.ActionType == "ParameterButton" && isStaticButton)
+                if (!String.IsNullOrEmpty(configToDraw.ModeName) && configToDraw.Titles != null && configToDraw.Titles.Any())
                 {
-                    preliminaryTitle = this.DetermineParameterButtonTitle(configToDraw); 
+                    currentModeIndexForTitlesList = logicManager.GetCurrentModeIndex(configToDraw.ModeName);
+                    if (currentModeIndexForTitlesList != -1 && currentModeIndexForTitlesList < configToDraw.Titles.Count)
+                    {
+                        titleFieldNameForLogic = "Titles_Element";
+                        preliminaryTitleTemplate = logicManager.GetCurrentTitleTemplate(globalParamForState, titleFieldNameForLogic, configToDraw, currentModeIndexForTitlesList);
+                    }
+                    else
+                    {
+                        titleFieldNameForLogic = "Title";
+                        preliminaryTitleTemplate = logicManager.GetCurrentTitleTemplate(globalParamForState, titleFieldNameForLogic, configToDraw);
+                    }
+                }
+                else if (configToDraw.ActionType == "ParameterButton" && isStaticButton) 
+                {
+                    preliminaryTitleTemplate = this.DetermineParameterButtonTitle(configToDraw); 
                 }
                 else
                 {
-                    preliminaryTitle = configToDraw.Title ?? configToDraw.DisplayName;
+                    titleFieldNameForLogic = "Title";
+                    preliminaryTitleTemplate = logicManager.GetCurrentTitleTemplate(globalParamForState, titleFieldNameForLogic, configToDraw);
                 }
-                mainTitleToDraw = logicManager.ResolveTextWithMode(configToDraw, preliminaryTitle);
+                mainTitleToDraw = logicManager.ResolveTextWithMode(configToDraw, preliminaryTitleTemplate); 
 
-                // 确定激活状态 (非 SelectModeButton)
+                // Fallback to DisplayName for non-SelectModeButton and non-ParameterButton (if ParameterButton's specific logic results in empty)
+                if (String.IsNullOrEmpty(mainTitleToDraw) && configToDraw.ActionType != "ParameterButton") 
+                {
+                     mainTitleToDraw = configToDraw.DisplayName;
+                }
+                // For ParameterButton, if DetermineParameterButtonTitle resulted in empty, we might want to keep it empty or show error, 
+                // rather than defaulting to its own DisplayName, which might be confusing.
+                // However, if the above `preliminaryTitleTemplate = this.DetermineParameterButtonTitle(configToDraw);` line
+                // was meant to be the SOLE source, and it can be null/empty, then a generic fallback might still be desired.
+                // For now, ParameterButton is excluded from this specific DisplayName fallback.
+
                 if (configToDraw.ActionType == "TriggerButton" || configToDraw.ActionType == "CombineButton")
                 {
                     isActive = this._folderItemTemporaryActiveStates.TryGetValue(localId, out var tempState) && tempState;
                 }
                 else if (configToDraw.ActionType == "ToggleButton")
                 { 
-                    if (isStaticButton && !String.IsNullOrEmpty(globalParamForState))
-                    {
-                        isActive = logicManager.GetToggleState(globalParamForState);
-                    }
-                    else if (!isStaticButton) // 动态 ToggleButton, localId 是其全局 actionParameter
-                    {
-                        isActive = logicManager.GetToggleState(localId); 
-                    }
+                    isActive = logicManager.GetToggleState(globalParamForState);
                 }
-                // ParameterButton 的 isActive 状态通常不通过这种瞬时高亮管理，而是由其参数源决定，或固定显示
             }
             
             return PluginImage.DrawElement(imageSize, configToDraw, mainTitleToDraw, null, isActive, currentModeForDrawing, loadedIcon, false, auxTextToDraw, false );
@@ -1143,7 +1152,6 @@ namespace Loupedeck.ReaOSCPlugin.Base
         {
             if (String.IsNullOrEmpty(actionParameter))
             {
-                // 空 actionParameter，返回全黑图像 (保持不变)
                 using (var bb = new BitmapBuilder(imageSize))
                 {
                     bb.Clear(BitmapColor.Black);
@@ -1154,7 +1162,6 @@ namespace Loupedeck.ReaOSCPlugin.Base
             var dialConfig = this._folderDialConfigs.FirstOrDefault(dc => this.GetLocalDialId(dc) == localDialId);
             if (dialConfig == null || dialConfig.ActionType == "Placeholder")
             {
-                // 未找到配置或为占位符，返回全黑图像 (保持不变)
                 using (var bb = new BitmapBuilder(imageSize))
                 {
                     bb.Clear(BitmapColor.Black);
@@ -1162,72 +1169,95 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 }
             }
             
-            Logic_Manager_Base logicManager = Logic_Manager_Base.Instance; // 获取 Logic_Manager 实例
+            Logic_Manager_Base logicManager = Logic_Manager_Base.Instance; 
             BitmapImage loadedIcon = PluginImage.TryLoadIcon(dialConfig, this.DisplayName);
             
-            // 初步确定标题 (未解析 {mode})
-            String preliminaryTitle = dialConfig.ShowTitle?.Equals("No", StringComparison.OrdinalIgnoreCase) == true ? null : (dialConfig.Title ?? dialConfig.DisplayName);
-            // 初步确定辅助文本 (未解析 {mode})
-            String preliminaryAuxText = dialConfig.Text;
-
-            // 使用 ResolveTextWithMode 解析标题和辅助文本
-            String mainTitleToDraw = logicManager.ResolveTextWithMode(dialConfig, preliminaryTitle);
-            String auxTextToDraw = logicManager.ResolveTextWithMode(dialConfig, preliminaryAuxText);
-            
+            String preliminaryTitleTemplate;
+            String titleFieldNameForLogic;
+            String auxTextToDraw = logicManager.ResolveTextWithMode(dialConfig, dialConfig.Text);
+            String mainTitleToDraw;
             String valueTextToDisplay = null; 
             Boolean isActiveStatus = false; 
             Int32 currentModeStatus = 0;    
-            String globalParamForState = this.GetGlobalParamForDialState(dialConfig); // 此方法获取全局参数，用于从LogicManager获取状态
+            
+            // 确定全局参数，用于从LogicManager获取状态或动态标题模板
+            // GetGlobalParamForDialState 返回的是旋钮在Logic_Manager中注册的全局actionParameter
+            String globalDialActionParameter = this.GetGlobalParamForDialState(dialConfig); 
 
             switch (dialConfig.ActionType)
             {
                 case "FilterDial":
                     valueTextToDisplay = this._currentFilterValues.TryGetValue(dialConfig.DisplayName, out var val) ? val : "N/A";
+                    titleFieldNameForLogic = "Title"; // FilterDial 的标题通常是静态的，但也允许动态
+                    preliminaryTitleTemplate = logicManager.GetCurrentTitleTemplate(globalDialActionParameter, titleFieldNameForLogic, dialConfig);
                     break;
                 case "PageDial":
                     valueTextToDisplay = $"{this._currentPage + 1} / {this._totalPages}";
+                    titleFieldNameForLogic = "Title";
+                    preliminaryTitleTemplate = logicManager.GetCurrentTitleTemplate(globalDialActionParameter, titleFieldNameForLogic, dialConfig);
                     break;
                 case "ParameterDial":
                     valueTextToDisplay = this.DetermineParameterDialValue(dialConfig, localDialId);
+                    titleFieldNameForLogic = "Title";
+                    preliminaryTitleTemplate = logicManager.GetCurrentTitleTemplate(globalDialActionParameter, titleFieldNameForLogic, dialConfig);
                     break;
                 case "ToggleDial": 
-                    if(globalParamForState != null)
+                    if(globalDialActionParameter != null)
                     {
-                        isActiveStatus = logicManager.GetToggleState(globalParamForState); 
+                        isActiveStatus = logicManager.GetToggleState(globalDialActionParameter); 
                     }
+                    titleFieldNameForLogic = "Title";
+                    preliminaryTitleTemplate = logicManager.GetCurrentTitleTemplate(globalDialActionParameter, titleFieldNameForLogic, dialConfig);
                     break;
                 case "2ModeTickDial":
-                    if(globalParamForState != null)
+                    if(globalDialActionParameter != null)
                     {
-                        currentModeStatus = logicManager.GetDialMode(globalParamForState);
-                        // 对于 2ModeTickDial，如果其 ModeName 与 dialConfig.ModeName 匹配 (理论上应该如此如果它受模式控制)
-                        // 它的标题可能在 ResolveTextWithMode 时已经根据当前模式切换了 (如果 Title 或 Title_Mode2 含 {mode})
-                        // 这里 mainTitleToDraw 已处理过 ResolveTextWithMode，但如果其 Title/Title_Mode2 本身也应该根据外部模式组改变，
-                        // 且 ResolveTextWithMode(dialConfig,...) 使用了 dialConfig.ModeName，那么这里可能需要重新确定 preliminaryTitle
-                        // 以便在 PluginImage.DrawElement 中，dialConfig.Title_Mode2 能被正确使用。
-                        // 不过，PluginImage.DrawElement 内部对2ModeTickDial的标题有自己的处理逻辑（基于currentModeStatus从dialConfig取）
-                        // 所以这里 mainTitleToDraw 的准备主要是为了那些 config.Title 本身就包含 {mode} 的情况。
+                        currentModeStatus = logicManager.GetDialMode(globalDialActionParameter);
                     }
+                    titleFieldNameForLogic = (currentModeStatus == 1 && !String.IsNullOrEmpty(dialConfig.Title_Mode2)) ? "Title_Mode2" : "Title";
+                    preliminaryTitleTemplate = logicManager.GetCurrentTitleTemplate(globalDialActionParameter, titleFieldNameForLogic, dialConfig, currentModeStatus);
                     break;
                 case "ControlDial": 
-                case "ModeControlDial": // 【新增】ModeControlDial 的显示值也通过 GetControlDialDisplayText 获取
-                    if (!String.IsNullOrEmpty(globalParamForState)) 
+                case "ModeControlDial": 
+                    if (!String.IsNullOrEmpty(globalDialActionParameter)) 
                     {
-                        valueTextToDisplay = logicManager.GetControlDialDisplayText(globalParamForState); 
+                        valueTextToDisplay = logicManager.GetControlDialDisplayText(globalDialActionParameter); 
                     }
                     else
                     {
-                        PluginLog.Warning($"[{this.DisplayName}|GetAdjustmentImage] {dialConfig.ActionType} '{dialConfig.DisplayName}' (localId: {localDialId}) 无法获取 globalParamForState 以查询值。");
+                        PluginLog.Warning($"[{this.DisplayName}|GetAdjustmentImage] {dialConfig.ActionType} '{dialConfig.DisplayName}' (localId: {localDialId}) 无法获取 globalDialActionParameter 以查询值。");
                         valueTextToDisplay = "ERR"; 
                     }
+                    titleFieldNameForLogic = "Title"; // 主标题
+                    // 对于 ModeControlDial，如果其模式特定标题也需要动态，这里的 titleFieldNameForLogic 可能需要更复杂逻辑
+                    // 但 GetCurrentTitleTemplate 应该基于 globalDialActionParameter 和 "Title" 获取其顶层标题模板
+                    preliminaryTitleTemplate = logicManager.GetCurrentTitleTemplate(globalDialActionParameter, titleFieldNameForLogic, dialConfig);
+                    break;
+                default: // e.g. TickDial, NavigationDial
+                    titleFieldNameForLogic = "Title";
+                    preliminaryTitleTemplate = logicManager.GetCurrentTitleTemplate(globalDialActionParameter, titleFieldNameForLogic, dialConfig);
                     break;
             }
             
+            mainTitleToDraw = logicManager.ResolveTextWithMode(dialConfig, preliminaryTitleTemplate ?? (dialConfig.Title ?? dialConfig.DisplayName));
+            // 如果 preliminaryTitleTemplate 为null (例如 GetCurrentTitleTemplate 内部出错或未找到映射),
+            // 则回退到原始config.Title 或 DisplayName 再进行mode解析，以确保至少有东西显示
+
+            // 回退逻辑: 如果 mainTitleToDraw 为空，并且 ShowTitle 不是 "No"，则使用 DisplayName
+            if (String.IsNullOrEmpty(mainTitleToDraw))
+            {
+                if (dialConfig.ShowTitle?.Equals("No", StringComparison.OrdinalIgnoreCase) != true)
+                {
+                    mainTitleToDraw = dialConfig.DisplayName;
+                }
+            }
+
             return PluginImage.DrawElement(imageSize, dialConfig, mainTitleToDraw, valueTextToDisplay, isActiveStatus, currentModeStatus, loadedIcon, false, auxTextToDraw, true);
         }
 
         public override BitmapImage GetButtonImage(PluginImageSize imageSize) // 文件夹入口按钮
         {
+            Logic_Manager_Base logicManager = Logic_Manager_Base.Instance;
             if (this._entryConfig == null) 
             {
                 using (var bb = new BitmapBuilder(imageSize))
@@ -1238,9 +1268,20 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 }
             }
             BitmapImage loadedEntryIcon = PluginImage.TryLoadIcon(this._entryConfig, this.DisplayName);
-            // 文件夹入口是按钮，preferIconOnlyForDial: false
-            // actualAuxText 由 DrawElement 根据 config.Text 处理
-            return PluginImage.DrawElement(imageSize, this._entryConfig, null, null, false, 0, loadedEntryIcon, false, null, false);
+            
+            String folderEntryActionParameter = this._entryConfig.DisplayName; 
+            String titleFieldNameForFolderEntry = "Title";
+            String preliminaryTitleTemplateForFolder = logicManager.GetCurrentTitleTemplate(folderEntryActionParameter, titleFieldNameForFolderEntry, this._entryConfig);
+            String mainTitleForFolder = logicManager.ResolveTextWithMode(this._entryConfig, preliminaryTitleTemplateForFolder);
+            String auxTextForFolder = logicManager.ResolveTextWithMode(this._entryConfig, this._entryConfig.Text); 
+
+            // 回退到文件夹入口的 DisplayName
+            if (String.IsNullOrEmpty(mainTitleForFolder))
+            {
+                mainTitleForFolder = this._entryConfig.DisplayName;
+            }
+
+            return PluginImage.DrawElement(imageSize, this._entryConfig, mainTitleForFolder, null, false, 0, loadedEntryIcon, false, auxTextForFolder, false);
         }
 
         private String DetermineParameterButtonTitle(ButtonConfig paramButtonConfig)
@@ -1416,7 +1457,9 @@ namespace Loupedeck.ReaOSCPlugin.Base
 
         public override String GetAdjustmentDisplayName(String actionParameter, PluginImageSize imageSize) => null; // 旋钮名称直接绘制在图像上
 
-        public override String GetAdjustmentValue(String actionParameter) => null; // 旋钮值直接绘制在图像上
+        // public override String GetAdjustmentValue(String actionParameter) => null; // 旋钮值直接绘制在图像上
+        // 【修改】GetAdjustmentValue 也需要返回null，因为值是绘制的
+        public override String GetAdjustmentValue(String actionParameter) => null; 
 
         // 从旧 Dynamic_Folder_Base 迁移，用于 ParameterButton 查找其数据源 ParameterDial
         private String FindSourceDialGlobalActionParameter(ButtonConfig parameterButtonConfig, String sourceDialDisplayNameFromButtonConfig)

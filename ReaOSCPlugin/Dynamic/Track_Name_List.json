@@ -9,7 +9,8 @@
         "Strings",
         "Brass",
         "Woodwinds",
-        "Other"
+        "Other",
+        "Group"
     ],
     "Favorite": [
       "Distortion Guitar",
@@ -17,50 +18,179 @@
     ],
     "Guitar": [
         {
-            "DisplayName": "Distortion Guitar"
+            "DisplayName": "Distortion Guitar",
+            "Title": "Distortion",
+            "Text": "Guitar",
+            "TextColor": "#88E2FF"
         },
         {
-            "DisplayName": "Crunch Guitar"
+            "DisplayName": "Crunch Guitar",
+            "Title": "Crunch",
+            "Text": "Guitar",
+            "TextColor": "#88E2FF"
         },
         {
-            "DisplayName": "Clean Guitar"
+            "DisplayName": "Clean Guitar",
+            "Title": "Clean",
+            "Text": "Guitar",
+            "TextColor": "#88E2FF"
         },
         {
-            "DisplayName": "Acoustic Guitar"
+            "DisplayName": "Acoustic Guitar",
+            "Title": "Acoustic",
+            "Text": "Guitar",
+            "TextColor": "#88E2FF"
         },
         {
-            "DisplayName": "Main Guitar"
+            "DisplayName": "Main Guitar",
+            "Title": "Main",
+            "Text": "Guitar",
+            "TextColor": "#88E2FF"
         },
         {
-            "DisplayName": "Rhythm Guitar"
+            "DisplayName": "Rhythm Guitar",
+            "Title": "Rhythm",
+            "Text": "Guitar",
+            "TextColor": "#88E2FF"
         },
         {
-            "DisplayName": "Lead Guitar"
+            "DisplayName": "Lead Guitar",
+            "Title": "Lead",
+            "Text": "Guitar",
+            "TextColor": "#88E2FF"
         },
         {
-            "DisplayName": "Sub Guitar"
+            "DisplayName": "Sub Guitar",
+            "Title": "Sub",
+            "Text": "Guitar",
+            "TextColor": "#88E2FF"
         }
     ],
     "Bass": [
         {
-            "DisplayName": "Distortion Bass"
+            "DisplayName": "Distortion Bass",
+            "Title": "Distortion",
+            "Text": "Bass",
+            "TextColor": "#88E2FF"
         },
         {
-            "DisplayName": "Crunch Bass"
+            "DisplayName": "Crunch Bass",
+            "Title": "Crunch",
+            "Text": "Bass",
+            "TextColor": "#88E2FF"
         },
         {
-            "DisplayName": "Clean Bass"
+            "DisplayName": "Clean Bass",
+            "Title": "Clean",
+            "Text": "Bass",
+            "TextColor": "#88E2FF"
         }
     ],
     "Drums": [
         {
-            "DisplayName": "Drums"
+            "DisplayName": "Kick",
+            "Title": "Kick",
+            "Text": "Drum",
+            "TextColor": "#88E2FF"
+        },
+        {
+            "DisplayName": "Snare",
+            "Title": "Snare",
+            "Text": "Drum",
+            "TextColor": "#88E2FF"
+        },
+        {
+            "DisplayName": "Hi-Hat",
+            "Title": "Hi-Hat",
+            "Text": "Drum",
+            "TextColor": "#88E2FF"
+        },
+        {
+            "DisplayName": "Cymbal",
+            "Title": "Cymbal",
+            "Text": "Drum",
+            "TextColor": "#88E2FF"
+        },
+        {
+            "DisplayName": "Rack Tom",
+            "Title": "Rack",
+            "Text": "Tom",
+            "TextColor": "#88E2FF"
+        },
+        {
+            "DisplayName": "Floor Tom",
+            "Title": "Floor",
+            "Text": "Tom",
+            "TextColor": "#88E2FF"
+        },
+        {
+            "DisplayName": "Crash",
+            "Title": "Crash",
+            "Text": "Drum",
+            "TextColor": "#88E2FF"
+        },
+        {
+            "DisplayName": "Ride",
+            "Title": "Ride",
+            "Text": "Drum",
+            "TextColor": "#88E2FF"
+        },
+        {
+            "DisplayName": "Trigger",
+            "Title": "Trigger",
+            "Text": "Drum",
+            "TextColor": "#88E2FF"
         }
     ],
     "Vocal": [
         {
-            "DisplayName": "Vocal"
-        } 
+            "DisplayName": "Male",
+            "Title": "Male",
+            "Text": "Vocal",
+            "TextColor": "#88E2FF"
+        },
+        {
+            "DisplayName": "Female",
+            "Title": "Female",
+            "Text": "Vocal",
+            "TextColor": "#88E2FF"
+        },
+        {
+            "DisplayName": "Children",
+            "Title": "Children",
+            "Text": "Vocal",
+            "TextColor": "#88E2FF"
+        },
+        {
+            "DisplayName": "Talk",
+            "Title": "Talk",
+            "Text": "Vocal",
+            "TextColor": "#88E2FF"
+        },
+        {
+            "DisplayName": "Lead Vocal",
+            "Title": "Lead",
+            "Text": "Vocal",
+            "TextColor": "#88E2FF"
+        },
+        {
+            "DisplayName": "Backing Vocal",
+            "Title": "Backing",
+            "Text": "Vocal",
+            "TextColor": "#88E2FF"
+        },
+        {
+            "DisplayName": "Harmony Vocal",
+            "Title": "Harmony",
+            "Text": "Vocal",
+            "TextColor": "#88E2FF"
+        },
+        {
+            "DisplayName": "Choir Vocal",
+            "Title": "Choir",
+            "Text": "Vocal",
+            "TextColor": "#88E2FF"
+        }
     ],
     "Synth": [
         {
@@ -90,6 +220,35 @@
     "Other": [
         {
             "DisplayName": "Other"
+        }
+    ],
+    "Group": [
+        {
+            "DisplayName": "Guitar"
+        },
+        {
+            "DisplayName": "Bass"
+        },
+        {
+            "DisplayName": "Drums"
+        },
+        {
+            "DisplayName": "Vocal"
+        },
+        {
+            "DisplayName": "Synth"
+        },
+        {
+            "DisplayName": "Piano"
+        },
+        {
+            "DisplayName": "Strings"
+        },
+        {
+            "DisplayName": "Brass"
+        },
+        {
+            "DisplayName": "Woodwinds"
         }
     ]
 }

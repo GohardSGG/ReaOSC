@@ -47,11 +47,11 @@ namespace Loupedeck.ReaOSCPlugin
             // 收到的可能是文本或OSC二进制消息
             if (e.IsBinary)
             {
-                var (address, value) = this.ParseOSCMessage(e.RawData);
-                if (!String.IsNullOrEmpty(address))
+                var (address, parsedValue, isValid) = this.ParseOSCMessage(e.RawData);
+                if (isValid && !String.IsNullOrEmpty(address))
                 {
                     // 状态变化通知相关
-                    OSCStateManager.Instance.UpdateState(address, value);
+                    OSCStateManager.Instance.UpdateState(address, parsedValue);
                 }
             }
         }
@@ -96,107 +96,110 @@ namespace Loupedeck.ReaOSCPlugin
         }
 
         // === OSC二进制消息解析 ===
-        private (String address, Single value) ParseOSCMessage(Byte[] data)
+        private (String address, Object value, Boolean isValid) ParseOSCMessage(Byte[] data)
         {
             if (data == null || data.Length == 0)
             {
                 PluginLog.Warning("[ParseOSCMessage] Received empty or null data array.");
-                return (null, 0f);
+                return (null, null, false);
             }
 
             try
             {
-                // 使用 Rug.Osc 解析字节数组为 OscPacket
-                // OscPacket.Read 需要知道数据的来源IPEndPoint，但我们从WebSocket接收，没有直接的IPEndPoint。
-                // 我们可以传递一个虚拟的/默认的 IPEndPoint，因为它主要用于标记消息来源，对于纯内容解析可能不是严格必需的。
-                // 或者，更简单的做法是，如果我们的数据保证是单个OSC消息（不含bundle长度前缀等），可以直接尝试解析。
-                // Rug.Osc.OscPacket.Read(byte[] bytes, int index, int count) 就可以。
-                // 我们假设data只包含一个完整的OSC消息。
+                OscPacket packet = OscPacket.Read(data, 0, data.Length);
 
-                OscPacket packet = OscPacket.Read(data, 0, data.Length); // 从字节数组的开头读取到末尾
-
-                if (packet is OscMessage message) 
+                if (packet is OscMessage message)
                 {
-                    // 成功解析为 OscMessage
                     String address = message.Address;
-                    Single value = 0f;
-                    Boolean valueFound = false;
+                    Object parsedArg = null;
+                    Boolean argParsedSuccessfully = false;
 
-                    if (message.Count > 0) // 检查是否有参数
+                    if (message.Count > 0)
                     {
-                        Object arg = message[0]; // 获取第一个参数
-                        if (arg is Single singleVal)
+                        Object arg = message[0];
+                        if (arg is String strVal)
                         {
-                            value = singleVal;
-                            valueFound = true;
+                            parsedArg = strVal;
+                            argParsedSuccessfully = true;
+                            PluginLog.Verbose($"[ParseOSCMessage] Address '{address}': Received String arg '{strVal}'.");
+                        }
+                        else if (arg is Single singleVal)
+                        {
+                            parsedArg = singleVal;
+                            argParsedSuccessfully = true;
                         }
                         else if (arg is Int32 intVal)
                         {
-                            value = (Single)intVal;
-                            valueFound = true;
-                            PluginLog.Verbose($"[ParseOSCMessage] Address '{address}': Received Int32 arg {intVal}, converted to Single {value}.");
+                            parsedArg = (Single)intVal;
+                            argParsedSuccessfully = true;
+                            PluginLog.Verbose($"[ParseOSCMessage] Address '{address}': Received Int32 arg {intVal}, converted to Single {parsedArg}.");
                         }
                         else if (arg is Double doubleVal)
                         {
-                            value = (Single)doubleVal;
-                            valueFound = true;
-                            PluginLog.Verbose($"[ParseOSCMessage] Address '{address}': Received Double arg {doubleVal}, converted to Single {value}.");
+                            parsedArg = (Single)doubleVal;
+                            argParsedSuccessfully = true;
+                            PluginLog.Verbose($"[ParseOSCMessage] Address '{address}': Received Double arg {doubleVal}, converted to Single {parsedArg}.");
                         }
-                        else if (arg is Boolean boolVal) // 有些DAW用 True/False (1.0/0.0) 表示toggle状态
+                        else if (arg is Boolean boolVal)
                         {
-                            value = boolVal ? 1.0f : 0.0f;
-                            valueFound = true;
-                             PluginLog.Verbose($"[ParseOSCMessage] Address '{address}': Received Boolean arg {boolVal}, converted to Single {value}.");
+                            parsedArg = boolVal ? 1.0f : 0.0f;
+                            argParsedSuccessfully = true;
+                            PluginLog.Verbose($"[ParseOSCMessage] Address '{address}': Received Boolean arg {boolVal}, converted to Single {parsedArg}.");
                         }
                         else
                         {
-                            PluginLog.Warning($"[ParseOSCMessage] Address '{address}': First argument is not Single, Int32, or Double. Type: {arg?.GetType().Name}, Value: {arg?.ToString()}");
+                            PluginLog.Warning($"[ParseOSCMessage] Address '{address}': First argument is not a supported type. Type: {arg?.GetType().Name}, Value: {arg?.ToString()}");
                         }
                     }
                     else
                     {
                         PluginLog.Warning($"[ParseOSCMessage] Address '{address}': Message has no arguments.");
-                        // 对于没有参数的触发型消息，有时也需要传递一个默认值（比如1.0f）给状态管理器
-                        // 但当前函数签名要求返回一个value，如果严格按"解析到的值"，则这里应该无值
-                        // 但为了兼容之前的 (String, Single) 返回，我们可以返回0f，或者根据需要调整
                     }
                     
-                    if(valueFound) {
-                        return (address, value);
+                    if(argParsedSuccessfully) {
+                        return (address, parsedArg, true);
                     } else {
-                        // 如果没有找到可用的数值参数，但地址有效，可以考虑返回一个特定的默认值或错误指示
-                        // 为了与旧逻辑的 (null, 0f) 错误返回保持某种一致性，这里也返回类似的值，但地址是有效的
-                        // 或者可以修改函数签名或上游逻辑来处理"有地址无值"的情况
-                        // PluginLog.Warning($"[ParseOSCMessage] Address '{address}': No suitable numeric argument found, returning 0f for value.");
-                        return (address, 0f); // 地址有效，但值未找到/不适用，返回0f
+                        return (address, null, false);
                     }
                 }
                 else if (packet is OscBundle bundle)
                 {
-                    // 当前我们不递归处理Bundle，只记录收到Bundle的事实
-                    // 如果需要，可以遍历 bundle.Messages 并处理第一个符合条件的消息
-                    PluginLog.Info("[ParseOSCMessage] Received an OSC Bundle, currently not processing nested messages from bundles for state updates.");
-                    // 尝试从Bundle中提取第一个消息的值（如果适用）
+                    PluginLog.Info("[ParseOSCMessage] Received an OSC Bundle, attempting to process first message if available.");
                     if (bundle.Count > 0 && bundle[0] is OscMessage firstMessageInBundle)
                     {
-                         if (firstMessageInBundle.Count > 0 && firstMessageInBundle[0] is Single floatValBundle)
+                         if (firstMessageInBundle.Count > 0)
                          {
-                             PluginLog.Info($"[ParseOSCMessage] Using first message from bundle: {firstMessageInBundle.Address} -> {floatValBundle}");
-                             return (firstMessageInBundle.Address, floatValBundle);
+                             Object firstArgInBundle = firstMessageInBundle[0];
+                             if (firstArgInBundle is String strValBundle)
+                             {
+                                 PluginLog.Info($"[ParseOSCMessage] Using first message from bundle: {firstMessageInBundle.Address} -> (String) '{strValBundle}'");
+                                 return (firstMessageInBundle.Address, strValBundle, true);
+                             }
+                             else if (firstArgInBundle is Single floatValBundle)
+                             {
+                                 PluginLog.Info($"[ParseOSCMessage] Using first message from bundle: {firstMessageInBundle.Address} -> (Single) {floatValBundle}");
+                                 return (firstMessageInBundle.Address, floatValBundle, true);
+                             }
+                             else if (firstArgInBundle is Int32 intValBundle)
+                             {
+                                 PluginLog.Info($"[ParseOSCMessage] Using first message from bundle: {firstMessageInBundle.Address} -> (Int32 to Single) {(Single)intValBundle}");
+                                 return (firstMessageInBundle.Address, (Single)intValBundle, true);
+                             }
+                             // Add other type checks (Double, Boolean) for bundle message if needed
                          }
                     }
-                    return (null, 0f);
+                    return (null, null, false);
                 }
                 else
                 {
                     PluginLog.Warning($"[ParseOSCMessage] Received data that is not an OscMessage or OscBundle. Packet Type: {packet?.GetType().Name}");
-                    return (null, 0f);
+                    return (null, null, false);
                 }
             }
             catch (Exception ex)
             {
                 PluginLog.Error(ex, "[ParseOSCMessage] Exception while parsing OSC message with Rug.Osc.");
-                return (null, 0f);
+                return (null, null, false);
             }
         }
 
@@ -215,6 +218,27 @@ namespace Loupedeck.ReaOSCPlugin
                 Instance._wsClient.Send(oscData);
 
                 PluginLog.Info($"发送OSC消息成功: {address} -> {value}");
+            }
+            catch (Exception ex)
+            {
+                PluginLog.Error($"发送OSC消息失败: {ex.Message}");
+                Instance.ScheduleReconnect();
+            }
+        }
+
+        public static void SendOSCMessage(String address, String value)
+        {
+            if (Instance?._wsClient?.IsAlive != true)
+            {
+                //PluginLog.Error("WebSocket连接未建立，发送OSC消息失败");
+                return;
+            }
+            try
+            {
+                var oscData = CreateOSCMessage(address, value);
+                Instance._wsClient.Send(oscData);
+                // Corrected: Logging string value with proper escaping for quotes inside the interpolated string.
+                PluginLog.Info($"发送OSC消息成功: {address} -> (String) \"{value?.Replace("\"", "\\\"")}\"");
             }
             catch (Exception ex)
             {
@@ -254,6 +278,30 @@ namespace Loupedeck.ReaOSCPlugin
             {
                 PluginLog.Error(ex, $"[CreateOSCMessage] Error creating or serializing OSC message with Rug.Osc for address '{address}' and value {value}.");
                 return new Byte[0]; 
+            }
+        }
+
+        // 新增：创建包含字符串参数的OSC消息
+        private static Byte[] CreateOSCMessage(String address, String value)
+        {
+            if (String.IsNullOrEmpty(address))
+            {
+                address = "/EmptyAddress";
+            }
+            if (value == null)
+            {
+                value = String.Empty;
+            }
+
+            try
+            {
+                OscMessage message = new OscMessage(address, value);
+                return message.ToByteArray();
+            }
+            catch (Exception ex)
+            {
+                PluginLog.Error(ex, $"[CreateOSCMessage] Error creating or serializing OSC message with Rug.Osc for address '{address}' and string value \"{value?.Replace("\"", "\\\"")}\".");
+                return new Byte[0];
             }
         }
 
@@ -337,40 +385,99 @@ namespace Loupedeck.ReaOSCPlugin
             new Lazy<OSCStateManager>(() => new OSCStateManager());
         public static OSCStateManager Instance => _instance.Value;
 
-        // 状态字典，存储最新的OSC地址及其对应的float值
-        private readonly ConcurrentDictionary<String, Single> _stateCache =
-            new ConcurrentDictionary<String, Single>();
+        // Corrected: _stateCache stores Object
+        private readonly ConcurrentDictionary<String, Object> _stateCache =
+            new ConcurrentDictionary<String, Object>();
 
+        // Corrected: StateChangedEventArgs includes StringValue and IsString
         public class StateChangedEventArgs : EventArgs
         {
-            public String Address { get; set; } // OSC地址
-            public Single Value { get; set; }   // OSC值
+            public String Address { get; set; } 
+            public Single Value { get; set; }    // Numeric OSC value (Single.NaN if string message)
+            public String StringValue { get; set; } // String OSC value (null if numeric message)
+            public Boolean IsString { get; set; }     // True if the primary value is a string
         }
 
-        // 当某个OSC地址的状态更新时触发此事件
         public event EventHandler<StateChangedEventArgs> StateChanged;
 
-        // 更新某个地址的float值并触发StateChanged事件
-        public void UpdateState(String address, Single value)
+        // Corrected: UpdateState accepts Object and populates StateChangedEventArgs accordingly
+        public void UpdateState(String address, Object value)
         {
-            this._stateCache.AddOrUpdate(address, value, (k, v) => value);
+            this._stateCache.AddOrUpdate(address, value, (k, oldValue) => value);
 
-            PluginLog.Info($"[OSCStateManager] 状态更新: {address} = {value}");
-            this.StateChanged?.Invoke(this, new StateChangedEventArgs
+            String valueType = value?.GetType().Name ?? "null";
+            String valueStringRepresentation = value?.ToString() ?? "null";
+            if (value is String s) 
             {
-                Address = address,
-                Value = value
-            });
+                 valueStringRepresentation = $"\"{s.Replace("\"", "\\\"")}\""; // Escape quotes in string for log
+            }
+
+            PluginLog.Info($"[OSCStateManager] 状态更新: Address='{address}', Type='{valueType}', Value={valueStringRepresentation}");
+
+            var eventArgs = new StateChangedEventArgs
+            {
+                Address = address
+            };
+
+            if (value is String strVal)
+            {
+                eventArgs.StringValue = strVal;
+                eventArgs.Value = Single.NaN; 
+                eventArgs.IsString = true;
+            }
+            else if (value is Single floatVal)
+            {
+                eventArgs.StringValue = null;
+                eventArgs.Value = floatVal;
+                eventArgs.IsString = false;
+            }
+            // Assuming other numeric types are converted to Single in ParseOSCMessage
+            else 
+            {
+                eventArgs.StringValue = value?.ToString(); 
+                eventArgs.Value = Single.NaN;
+                eventArgs.IsString = (value is String); // Check again, though should be covered
+            }
+            this.StateChanged?.Invoke(this, eventArgs);
         }
 
-        // 获取某个地址的当前float值，如果地址不存在则返回0f
-        public Single GetState(String address) =>
-            this._stateCache.TryGetValue(address, out var value) ? value : 0f;
+        // Corrected: GetState returns Single, handles Object internally
+        public Single GetState(String address)
+        {
+            if (this._stateCache.TryGetValue(address, out var storedValue))
+            {
+                if (storedValue is Single floatVal)
+                {
+                    return floatVal;
+                }
+                // If stored value is not a Single (e.g., it's a String), return a default float.
+                // 0f is a common default, or Single.NaN if a more explicit "not-a-number" is needed.
+                return 0f; 
+            }
+            return 0f; // Address not found
+        }
 
-        // 获取所有OSC地址及其当前值的字典副本
-        public IDictionary<String, Single> GetAllStates() =>
-            // 返回一个副本，防止外部直接修改内部缓存
-            new Dictionary<String, Single>(this._stateCache);
+        // Added: GetRawState
+        public Object GetRawState(String address)
+        {
+            return this._stateCache.TryGetValue(address, out var value) ? value : null;
+        }
+
+        // Added: GetStringState
+        public String GetStringState(String address)
+        {
+            if (this._stateCache.TryGetValue(address, out var storedValue) && storedValue is String strVal)
+            {
+                return strVal;
+            }
+            return null;
+        }
+
+        // Corrected: GetAllStates returns IDictionary<String, Object>
+        public IDictionary<String, Object> GetAllStates()
+        {
+            return new Dictionary<String, Object>(this._stateCache);
+        }
     }
 
 }

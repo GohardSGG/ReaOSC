@@ -43,24 +43,35 @@ namespace Loupedeck.ReaOSCPlugin.Base
         // 【新增】处理来自Logic_Manager_Base的状态刷新通知的方法
         private void OnLogicManagerCommandStateNeedsRefresh(Object sender, String actionParameterThatChanged)
         {
-            // 当Logic_Manager_Base通知某个actionParameter的状态已更新时，
-            // 我们需要检查这个actionParameter是否由当前这个General_Dial_Base实例管理。
-            // PluginDynamicAdjustment基类并没有一个简单的方法来获取它已注册的所有参数名。
-            // 但是，Loupedeck SDK的ActionImageChanged如果被调用了一个不属于此实例的参数名，
-            // 它应该会忽略或者至少不会出错。
-            // 为了更精确（尤其如果一个插件中因为某种原因注册了多个General_Dial_Base实例），
-            // 我们应该只对本实例确实添加过的参数调用ActionImageChanged。
-            // 我们可以通过检查_allConfigs（虽然它是Logic_Manager_Base的成员）来确认类型，
-            // 但更关键的是这个actionParameterThatChanged是不是this.AddParameter注册的entry.Key之一。
-
-            // 一个简单有效的方法是：如果当前类的设计是每个General_Dial_Base实例都注册了
-            // 一批全局唯一的actionParameter（这是当前的设计），那么直接调用即可。
             var config = this._logicManager.GetConfig(actionParameterThatChanged);
-            if (config != null && (config.ActionType == "ToggleDial" || config.ActionType == "2ModeTickDial" || config.ActionType == "ControlDial"))
+            if (config != null)
             {
-                PluginLog.Info($"[GeneralDialBase] 接收到状态刷新请求 for '{actionParameterThatChanged}' (Type: {config.ActionType}), 调用 ActionImageChanged。");
-                this.ActionImageChanged(actionParameterThatChanged);
+                // 检查是否是本实例管理的旋钮之一
+                // PluginDynamicAdjustment 基类没有直接方法获取已注册参数，
+                // 但如果 actionParameterThatChanged 是有效的，并且其 config.ActionType 是旋钮类型，就刷新。
+                // 涵盖所有可能需要因动态标题而刷新的旋钮类型。
+                if (config.ActionType == "TickDial" || 
+                    config.ActionType == "ToggleDial" || 
+                    config.ActionType == "2ModeTickDial" || 
+                    config.ActionType == "ControlDial" ||
+                    config.ActionType == "ModeControlDial" || 
+                    config.ActionType == "ParameterDial" || 
+                    config.ActionType == "FilterDial" ||    
+                    config.ActionType == "PageDial" ||      
+                    config.ActionType == "NavigationDial")  
+                {
+                    PluginLog.Info($"[GeneralDialBase] 接收到状态刷新请求 for '{actionParameterThatChanged}' (DisplayName: '{config.DisplayName}', Type: {config.ActionType}), 调用 ActionImageChanged。");
+                    this.ActionImageChanged(actionParameterThatChanged);
+                }
+                // else
+                // {
+                //     PluginLog.Verbose($"[GeneralDialBase] 状态刷新请求 for '{actionParameterThatChanged}' (Type: {config.ActionType}) 不是当前处理的旋钮类型，不调用 ActionImageChanged。");
+                // }
             }
+            // else
+            // {
+            //    PluginLog.Warning($"[GeneralDialBase] 接收到状态刷新请求，但未能找到 actionParameter '{actionParameterThatChanged}' 的配置。");
+            // }
         }
 
         protected override void ApplyAdjustment(String actionParameter, Int32 ticks) // 【无改动】
@@ -105,32 +116,49 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 BitmapImage loadedIcon = PluginImage.TryLoadIcon(config, "GeneralDialBase_Press");
 
                 Boolean isActive = false; 
-                String preliminaryTitle = null;
+                String preliminaryTitleTemplate = null; // 用于存储从LogicManager获取的原始模板
                 String valueText = null; 
                 Int32 currentMode = 0;    
+                String titleFieldNameForLogic; // 告知LogicManager要获取哪个字段
 
                 if (config.ActionType == "ToggleDial")
                 {
                     isActive = this._logicManager.GetToggleState(actionParameter); 
-                    preliminaryTitle = config.Title ?? config.DisplayName;
+                    titleFieldNameForLogic = "Title";
+                    preliminaryTitleTemplate = this._logicManager.GetCurrentTitleTemplate(actionParameter, titleFieldNameForLogic, config);
                 }
                 else if (config.ActionType == "2ModeTickDial")
                 {
                     currentMode = this._logicManager.GetDialMode(actionParameter);
-                    preliminaryTitle = (currentMode == 1 && !String.IsNullOrEmpty(config.Title_Mode2)) ? config.Title_Mode2 : (config.Title ?? config.DisplayName);
+                    // 根据当前模式确定是取 Title 还是 Title_Mode2
+                    titleFieldNameForLogic = (currentMode == 1 && !String.IsNullOrEmpty(config.Title_Mode2)) ? "Title_Mode2" : "Title";
+                    preliminaryTitleTemplate = this._logicManager.GetCurrentTitleTemplate(actionParameter, titleFieldNameForLogic, config, currentMode); 
                 }
                 else if (config.ActionType == "ControlDial") 
                 {
-                    preliminaryTitle = config.Title ?? config.DisplayName;
+                    // ControlDial 通常主要显示其参数值，但其固定标题也可以是动态的
+                    titleFieldNameForLogic = "Title";
+                    preliminaryTitleTemplate = this._logicManager.GetCurrentTitleTemplate(actionParameter, titleFieldNameForLogic, config);
+                    // valueText 将在 GetAdjustmentImage 中由 GetControlDialDisplayText 获取，这里 GetCommandImage 通常不显示ControlDial的值文本
                 }
-                else 
+                else // 其他 TickDial 等
                 {
-                    preliminaryTitle = config.Title ?? config.DisplayName;
+                    titleFieldNameForLogic = "Title";
+                    preliminaryTitleTemplate = this._logicManager.GetCurrentTitleTemplate(actionParameter, titleFieldNameForLogic, config);
                 }
                 
                 // 使用 ResolveTextWithMode 解析标题和辅助文本
-                String mainTitleToDraw = this._logicManager.ResolveTextWithMode(config, preliminaryTitle);
+                String mainTitleToDraw = this._logicManager.ResolveTextWithMode(config, preliminaryTitleTemplate);
                 String auxTextToDraw = this._logicManager.ResolveTextWithMode(config, config.Text); // config.Text 是原始模板
+                
+                // 回退逻辑: 如果 mainTitleToDraw 为空，并且 ShowTitle 不是 "No"，则使用 DisplayName
+                if (String.IsNullOrEmpty(mainTitleToDraw))
+                {
+                    if (config.ShowTitle?.Equals("No", StringComparison.OrdinalIgnoreCase) != true)
+                    {
+                        mainTitleToDraw = config.DisplayName;
+                    }
+                }
                 
                 return PluginImage.DrawElement(
                     imageSize,
@@ -169,32 +197,46 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 Boolean isActive = false; 
                 Int32 currentMode = 0;   
                 String valueTextForAdjustment = null; 
-                String preliminaryTitle = null; // 用于 ResolveTextWithMode 的原始标题模板
+                String preliminaryTitleTemplate = null; // 用于存储从LogicManager获取的原始模板
+                String titleFieldNameForLogic; // 告知LogicManager要获取哪个字段
 
                 // 1. 根据 ActionType 确定初步的标题模板 和其他状态
                 if (config.ActionType == "ToggleDial")
                 {
                     isActive = this._logicManager.GetToggleState(actionParameter); 
-                    preliminaryTitle = config.Title ?? config.DisplayName; 
+                    titleFieldNameForLogic = "Title";
+                    preliminaryTitleTemplate = this._logicManager.GetCurrentTitleTemplate(actionParameter, titleFieldNameForLogic, config);
                 }
                 else if (config.ActionType == "2ModeTickDial")
                 {
                     currentMode = this._logicManager.GetDialMode(actionParameter);
-                    preliminaryTitle = (currentMode == 1 && !String.IsNullOrEmpty(config.Title_Mode2)) ? config.Title_Mode2 : (config.Title ?? config.DisplayName);
+                    titleFieldNameForLogic = (currentMode == 1 && !String.IsNullOrEmpty(config.Title_Mode2)) ? "Title_Mode2" : "Title";
+                    preliminaryTitleTemplate = this._logicManager.GetCurrentTitleTemplate(actionParameter, titleFieldNameForLogic, config, currentMode);
                 }
                 else if (config.ActionType == "ControlDial") 
                 {
                     valueTextForAdjustment = this._logicManager.GetControlDialDisplayText(actionParameter); 
-                    preliminaryTitle = config.Title ?? config.DisplayName; 
+                    titleFieldNameForLogic = "Title";
+                    preliminaryTitleTemplate = this._logicManager.GetCurrentTitleTemplate(actionParameter, titleFieldNameForLogic, config);
                 }
                 else // 其他旋钮类型，如 TickDial, ParameterDial (由Folder处理值) 等
                 {
-                    preliminaryTitle = config.Title ?? config.DisplayName;
+                    titleFieldNameForLogic = "Title";
+                    preliminaryTitleTemplate = this._logicManager.GetCurrentTitleTemplate(actionParameter, titleFieldNameForLogic, config);
                 }
 
                 // 2. 使用 ResolveTextWithMode 解析标题和辅助文本
-                String mainTitleToDraw = this._logicManager.ResolveTextWithMode(config, preliminaryTitle);
+                String mainTitleToDraw = this._logicManager.ResolveTextWithMode(config, preliminaryTitleTemplate);
                 String auxTextToDraw = this._logicManager.ResolveTextWithMode(config, config.Text); // config.Text 是原始模板
+
+                // 回退逻辑: 如果 mainTitleToDraw 为空，并且 ShowTitle 不是 "No"，则使用 DisplayName
+                if (String.IsNullOrEmpty(mainTitleToDraw))
+                {
+                    if (config.ShowTitle?.Equals("No", StringComparison.OrdinalIgnoreCase) != true)
+                    {
+                        mainTitleToDraw = config.DisplayName;
+                    }
+                }
 
                 return PluginImage.DrawElement(
                     imageSize,

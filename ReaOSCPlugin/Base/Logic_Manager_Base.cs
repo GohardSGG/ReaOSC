@@ -166,6 +166,15 @@ namespace Loupedeck.ReaOSCPlugin.Base
         private readonly Dictionary<String, FolderContentConfig> _folderContents = new Dictionary<String, FolderContentConfig>();
         private readonly Dictionary<String, Newtonsoft.Json.Linq.JObject> _fxDataCache = new Dictionary<String, Newtonsoft.Json.Linq.JObject>();
         
+        // 【新增】用于动态标题功能的数据结构
+        // 键: 唯一的标题字段标识符 (e.g., actionParameter#Title, actionParameter#Title_Mode2)
+        // 值: 当前的模板字符串 (可能来自JSON的静态值，或来自OSC的动态值)
+        private readonly Dictionary<String, String> _dynamicTitleSourceStrings = new Dictionary<String, String>();
+
+        // 键: 唯一的标题字段标识符
+        // 值: 如果该标题字段来自OSC，则这里存储其OSC地址
+        private readonly Dictionary<String, String> _titleFieldToOscAddressMapping = new Dictionary<String, String>();
+
         private Boolean _isInitialized = false;
         private String _customConfigBasePath;
 
@@ -268,6 +277,10 @@ namespace Loupedeck.ReaOSCPlugin.Base
             var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             this._customConfigBasePath = Path.Combine(localAppData, "Loupedeck", "Plugins", "ReaOSC");
             PluginLog.Info($"[LogicManager] 使用自定义配置的基础路径: '{this._customConfigBasePath}'");
+
+            // 清理旧的动态标题映射，以防重载 (通常Initialize只调用一次，但安全起见)
+            this._dynamicTitleSourceStrings.Clear();
+            this._titleFieldToOscAddressMapping.Clear();
 
             // 加载 General_List.json
             var generalConfigs = this.LoadConfigFile<Dictionary<String, List<ButtonConfig>>>("General/General_List.json");
@@ -534,6 +547,9 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     continue; 
                 }
 
+                // 【新增】在将配置存入 _allConfigs 之前，处理其动态标题字段
+                this.RegisterDynamicTitleFields(config, actionParameter);
+
                 if (this._allConfigs.ContainsKey(actionParameter))
                 { 
                     // If it was already added as a SelectModeButton in Stage 1, that's an error in config (same name for different types)
@@ -594,7 +610,8 @@ namespace Loupedeck.ReaOSCPlugin.Base
             if (groupName == "Dynamic") // 对于动态文件夹入口的查找
             { 
                 // 文件夹入口的 actionParameter 直接是其 DisplayName
-                return this._allConfigs.TryGetValue(displayName, out var c) && c.GroupName == groupName ? c : null; 
+                // 同时检查 GroupName 是否为 "Dynamic" 以增加准确性
+                return this._allConfigs.TryGetValue(displayName, out var c) && c != null && c.GroupName == groupName ? c : null; 
             }
 
             // 构建基于JSON GroupName的actionParameter进行精确查找
@@ -616,7 +633,52 @@ namespace Loupedeck.ReaOSCPlugin.Base
 
         private void OnOSCStateChanged(Object sender, OSCStateManager.StateChangedEventArgs e)
         {
-            PluginLog.Info($"[LogicManager|OnOSCStateChanged] Received OSC: Address='{e.Address}', Value='{e.Value}'"); 
+            PluginLog.Info($"[LogicManager|OnOSCStateChanged] Received OSC: Address='{e.Address}', Value='{(e.IsString ? e.StringValue : e.Value.ToString(System.Globalization.CultureInfo.InvariantCulture))}' IsString={e.IsString}"); 
+
+            // 【新增】处理动态标题更新
+            bool handledAsDynamicTitleUpdate = false;
+            // 使用 ToList() 创建副本，以允许在迭代时修改原始字典 (虽然我们这里不修改 _titleFieldToOscAddressMapping)
+            foreach (var mappingEntry in this._titleFieldToOscAddressMapping.ToList()) 
+            {
+                if (mappingEntry.Value == e.Address) // mappingEntry.Value is the OSC address
+                {
+                    string uniqueKey = mappingEntry.Key;
+                    // 优先使用字符串值，如果不是字符串，则将数字值转为字符串
+                    string newTemplate = e.IsString ? e.StringValue : e.Value.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+                    // 检查值是否真的改变了，避免不必要的更新和日志
+                    if (!_dynamicTitleSourceStrings.TryGetValue(uniqueKey, out var oldTemplate) || oldTemplate != newTemplate)
+                    {
+                        _dynamicTitleSourceStrings[uniqueKey] = newTemplate;
+                        PluginLog.Info($"[LogicManager|OnOSCStateChanged] Dynamic title for key '{uniqueKey}' (OSC Address: '{e.Address}') updated to template: '{newTemplate}'");
+                        
+                        string baseActionParameter = ExtractBaseActionParameterFromUniqueKey(uniqueKey);
+                        if (!String.IsNullOrEmpty(baseActionParameter))
+                        {
+                            this.CommandStateNeedsRefresh?.Invoke(this, baseActionParameter);
+                            PluginLog.Verbose($"[LogicManager|OnOSCStateChanged] Triggered CommandStateNeedsRefresh for baseActionParameter '{baseActionParameter}' due to dynamic title update for key '{uniqueKey}'.");
+                        }
+                        else
+                        {
+                            PluginLog.Warning($"[LogicManager|OnOSCStateChanged] Could not extract baseActionParameter from uniqueKey '{uniqueKey}' for dynamic title update.");
+                        }
+                    }
+                    else
+                    {
+                        PluginLog.Verbose($"[LogicManager|OnOSCStateChanged] Dynamic title for key '{uniqueKey}' received same template value ('{newTemplate}'). No state change or refresh triggered for this key.");
+                    }
+                    handledAsDynamicTitleUpdate = true;
+                    // 假设一个OSC地址通常只更新一个特定的动态标题字段。
+                    // 如果将来需要一个OSC地址更新多个标题模板，则不应在此处break。
+                    // 为清晰起见，暂定一个地址对应一个标题模板更新。
+                    // break; // 如果确定一个地址只对应一个标题，可以取消注释以提高效率
+                }
+            }
+            // 如果此OSC消息主要用于更新动态标题，并且我们不希望它再被后续的功能性状态逻辑（如ToggleButton）处理
+            // (例如，如果一个地址 /foo/bar 用于标题，而另一个地址 /foo/bar/toggle 用于开关状态)
+            // 可以在这里根据 handledAsDynamicTitleUpdate 和一些条件判断是否提前返回。
+            // 当前设计：允许消息继续传递给后续的功能状态处理逻辑，因为地址可能是独立的。
+
             if (this._oscAddressToActionParameterMap.TryGetValue(e.Address, out String mappedActionParameter))
             {
                 var config = this.GetConfig(mappedActionParameter);
@@ -1395,6 +1457,11 @@ namespace Loupedeck.ReaOSCPlugin.Base
             this._currentModes.Clear();
             this._modeChangedEvents.Clear();
             this._isInitialized = false;
+
+            // 【新增】清理动态标题相关字典
+            this._dynamicTitleSourceStrings.Clear();
+            this._titleFieldToOscAddressMapping.Clear();
+
             PluginLog.Info("[LogicManager] Disposed.");
         }
 
@@ -2461,6 +2528,144 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 return modeControlDialActionParam.Substring(0, modeControlDialActionParam.Length - dialActionSuffix.Length);
             }
             return modeControlDialActionParam; // 如果没有后缀，则直接使用actionParameter
+        }
+
+        // 【新增】辅助方法：生成唯一的标题字段键
+        private string GetUniqueTitleFieldKey(string baseActionParameter, string fieldName, int subIndex = -1)
+        {
+            if (string.IsNullOrEmpty(baseActionParameter)) return fieldName + (fieldName == "Titles_Element" && subIndex >= 0 ? $"#{subIndex}" : ""); // 容错处理
+            
+            // 仅当 fieldName 是为数组类型（如 Titles_Element）设计的，才附加 subIndex
+            if (fieldName == "Titles_Element")
+            {
+                return $"{baseActionParameter}#{fieldName}{(subIndex >= 0 ? $"#{subIndex}" : "")}";
+            }
+            // 对于 "Title" 和 "Title_Mode2" 等非数组型字段，subIndex 不应作为键的一部分。
+            return $"{baseActionParameter}#{fieldName}"; 
+        }
+
+        // 【新增】辅助方法：从唯一键中提取基础的actionParameter
+        private string ExtractBaseActionParameterFromUniqueKey(string uniqueKey)
+        {
+            if (string.IsNullOrEmpty(uniqueKey)) return null;
+            var parts = uniqueKey.Split('#');
+            return parts.Length > 0 ? parts[0] : null;
+        }
+        
+        // 【新增】辅助方法：注册控件的动态标题字段
+        private void RegisterDynamicTitleFields(ButtonConfig config, string actionParameter)
+        {
+            if (config == null || string.IsNullOrEmpty(actionParameter)) return;
+
+            // 处理 config.Title
+            string titleKey = GetUniqueTitleFieldKey(actionParameter, "Title");
+            if (!string.IsNullOrEmpty(config.Title) && config.Title.StartsWith("/"))
+            {
+                _titleFieldToOscAddressMapping[titleKey] = config.Title;
+                _dynamicTitleSourceStrings[titleKey] = config.Title; // 初始占位符 (OSC地址本身)
+                PluginLog.Verbose($"[LogicManager|RegisterDynamicTitleFields] Registered dynamic title for Key: '{titleKey}', OSC Address: '{config.Title}' (ActionParam: '{actionParameter}')");
+            }
+            else
+            {
+                _dynamicTitleSourceStrings[titleKey] = config.Title ?? string.Empty;
+            }
+
+            // 处理 config.Title_Mode2 (主要用于 ActionType "2ModeTickDial"等)
+            // 可根据 ActionType 进一步约束，或普遍处理此字段
+            if (!string.IsNullOrEmpty(config.Title_Mode2)) // 只要字段存在就处理
+            {
+                string titleMode2Key = GetUniqueTitleFieldKey(actionParameter, "Title_Mode2");
+                if (config.Title_Mode2.StartsWith("/"))
+                {
+                    _titleFieldToOscAddressMapping[titleMode2Key] = config.Title_Mode2;
+                    _dynamicTitleSourceStrings[titleMode2Key] = config.Title_Mode2; // 初始占位符
+                    PluginLog.Verbose($"[LogicManager|RegisterDynamicTitleFields] Registered dynamic Title_Mode2 for Key: '{titleMode2Key}', OSC Address: '{config.Title_Mode2}' (ActionParam: '{actionParameter}')");
+                }
+                else
+                {
+                    _dynamicTitleSourceStrings[titleMode2Key] = config.Title_Mode2 ?? string.Empty;
+                }
+            }
+
+            // 处理 config.Titles 数组 (如果存在且有元素)
+            if (config.Titles != null && config.Titles.Any())
+            {
+                for (int i = 0; i < config.Titles.Count; i++)
+                {
+                    string currentTitleElement = config.Titles[i];
+                    if (string.IsNullOrEmpty(currentTitleElement)) continue; // 跳过空元素
+
+                    string titlesElementKey = GetUniqueTitleFieldKey(actionParameter, "Titles_Element", i);
+                    if (currentTitleElement.StartsWith("/"))
+                    {
+                        _titleFieldToOscAddressMapping[titlesElementKey] = currentTitleElement;
+                        _dynamicTitleSourceStrings[titlesElementKey] = currentTitleElement; // 初始占位符
+                        PluginLog.Verbose($"[LogicManager|RegisterDynamicTitleFields] Registered dynamic Titles[{i}] for Key: '{titlesElementKey}', OSC Address: '{currentTitleElement}' (ActionParam: '{actionParameter}')");
+                    }
+                    else
+                    {
+                        _dynamicTitleSourceStrings[titlesElementKey] = currentTitleElement;
+                    }
+                }
+            }
+             // 注意: ModeControlDial 的内部模式标题可能需要更复杂的处理，
+             // 因为它的标题通常不是直接在顶层ButtonConfig的Title/Titles字段中，
+             // 而是可能在 ParametersByMode/UnitsByMode 相关的配置中隐含或显式定义。
+             // 当前的 RegisterDynamicTitleFields 主要处理顶层 ButtonConfig 的直接标题属性。
+             // 如果 ModeControlDial 的每个模式的"显示名称"也需要动态化，
+             // 则需要在 ParseAndStoreModeControlDialConfig 中，为每个内部模式的标题部分调用类似的注册逻辑。
+        }
+
+        // 【新增】获取标题模板的方法
+        public String GetCurrentTitleTemplate(String baseActionParameter, String titleFieldName, ButtonConfig configForContext, int subIndex = -1)
+        {
+            if (string.IsNullOrEmpty(baseActionParameter) && configForContext == null)
+            {
+                PluginLog.Warning($"[LogicManager|GetCurrentTitleTemplate] baseActionParameter and configForContext are both null/empty. Cannot determine title template for field '{titleFieldName}'.");
+                return $"Err: No Context";
+            }
+            
+            // 如果 baseActionParameter 为空但 configForContext 不为空，尝试从 configForContext 构建临时的 actionParameter (用于特殊情况或调试)
+            // 这通常不应发生，调用方应确保 baseActionParameter 有效。
+            string effectiveActionParameter = baseActionParameter;
+            if (string.IsNullOrEmpty(effectiveActionParameter) && configForContext != null && !string.IsNullOrEmpty(configForContext.DisplayName))
+            {
+                 // 尝试生成一个临时的、可能不完全准确的 actionParameter，仅用于查找。
+                 // 更好的做法是调用方总是提供有效的 baseActionParameter。
+                effectiveActionParameter = $"Fallback_{configForContext.GroupName ?? "NoGroup"}_{configForContext.DisplayName}";
+                 PluginLog.Warning($"[LogicManager|GetCurrentTitleTemplate] baseActionParameter was empty. Using a fallback effectiveActionParameter: '{effectiveActionParameter}' for field '{titleFieldName}'. This might not be reliable.");
+            }
+            if (string.IsNullOrEmpty(effectiveActionParameter)) // 再次检查
+            {
+                PluginLog.Error($"[LogicManager|GetCurrentTitleTemplate] EffectiveActionParameter is still null or empty. Returning error for field '{titleFieldName}'.");
+                return $"Err: No Param";
+            }
+
+
+            string uniqueKey = GetUniqueTitleFieldKey(effectiveActionParameter, titleFieldName, subIndex);
+
+            if (_dynamicTitleSourceStrings.TryGetValue(uniqueKey, out var template))
+            {
+                PluginLog.Verbose($"[LogicManager|GetCurrentTitleTemplate] Found template for key '{uniqueKey}': '{template}'");
+                return template;
+            }
+
+            // Fallback: 如果模板在_dynamicTitleSourceStrings中未找到
+            PluginLog.Warning($"[LogicManager|GetCurrentTitleTemplate] Template not found in _dynamicTitleSourceStrings for key '{uniqueKey}'. Using fallback logic for field '{titleFieldName}'.");
+            if (configForContext != null) {
+                switch (titleFieldName)
+                {
+                    case "Title": return configForContext.Title ?? string.Empty;
+                    case "Title_Mode2": return configForContext.Title_Mode2 ?? string.Empty;
+                    case "Titles_Element":
+                        return (configForContext.Titles != null && subIndex >= 0 && subIndex < configForContext.Titles.Count) ?
+                               configForContext.Titles[subIndex] ?? string.Empty : string.Empty;
+                    default:
+                         PluginLog.Warning($"[LogicManager|GetCurrentTitleTemplate] Unknown titleFieldName '{titleFieldName}' for fallback logic. Key was '{uniqueKey}'. Config DisplayName: '{configForContext?.DisplayName}'");
+                         break;
+                }
+            }
+            return $"ErrTpl:{uniqueKey.Substring(Math.Max(0,uniqueKey.Length-15))}"; // 返回部分键名以帮助调试
         }
 
     }

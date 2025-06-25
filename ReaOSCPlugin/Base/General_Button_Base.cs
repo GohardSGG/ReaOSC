@@ -290,12 +290,16 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 String valueText = null;          // 按钮通常不直接显示 valueText
                 Int32 currentModeForDrawing = 0; // 主要用于旋钮，按钮通常为0
                 
+                String preliminaryTitleTemplate; // 用于存储从LogicManager获取的原始模板
+                String titleFieldNameForLogic;   // 告知LogicManager要获取哪个字段
+
                 // 首先，解析通用的辅助文本 (config.Text)
                 String auxTextToDraw = this._logicManager.ResolveTextWithMode(config, config.Text);
 
                 if (config.ActionType == "SelectModeButton")
                 {
-                    // 对于 SelectModeButton，主标题直接是当前模式名
+                    // 对于 SelectModeButton，其显示的"标题"是当前模式的名称，这部分不通过动态标题OSC获取
+                    // 它的模板直接就是当前模式名，然后可能再经过 ResolveTextWithMode (如果模式名本身含{mode}，虽然不太可能)
                     mainTitleToDraw = this._logicManager.GetCurrentModeString(config.DisplayName); 
                     if (String.IsNullOrEmpty(mainTitleToDraw) && config.Modes != null && config.Modes.Any())
                     {
@@ -305,46 +309,55 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     {
                         mainTitleToDraw = config.DisplayName; 
                     }
+                    // SelectModeButton 的 isActive 状态
                     isActive = (config.Modes?.IndexOf(this._logicManager.GetCurrentModeString(config.DisplayName) ?? "") ?? 0) > 0;
                 }
-                else
+                else // 其他类型的按钮 (TriggerButton, ToggleButton)
                 {
-                    string preliminaryTitle = null;
-
-                    // 1. 检查按钮是否受模式控制并且定义了 Titles 列表
+                    // 确定要获取哪个标题字段的模板
+                    // 对于普通按钮，我们主要关心 config.Title
+                    // 如果按钮受模式控制且定义了 Titles 列表，则情况会更复杂
                     if (!String.IsNullOrEmpty(config.ModeName) && config.Titles != null && config.Titles.Any())
                     {
                         var modeIndex = this._logicManager.GetCurrentModeIndex(config.ModeName);
-                        if (modeIndex != -1 && modeIndex < config.Titles.Count && !String.IsNullOrEmpty(config.Titles[modeIndex]))
+                        if (modeIndex != -1 && modeIndex < config.Titles.Count)
                         {
-                            preliminaryTitle = config.Titles[modeIndex]; // 优先从 Titles 列表获取
+                            titleFieldNameForLogic = "Titles_Element";
+                            preliminaryTitleTemplate = this._logicManager.GetCurrentTitleTemplate(actionParameter, titleFieldNameForLogic, config, modeIndex);
                         }
                         else
                         {
-                            // 模式索引无效或 Titles 列表对应项为空，回退到通用 Title 或 DisplayName
-                            preliminaryTitle = config.Title ?? config.DisplayName;
-                            PluginLog.Warning($"[GeneralButtonBase|GetCommandImage] Button '{config.DisplayName}' (ModeName: '{config.ModeName}') - Invalid mode index '{modeIndex}' for Titles list or Titles[{modeIndex}] is empty. Falling back to Title/DisplayName: '{preliminaryTitle}'.");
+                            // 模式索引无效或 Titles 列表对应项为空，回退到 config.Title
+                            titleFieldNameForLogic = "Title";
+                            preliminaryTitleTemplate = this._logicManager.GetCurrentTitleTemplate(actionParameter, titleFieldNameForLogic, config);
+                            PluginLog.Verbose($"[GeneralButtonBase|GetCommandImage] Button '{config.DisplayName}' (ModeName: '{config.ModeName}') - Invalid mode index '{modeIndex}' for Titles list or Titles[{modeIndex}] is empty. Falling back to '{titleFieldNameForLogic}'. Template: '{preliminaryTitleTemplate}'");
                         }
                     }
-                    // 2. 如果不受模式+Titles列表控制，或者 ParameterButton 有特定逻辑 (当前简化为标准回退)
-                    // ParameterButton 的特殊标题逻辑如果非常复杂且独立于ModeName/Titles，可能需要在此处或其专用方法中进一步处理
-                    // 当前，如果 ParameterButton 没有被上面的 ModeName/Titles 逻辑捕获，它将和其他按钮一样回退到 config.Title/DisplayName
-                    else 
+                    else
                     {
-                        preliminaryTitle = config.Title ?? config.DisplayName; // 标准回退
+                        // 标准情况：使用 config.Title
+                        titleFieldNameForLogic = "Title";
+                        preliminaryTitleTemplate = this._logicManager.GetCurrentTitleTemplate(actionParameter, titleFieldNameForLogic, config);
                     }
                     
-                    // 3. 使用 ResolveTextWithMode 解析初步标题中的 {mode}
-                    mainTitleToDraw = this._logicManager.ResolveTextWithMode(config, preliminaryTitle);
+                    // 使用 ResolveTextWithMode 解析最终标题
+                    mainTitleToDraw = this._logicManager.ResolveTextWithMode(config, preliminaryTitleTemplate);
 
                     // 其他按钮类型的 isActive 判断逻辑 (保持不变)
-                    if (config.ActionType == "TriggerButton" || config.ActionType == "CombineButton")
+                    if (config.ActionType == "TriggerButton" || config.ActionType == "CombineButton") // CombineButton 可能也需要瞬时高亮
                     {
                         isActive = this._triggerTemporaryActiveStates.TryGetValue(actionParameter, out var tempState) && tempState;
                     }
                     else if (config.ActionType == "ToggleButton")
                     { 
                         isActive = this._logicManager.GetToggleState(actionParameter); 
+                    }
+                    
+                    // 回退逻辑: 如果 mainTitleToDraw 为空，并且不是特殊的 SelectModeButton，则使用 DisplayName
+                    if (String.IsNullOrEmpty(mainTitleToDraw)) // SelectModeButton 已在上面独立处理标题
+                    {
+                        PluginLog.Info($"[GeneralButtonBase|GetCommandImage] Fallback for '{actionParameter}' (config: '{config.DisplayName}'): mainTitleToDraw was empty or null, using DisplayName: '{config.DisplayName}'");
+                        mainTitleToDraw = config.DisplayName;
                     }
                 }
                             
