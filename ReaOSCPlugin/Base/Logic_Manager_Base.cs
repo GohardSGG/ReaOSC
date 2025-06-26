@@ -1693,6 +1693,7 @@ namespace Loupedeck.ReaOSCPlugin.Base
         // 【新增】内部辅助方法，用于格式化 ControlDial 和 ModeControlDial 的显示文本
         private String FormatDisplayTextInternal(Single parameterValue, ControlDialParsedConfig parsedDialConfig)
         {
+            // 优先处理我们已知的特殊单位字符串
             if (parsedDialConfig.HasUnitConversion)
             {
                 if (parsedDialConfig.DisplayUnitString.Equals("L&R", StringComparison.OrdinalIgnoreCase))
@@ -1701,22 +1702,67 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     if (intValue == 0) { return "C"; }
                     else if (intValue < 0) { return $"L{-intValue}"; }
                     else { return $"R{intValue}"; }
-                    }
-                    else
-                    {
+                }
+                else if (parsedDialConfig.DisplayUnitString.Equals("dB", StringComparison.OrdinalIgnoreCase))
+                {
                     Single unitValue = this.ConvertParameterToUnit(parameterValue, parsedDialConfig); 
                     String valueText;
                     if (Single.IsNegativeInfinity(unitValue)) { valueText = "-inf"; }
                     else { valueText = unitValue.ToString("F1", System.Globalization.CultureInfo.InvariantCulture); }
-                    return $"{valueText}{parsedDialConfig.UnitLabel}"; 
+                    return $"{valueText}{parsedDialConfig.UnitLabel}"; // UnitLabel for dB is "dB"
+                }
+                else if (parsedDialConfig.DisplayUnitString.Equals("Rate", StringComparison.OrdinalIgnoreCase)) // 新增："Rate"单位的特殊处理
+                {
+                    // 假设 parameterValue 已经是 0, 1, 2, 3, 4
+                    Int32 intParamValue = (Int32)Math.Round(parameterValue);
+                    switch (intParamValue)
+                    {
+                        case 0: return "1x";
+                        case 1: return "2x";
+                        case 2: return "4x";
+                        case 3: return "8x";
+                        case 4: return "16x";
+                        default:
+                            PluginLog.Warning($"[LogicManager|FormatDisplayTextInternal] 'Rate' unit received unexpected parameterValue: {parameterValue} (rounded to {intParamValue}). Displaying as raw value.");
+                            // 如果参数值超出0-4范围，显示原始整数值，不带单位，因为"x"不合适
+                            return intParamValue.ToString(); 
+                    }
+                }
+                else // 对于其他未明确处理的Unit类型
+                {
+                    // 如果UnitMin 和 UnitMax 解析后相同 (通常是0f，表示解析文本单位失败 for non-numeric units)
+                    // 或者 DisplayUnitString 为空但 HasUnitConversion 仍为true (不太可能，但作为防御)
+                    if (String.IsNullOrEmpty(parsedDialConfig.DisplayUnitString) || Math.Abs(parsedDialConfig.UnitMin - parsedDialConfig.UnitMax) < 0.00001f)
+                    {
+                         PluginLog.Verbose($"[LogicManager|FormatDisplayTextInternal] Unit conversion for '{parsedDialConfig.DisplayUnitString ?? "(empty DisplayUnitString)"}' deemed ineffective due to UnitMin=UnitMax ({parsedDialConfig.UnitMin}) or empty DisplayUnitString. Falling back to raw parameter display.");
+                         // Fall through to raw parameter display logic below
+                    }
+                    else // 尝试通用线性转换 (如果 UnitMin/Max 有效且不同)
+                    {
+                        Single unitValue = this.ConvertParameterToUnit(parameterValue, parsedDialConfig);
+                        String valueText;
+                        if (parsedDialConfig.IsParameterIntegerBased && Math.Abs(Math.Round(unitValue) - unitValue) < 0.0001f)
+                        {
+                            valueText = ((Int32)Math.Round(unitValue)).ToString();
+                        }
+                        else
+                        {
+                            // 对于通用单位，可能需要更多小数位或不同的格式
+                            valueText = unitValue.ToString("F2", System.Globalization.CultureInfo.InvariantCulture); 
+                        }
+                        return $"{valueText}{parsedDialConfig.UnitLabel}"; // UnitLabel此时是DisplayUnitString
+                    }
                 }
             }
-            else 
-            {
-                if (parsedDialConfig.IsParameterIntegerBased)
-                { return ((Int32)Math.Round(parameterValue)).ToString(); }
-                else
-                { return parameterValue.ToString("F3", System.Globalization.CultureInfo.InvariantCulture); }
+
+            // 回退：如果 HasUnitConversion 为 false，或者上面的逻辑判定单位转换无效并需要回退
+            if (parsedDialConfig.IsParameterIntegerBased)
+            { 
+                return ((Int32)Math.Round(parameterValue)).ToString(); 
+            }
+            else
+            { 
+                return parameterValue.ToString("F3", System.Globalization.CultureInfo.InvariantCulture); 
             }
         }
 
@@ -1989,9 +2035,12 @@ namespace Loupedeck.ReaOSCPlugin.Base
             if (segmentConfig.Unit != null && segmentConfig.Unit.Any() && !String.IsNullOrEmpty(segmentConfig.Unit[0]))
             {
                 parsedDialConfig.DisplayUnitString = segmentConfig.Unit[0];
-                parsedDialConfig.UnitLabel = parsedDialConfig.DisplayUnitString.Equals("L&R", StringComparison.OrdinalIgnoreCase) ? "" : parsedDialConfig.DisplayUnitString;
+                // 对于 "Rate" 类型，不附加 UnitLabel。其他类型，UnitLabel 就是 DisplayUnitString。
+                parsedDialConfig.UnitLabel = parsedDialConfig.DisplayUnitString.Equals("Rate", StringComparison.OrdinalIgnoreCase) 
+                                            ? "" 
+                                            : (parsedDialConfig.DisplayUnitString.Equals("L&R", StringComparison.OrdinalIgnoreCase) ? "" : parsedDialConfig.DisplayUnitString);
                 parsedDialConfig.HasUnitConversion = true;
-                PluginLog.Verbose($"[LogicManager|ParseSingleControlDialConfigSegment] ({loggingContext}) Unit detected: '{parsedDialConfig.DisplayUnitString}'. HasUnitConversion set to true.");
+                PluginLog.Verbose($"[LogicManager|ParseSingleControlDialConfigSegment] ({loggingContext}) Unit detected: '{parsedDialConfig.DisplayUnitString}'. HasUnitConversion set to true. UnitLabel set to: '{parsedDialConfig.UnitLabel}'");
 
                 if (segmentConfig.Unit.Count >= 3)
                 {
@@ -2028,6 +2077,27 @@ namespace Loupedeck.ReaOSCPlugin.Base
                         else if (ud.StartsWith("L") && Single.TryParse(ud.Substring(1), NumberStyles.Any, CultureInfo.InvariantCulture, out var lVal)) { newDefaultValueFromUnit = -lVal; unitDefaultWasSuccessfullyApplied = true; }
                         else if (ud.StartsWith("R") && Single.TryParse(ud.Substring(1), NumberStyles.Any, CultureInfo.InvariantCulture, out var rVal)) { newDefaultValueFromUnit = rVal; unitDefaultWasSuccessfullyApplied = true; }
                         else { PluginLog.Warning($"[LogicManager|ParseSingleControlDialConfigSegment] ({loggingContext}) (L&R) Unrecognised UnitDefault: '{segmentConfig.UnitDefault}'"); }
+                    }
+                    // 新增: "Rate" 单位的 UnitDefault 处理
+                    else if (parsedDialConfig.DisplayUnitString.Equals("Rate", StringComparison.OrdinalIgnoreCase))
+                    {
+                        string udRate = segmentConfig.UnitDefault.ToLowerInvariant();
+                        switch (udRate)
+                        {
+                            case "1x": newDefaultValueFromUnit = 0f; unitDefaultWasSuccessfullyApplied = true; break;
+                            case "2x": newDefaultValueFromUnit = 1f; unitDefaultWasSuccessfullyApplied = true; break;
+                            case "4x": newDefaultValueFromUnit = 2f; unitDefaultWasSuccessfullyApplied = true; break;
+                            case "8x": newDefaultValueFromUnit = 3f; unitDefaultWasSuccessfullyApplied = true; break;
+                            case "16x": newDefaultValueFromUnit = 4f; unitDefaultWasSuccessfullyApplied = true; break;
+                            default:
+                                PluginLog.Warning($"[LogicManager|ParseSingleControlDialConfigSegment] ({loggingContext}) Unrecognised UnitDefault: '{segmentConfig.UnitDefault}' for 'Rate' unit.");
+                                break; // unitDefaultWasSuccessfullyApplied 保持 false
+                        }
+                        if (unitDefaultWasSuccessfullyApplied)
+                        {
+                            parsedDialConfig.ParsedUnitDefault = newDefaultValueFromUnit; // Store the mapped parameter value as if it were a numeric unit default
+                            PluginLog.Verbose($"[LogicManager|ParseSingleControlDialConfigSegment] ({loggingContext}) 'Rate' UnitDefault '{segmentConfig.UnitDefault}' mapped to param scale: {newDefaultValueFromUnit:F3}");
+                        }
                     }
                     else if (TryParseSingleExtended(segmentConfig.UnitDefault, out var parsedNumericUnitDefault))
                     {
@@ -2563,43 +2633,44 @@ namespace Loupedeck.ReaOSCPlugin.Base
             // 辅助方法，用于注册单个标题字段及其可能的OSC地址
             Action<string, string, int> registerFieldLogic = (fieldName, fieldValue, fieldSubIndex) =>
             {
-                if (string.IsNullOrEmpty(fieldValue)) return;
-
-                string uniqueKey = GetUniqueTitleFieldKey(actionParameter, fieldName, fieldSubIndex);
-                if (fieldValue.StartsWith("/")) // 如果字段值是一个OSC地址
+                // fieldValue可以为null或空，如果是静态的，会被存为Empty；如果是OSC地址，则必须非空才注册为动态
+                if (fieldName == "Title" || fieldName == "Title_Mode2" || (fieldName == "Titles_Element" && !string.IsNullOrEmpty(fieldValue))) 
                 {
-                    // 仍然保留_titleFieldToOscAddressMapping，以防其他地方用到或用于调试
-                    _titleFieldToOscAddressMapping[uniqueKey] = fieldValue; 
-                    _dynamicTitleSourceStrings[uniqueKey] = fieldValue; // 初始占位符设为OSC地址本身
+                    string uniqueKey = GetUniqueTitleFieldKey(actionParameter, fieldName, fieldSubIndex);
+                    if (!string.IsNullOrEmpty(fieldValue) && fieldValue.StartsWith("/")) // 如果字段值是一个OSC地址
+                    {
+                        _titleFieldToOscAddressMapping[uniqueKey] = fieldValue; 
+                        _dynamicTitleSourceStrings[uniqueKey] = fieldValue; // 初始占位符设为OSC地址本身
 
-                    // 填充新的反向映射字典 _oscAddressToDynamicTitleKeys
-                    if (!this._oscAddressToDynamicTitleKeys.ContainsKey(fieldValue))
-                    {
-                        this._oscAddressToDynamicTitleKeys[fieldValue] = new List<String>();
+                        if (!this._oscAddressToDynamicTitleKeys.ContainsKey(fieldValue))
+                        {
+                            this._oscAddressToDynamicTitleKeys[fieldValue] = new List<String>();
+                        }
+                        if (!this._oscAddressToDynamicTitleKeys[fieldValue].Contains(uniqueKey))
+                        {
+                            this._oscAddressToDynamicTitleKeys[fieldValue].Add(uniqueKey);
+                        }
+                        PluginLog.Verbose($"[LogicManager|RegisterDynamicTitleFields] Registered dynamic title for Key: '{uniqueKey}', OSC Address: '{fieldValue}' (ActionParam: '{actionParameter}')");
                     }
-                    // 避免重复添加同一个uniqueKey到列表 (虽然在正常注册流程中不太可能发生)
-                    if (!this._oscAddressToDynamicTitleKeys[fieldValue].Contains(uniqueKey))
+                    else // 字段值是静态模板字符串 (或为null/empty)
                     {
-                        this._oscAddressToDynamicTitleKeys[fieldValue].Add(uniqueKey);
+                        _dynamicTitleSourceStrings[uniqueKey] = fieldValue ?? string.Empty;
+                        // PluginLog.Verbose($"[LogicManager|RegisterDynamicTitleFields] Registered static title template for Key: '{uniqueKey}', Value: '{fieldValue ?? "<empty>"}' (ActionParam: '{actionParameter}')");
                     }
-                    PluginLog.Verbose($"[LogicManager|RegisterDynamicTitleFields] Registered dynamic title for Key: '{uniqueKey}', OSC Address: '{fieldValue}' (ActionParam: '{actionParameter}')");
-                }
-                else // 字段值是静态模板字符串
-                {
-                    _dynamicTitleSourceStrings[uniqueKey] = fieldValue ?? string.Empty;
                 }
             };
 
             // 处理 config.Title
             registerFieldLogic("Title", config.Title, -1);
 
-            // 处理 config.Title_Mode2 (主要用于 ActionType "2ModeTickDial"等)
-            if (!string.IsNullOrEmpty(config.Title_Mode2)) 
+            // 处理 config.Title_Mode2
+            // 仅当ActionType明确需要时才处理，或者普遍处理（如果其他类型也可能用此字段）
+            if (config.ActionType == "2ModeTickDial" || config.ActionType == "ModeControlDial") // 示例：只有这些类型用Title_Mode2
             {
-                registerFieldLogic("Title_Mode2", config.Title_Mode2, -1);
+                registerFieldLogic("Title_Mode2", config.Title_Mode2, -1); 
             }
 
-            // 处理 config.Titles 数组 (如果存在且有元素)
+            // 处理 config.Titles 数组
             if (config.Titles != null && config.Titles.Any())
             {
                 for (int i = 0; i < config.Titles.Count; i++)

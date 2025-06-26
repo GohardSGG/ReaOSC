@@ -5920,7 +5920,7 @@
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Over_Sampling",
+        "oscAddressPattern": "/FX/Sample",
         "oscArgIndex": 0,
         "buttonIndex": 0,
         "buttonDesign": {
@@ -39324,7 +39324,7 @@
       },
       "target": {
         "type": 0,
-        "commandName": "40737",
+        "commandName": "40736",
         "fxAnchor": "id",
         "useSelectionGanging": false,
         "useTrackGrouping": false,
@@ -39958,4 +39958,106 @@
           "axis": "X"
         },
         "takeMappingSnapshot": {
-          "kind": 
+          "kind": "LastLoaded"
+        }
+      }
+    },
+    {
+      "id": "cWbiGZgTAg_lQNXHt4woP",
+      "name": "813",
+      "groupId": "fZaM3wa-jlIJwiMtAvQRQ",
+      "source": {
+        "category": "osc",
+        "isRegistered": false,
+        "is14Bit": false,
+        "oscAddressPattern": "/FX/Wet",
+        "oscArgIndex": 0,
+        "oscArgValueRange": {
+          "min": 0.0,
+          "max": 100.0
+        },
+        "buttonIndex": 0,
+        "buttonDesign": {
+          "background": {
+            "kind": "Color"
+          },
+          "foreground": {
+            "kind": "None"
+          },
+          "static_text": ""
+        }
+      },
+      "mode": {
+        "maxStepSize": 0.05,
+        "minStepFactor": 1,
+        "maxStepFactor": 5
+      },
+      "target": {
+        "trackGUID": "selected",
+        "fxAnchor": "focused",
+        "useSelectionGanging": false,
+        "useTrackGrouping": false,
+        "paramType": "name",
+        "paramName": "湿",
+        "seekBehavior": "Immediate",
+        "useProject": true,
+        "moveView": true,
+        "seekPlay": true,
+        "oscArgIndex": 0,
+        "mouseAction": {
+          "kind": "MoveTo",
+          "axis": "X"
+        },
+        "takeMappingSnapshot": {
+          "kind": "LastLoaded"
+        }
+      }
+    },
+    {
+      "id": "LLCfNXS9zsGMtSHouj3yy",
+      "name": "814",
+      "groupId": "fZaM3wa-jlIJwiMtAvQRQ",
+      "source": {
+        "category": "osc",
+        "isRegistered": false,
+        "is14Bit": false,
+        "oscAddressPattern": "/FX/Envelope/Last_Touch",
+        "oscArgIndex": 0,
+        "buttonIndex": 0,
+        "buttonDesign": {
+          "background": {
+            "kind": "Color"
+          },
+          "foreground": {
+            "kind": "None"
+          },
+          "static_text": ""
+        }
+      },
+      "mode": {
+        "maxStepSize": 0.05,
+        "minStepFactor": 1,
+        "maxStepFactor": 5
+      },
+      "target": {
+        "type": 0,
+        "commandName": "41142",
+        "fxAnchor": "id",
+        "useSelectionGanging": false,
+        "useTrackGrouping": false,
+        "seekBehavior": "Immediate",
+        "useProject": true,
+        "moveView": true,
+        "seekPlay": true,
+        "oscArgIndex": 0,
+        "mouseAction": {
+          "kind": "MoveTo",
+          "axis": "X"
+        },
+        "takeMappingSnapshot": {
+          "kind": "LastLoaded"
+        }
+      }
+    }
+  ]
+}

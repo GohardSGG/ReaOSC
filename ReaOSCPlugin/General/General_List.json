@@ -253,6 +253,7 @@
     {
       "ActionType": "ControlDial",
       "DisplayName": "Over Sampling",
+      "OscAddress": "Over_Sampling",
       "ShowTitle": "Yes",
       "Title": "Sample",
       "Parameter": [
@@ -289,8 +290,7 @@
       "OscAddress": "Envelope/Last_Touch",
       "Title": "Last Touch",
       "ResetOscAddress": "Envelope/Delete",
-      "ActiveColor": "#00C800",
-      "DeactiveColor": "#C80000"
+      "ActiveColor": "#00C800"
     },
     {
       "DisplayName": "Add Container",
