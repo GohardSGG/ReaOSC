@@ -4,46 +4,6 @@
   "defaultGroup": {},
   "groups": [
     {
-      "id": "KvcgshXIR9fwoStfXP1SC",
-      "name": "Fabfilter"
-    },
-    {
-      "id": "HB7oS3EaumCNVbAGcyhEs",
-      "name": "Waves"
-    },
-    {
-      "id": "9I0fkxuFaa0hE2JYJHTkC",
-      "name": "Sonible"
-    },
-    {
-      "id": "ztSuRq2C3YNCEULcwrjX7",
-      "name": "Eventide"
-    },
-    {
-      "id": "CXhKv5h2XuQyscx832Jmr",
-      "name": "SSL"
-    },
-    {
-      "id": "HUChDSaGXSzNBp29SmCp1",
-      "name": "Kiive Audio"
-    },
-    {
-      "id": "bC_TBSLlPat5k4m_ulG4M",
-      "name": "UAD"
-    },
-    {
-      "id": "KtLwOY-X5DrDeUxq13R4L",
-      "name": "Cockos"
-    },
-    {
-      "id": "81n9UwpuPldRp-H6QB9WU",
-      "name": "Native Instruments"
-    },
-    {
-      "id": "w6Es5W9zGlF4arro9UEI4",
-      "name": "Fiedler Audio"
-    },
-    {
       "id": "a4AuLH3iJzkUb5JRMpacH",
       "name": "General"
     },
@@ -78,13 +38,17 @@
     {
       "id": "gqsnWuGnnSHjqVsb04bjs",
       "name": "Pro-Q 4"
+    },
+    {
+      "id": "GbB2buJMCkjcUv9MXNWmo",
+      "name": "Effect"
     }
   ],
   "mappings": [
     {
       "id": "BsBbad8gmmH80bGkUC7pn",
       "name": "1",
-      "groupId": "KvcgshXIR9fwoStfXP1SC",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
@@ -132,7 +96,7 @@
     {
       "id": "qe8NI3cWTM_GaikH61Ds_",
       "name": "1",
-      "groupId": "KvcgshXIR9fwoStfXP1SC",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
@@ -180,12 +144,12 @@
     {
       "id": "YOjBiIK-BRYTB8JY1Fu2I",
       "name": "1",
-      "groupId": "KvcgshXIR9fwoStfXP1SC",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/FabFilter/Pro-L 2",
+        "oscAddressPattern": "/Effect/FabFilter/Pro-L 2",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -227,12 +191,12 @@
     {
       "id": "iVqlbaj7M4icVzONMr15w",
       "name": "1",
-      "groupId": "KvcgshXIR9fwoStfXP1SC",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/FabFilter/Pro-MB",
+        "oscAddressPattern": "/Effect/FabFilter/Pro-MB",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -274,12 +238,12 @@
     {
       "id": "UWs1O_N8dUv_Urf26H8vW",
       "name": "1",
-      "groupId": "KvcgshXIR9fwoStfXP1SC",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/FabFilter/Pro-R 2",
+        "oscAddressPattern": "/Effect/FabFilter/Pro-R 2",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -321,12 +285,12 @@
     {
       "id": "4W5IuZMrNQxKvbjFawM2l",
       "name": "1",
-      "groupId": "KvcgshXIR9fwoStfXP1SC",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/FabFilter/Timeless 3",
+        "oscAddressPattern": "/Effect/FabFilter/Timeless 3",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -368,12 +332,12 @@
     {
       "id": "eOo7EEHvdzCRKkgPLZoLC",
       "name": "1",
-      "groupId": "KvcgshXIR9fwoStfXP1SC",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/FabFilter/Saturn 2",
+        "oscAddressPattern": "/Effect/FabFilter/Saturn 2",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -415,12 +379,12 @@
     {
       "id": "jUASqPwRk2eLfFAgUSMTT",
       "name": "1",
-      "groupId": "KvcgshXIR9fwoStfXP1SC",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/FabFilter/Twin 3",
+        "oscAddressPattern": "/Effect/FabFilter/Twin 3",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -462,12 +426,12 @@
     {
       "id": "Xnmd5uV8x6twiohi9gUz4",
       "name": "1",
-      "groupId": "KvcgshXIR9fwoStfXP1SC",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/FabFilter/Pro-DS",
+        "oscAddressPattern": "/Effect/FabFilter/Pro-DS",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -509,12 +473,12 @@
     {
       "id": "i_83RODM-WyR3BDaVPbnD",
       "name": "1",
-      "groupId": "KvcgshXIR9fwoStfXP1SC",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/FabFilter/Pro-G",
+        "oscAddressPattern": "/Effect/FabFilter/Pro-G",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -556,12 +520,12 @@
     {
       "id": "Yj2uTt9n3Ju1GYBSJU1LB",
       "name": "1",
-      "groupId": "KvcgshXIR9fwoStfXP1SC",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/FabFilter/Volcano 3",
+        "oscAddressPattern": "/Effect/FabFilter/Volcano 3",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -603,12 +567,12 @@
     {
       "id": "PxPPLI_9JlfXFBx9e_vO5",
       "name": "1",
-      "groupId": "KvcgshXIR9fwoStfXP1SC",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/FabFilter/Pro-Q 4",
+        "oscAddressPattern": "/Effect/FabFilter/Pro-Q 4",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -650,12 +614,12 @@
     {
       "id": "wx9kYPxazi_fODXwxtkef",
       "name": "13",
-      "groupId": "HB7oS3EaumCNVbAGcyhEs",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Waves/CLA-76",
+        "oscAddressPattern": "/Effect/Waves/CLA-76",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -696,12 +660,12 @@
     {
       "id": "irtjk4w73DGFj58ejiVy6",
       "name": "13",
-      "groupId": "HB7oS3EaumCNVbAGcyhEs",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Waves/CLA-2A",
+        "oscAddressPattern": "/Effect/Waves/CLA-2A",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -742,12 +706,12 @@
     {
       "id": "FMaKeQseJBLcnGwLLlLCa",
       "name": "13",
-      "groupId": "HB7oS3EaumCNVbAGcyhEs",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Waves/MV2",
+        "oscAddressPattern": "/Effect/Waves/MV2",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -788,12 +752,12 @@
     {
       "id": "aIy4gT4PqDZrhsMNlchJK",
       "name": "13",
-      "groupId": "HB7oS3EaumCNVbAGcyhEs",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Waves/RComp",
+        "oscAddressPattern": "/Effect/Waves/RComp",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -834,12 +798,12 @@
     {
       "id": "qGZGemHGJNtZgB0bpXOFE",
       "name": "13",
-      "groupId": "HB7oS3EaumCNVbAGcyhEs",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Waves/H-Delay",
+        "oscAddressPattern": "/Effect/Waves/H-Delay",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -880,12 +844,12 @@
     {
       "id": "0PXoPsxhZiNXL-T5xRN3-",
       "name": "13",
-      "groupId": "HB7oS3EaumCNVbAGcyhEs",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Waves/CLA Epic",
+        "oscAddressPattern": "/Effect/Waves/CLA Epic",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -926,12 +890,12 @@
     {
       "id": "1QPYiFHYcxCPwHQewqjKz",
       "name": "13",
-      "groupId": "HB7oS3EaumCNVbAGcyhEs",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Waves/MaxxBass",
+        "oscAddressPattern": "/Effect/Waves/MaxxBass",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -972,12 +936,12 @@
     {
       "id": "EiRcBiD7xxaKQ5X3m7i6J",
       "name": "13",
-      "groupId": "HB7oS3EaumCNVbAGcyhEs",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Waves/Vx Pro",
+        "oscAddressPattern": "/Effect/Waves/Vx Pro",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -1018,12 +982,12 @@
     {
       "id": "tXh93q4aze9v3dnvyp5Dc",
       "name": "13",
-      "groupId": "HB7oS3EaumCNVbAGcyhEs",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Omni",
+        "oscAddressPattern": "/Effect/Omni",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -1064,12 +1028,12 @@
     {
       "id": "OGACAu95twdYafM31V3Yy",
       "name": "13",
-      "groupId": "HB7oS3EaumCNVbAGcyhEs",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Waves/EV2",
+        "oscAddressPattern": "/Effect/Waves/EV2",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -1110,12 +1074,12 @@
     {
       "id": "ubj_UxJ9ThknYZ7JPPW1K",
       "name": "13",
-      "groupId": "HB7oS3EaumCNVbAGcyhEs",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Waves/Magma Channel",
+        "oscAddressPattern": "/Effect/Waves/Magma Channel",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -1156,12 +1120,12 @@
     {
       "id": "5VBnjpU-jdiiQfYkCNH6d",
       "name": "13",
-      "groupId": "HB7oS3EaumCNVbAGcyhEs",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Waves/Immersive Wrapper",
+        "oscAddressPattern": "/Effect/Waves/Immersive Wrapper",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -1202,12 +1166,12 @@
     {
       "id": "GFZm4MxDb4SqmrLi0bwgk",
       "name": "13",
-      "groupId": "HB7oS3EaumCNVbAGcyhEs",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Waves/IDX Dynamics",
+        "oscAddressPattern": "/Effect/Waves/IDX Dynamics",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -1248,12 +1212,12 @@
     {
       "id": "lC2ZOxQt4PJxWmOKvD3ii",
       "name": "13",
-      "groupId": "HB7oS3EaumCNVbAGcyhEs",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Waves/Curves Equator",
+        "oscAddressPattern": "/Effect/Waves/Curves Equator",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -1294,12 +1258,12 @@
     {
       "id": "xefeNY2NeQMLnMATN3jKC",
       "name": "13",
-      "groupId": "HB7oS3EaumCNVbAGcyhEs",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Waves/Vocal Rider",
+        "oscAddressPattern": "/Effect/Waves/Vocal Rider",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -1340,12 +1304,12 @@
     {
       "id": "ahUV3WnAt8qxyWGjUgSKt",
       "name": "13",
-      "groupId": "HB7oS3EaumCNVbAGcyhEs",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Waves/Bass Rider",
+        "oscAddressPattern": "/Effect/Waves/Bass Rider",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -1386,12 +1350,12 @@
     {
       "id": "Y3tGarkxwvQj3v37wKQJH",
       "name": "13",
-      "groupId": "HB7oS3EaumCNVbAGcyhEs",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Waves/DTS UpMix",
+        "oscAddressPattern": "/Effect/Waves/DTS UpMix",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -1432,12 +1396,12 @@
     {
       "id": "fpWcFDZbwlZ9KSUvtFAe3",
       "name": "13",
-      "groupId": "HB7oS3EaumCNVbAGcyhEs",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Waves/DTS DownMix",
+        "oscAddressPattern": "/Effect/Waves/DTS DownMix",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -1478,12 +1442,12 @@
     {
       "id": "tWtj1rhuHIEQVBbI1C4iJ",
       "name": "13",
-      "groupId": "HB7oS3EaumCNVbAGcyhEs",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Waves/Harmony",
+        "oscAddressPattern": "/Effect/Waves/Harmony",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -1524,12 +1488,12 @@
     {
       "id": "8Crv65XHfb0PxrV9eiorO",
       "name": "13",
-      "groupId": "HB7oS3EaumCNVbAGcyhEs",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Waves/DeReverb Pro",
+        "oscAddressPattern": "/Effect/Waves/DeReverb Pro",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -1570,12 +1534,12 @@
     {
       "id": "qOjM1qDsEl8nI2Cnm7K6p",
       "name": "13",
-      "groupId": "HB7oS3EaumCNVbAGcyhEs",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Waves/J37",
+        "oscAddressPattern": "/Effect/Waves/J37",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -1616,12 +1580,12 @@
     {
       "id": "kID-UIglaZ2sZxkrc5OtV",
       "name": "13",
-      "groupId": "HB7oS3EaumCNVbAGcyhEs",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Waves/ADT",
+        "oscAddressPattern": "/Effect/Waves/ADT",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -1662,12 +1626,12 @@
     {
       "id": "WT1cDYGFSpmgNdypjSU_E",
       "name": "13",
-      "groupId": "HB7oS3EaumCNVbAGcyhEs",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Waves/Springs",
+        "oscAddressPattern": "/Effect/Waves/Springs",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -1708,12 +1672,12 @@
     {
       "id": "kkYHuBzeKIh1qS1pJoMPQ",
       "name": "13",
-      "groupId": "HB7oS3EaumCNVbAGcyhEs",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Waves/Silk Vocal",
+        "oscAddressPattern": "/Effect/Waves/Silk Vocal",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -1754,12 +1718,12 @@
     {
       "id": "9_HbeZatgbryP8icA-X-Q",
       "name": "37",
-      "groupId": "9I0fkxuFaa0hE2JYJHTkC",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Sonible/Smart Comp 2",
+        "oscAddressPattern": "/Effect/Sonible/Smart Comp 2",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -1800,12 +1764,12 @@
     {
       "id": "7ZoMrBZ2Ofkt5l-WmtHUr",
       "name": "37",
-      "groupId": "9I0fkxuFaa0hE2JYJHTkC",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Sonible/Pure Comp",
+        "oscAddressPattern": "/Effect/Sonible/Pure Comp",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -1846,12 +1810,12 @@
     {
       "id": "bNdtHGg7pt_o4pVvAGeVR",
       "name": "37",
-      "groupId": "9I0fkxuFaa0hE2JYJHTkC",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Sonible/Smart Verb",
+        "oscAddressPattern": "/Effect/Sonible/Smart Verb",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -1892,12 +1856,12 @@
     {
       "id": "YQhsGeod55AwFXlhDgaPw",
       "name": "37",
-      "groupId": "9I0fkxuFaa0hE2JYJHTkC",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Sonible/Pure Verb",
+        "oscAddressPattern": "/Effect/Sonible/Pure Verb",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -1938,12 +1902,12 @@
     {
       "id": "y_-k2Ls_u8mu9X3LPdwpY",
       "name": "37",
-      "groupId": "9I0fkxuFaa0hE2JYJHTkC",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Sonible/Smart Deess",
+        "oscAddressPattern": "/Effect/Sonible/Smart Deess",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -1984,12 +1948,12 @@
     {
       "id": "NqeEqwvTktCug6i0xRoOF",
       "name": "37",
-      "groupId": "9I0fkxuFaa0hE2JYJHTkC",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Sonible/Prime Vocal",
+        "oscAddressPattern": "/Effect/Sonible/Prime Vocal",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -2030,12 +1994,12 @@
     {
       "id": "sa1NOmdtyHZTzUp69LOxl",
       "name": "37",
-      "groupId": "9I0fkxuFaa0hE2JYJHTkC",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Sonible/Smart Limit",
+        "oscAddressPattern": "/Effect/Sonible/Smart Limit",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -2076,12 +2040,12 @@
     {
       "id": "US9FSvl4x3cLUcIMGji9h",
       "name": "37",
-      "groupId": "9I0fkxuFaa0hE2JYJHTkC",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Sonible/Pure Limit",
+        "oscAddressPattern": "/Effect/Sonible/Pure Limit",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -2122,12 +2086,12 @@
     {
       "id": "_LpjUeJrtAZpUHnlr5a3X",
       "name": "37",
-      "groupId": "9I0fkxuFaa0hE2JYJHTkC",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Sonible/Smart EQ 4",
+        "oscAddressPattern": "/Effect/Sonible/Smart EQ 4",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -2168,12 +2132,12 @@
     {
       "id": "4A_nn8_3P1DyINfrdZO1p",
       "name": "37",
-      "groupId": "9I0fkxuFaa0hE2JYJHTkC",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Sonible/Smart Gate",
+        "oscAddressPattern": "/Effect/Sonible/Smart Gate",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -2214,12 +2178,12 @@
     {
       "id": "SDKi4gp7mF2WCvtc5LAtp",
       "name": "37",
-      "groupId": "9I0fkxuFaa0hE2JYJHTkC",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Sonible/True Balance",
+        "oscAddressPattern": "/Effect/Sonible/True Balance",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -2260,12 +2224,12 @@
     {
       "id": "lEeLDmqsmFR0V4QEinNEr",
       "name": "37",
-      "groupId": "9I0fkxuFaa0hE2JYJHTkC",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Sonible/True Level",
+        "oscAddressPattern": "/Effect/Sonible/True Level",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -2306,12 +2270,12 @@
     {
       "id": "YfPcbmsJLsaROxM3WIivj",
       "name": "49",
-      "groupId": "ztSuRq2C3YNCEULcwrjX7",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Eventide/Blackhole Immersive",
+        "oscAddressPattern": "/Effect/Eventide/Blackhole Immersive",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -2352,12 +2316,12 @@
     {
       "id": "gZh5MVfE65ZVyUJIzde8Q",
       "name": "49",
-      "groupId": "ztSuRq2C3YNCEULcwrjX7",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Eventide/MicroPitch Immersive",
+        "oscAddressPattern": "/Effect/Eventide/MicroPitch Immersive",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -2398,12 +2362,12 @@
     {
       "id": "oJ93Kp-jb5KhSmCqljJgW",
       "name": "49",
-      "groupId": "ztSuRq2C3YNCEULcwrjX7",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Eventide/Blackhole",
+        "oscAddressPattern": "/Effect/Eventide/Blackhole",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -2444,12 +2408,12 @@
     {
       "id": "EsqbFVT_tVn6_akaV1lqd",
       "name": "49",
-      "groupId": "ztSuRq2C3YNCEULcwrjX7",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Eventide/MicroPitch",
+        "oscAddressPattern": "/Effect/Eventide/MicroPitch",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -2490,12 +2454,12 @@
     {
       "id": "RUMJjWnaS5trdGXkyKxZ4",
       "name": "49",
-      "groupId": "ztSuRq2C3YNCEULcwrjX7",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Eventide/H3000 Factory II",
+        "oscAddressPattern": "/Effect/Eventide/H3000 Factory II",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -2536,12 +2500,12 @@
     {
       "id": "3QyP0iPsepOq_C9BbE3q2",
       "name": "49",
-      "groupId": "ztSuRq2C3YNCEULcwrjX7",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Eventide/H3000 Delays II",
+        "oscAddressPattern": "/Effect/Eventide/H3000 Delays II",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -2582,12 +2546,12 @@
     {
       "id": "hEsWIbrOUHgh9J1S5HEuR",
       "name": "49",
-      "groupId": "ztSuRq2C3YNCEULcwrjX7",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Eventide/Omnipressor",
+        "oscAddressPattern": "/Effect/Eventide/Omnipressor",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -2628,12 +2592,12 @@
     {
       "id": "AMCYViZ-oOL1Qgn21Cdg2",
       "name": "49",
-      "groupId": "ztSuRq2C3YNCEULcwrjX7",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Eventide/SP2016",
+        "oscAddressPattern": "/Effect/Eventide/SP2016",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -2674,12 +2638,12 @@
     {
       "id": "_mU46s-EA7qzjrlQrjCtK",
       "name": "49",
-      "groupId": "ztSuRq2C3YNCEULcwrjX7",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Eventide/SplitEQ",
+        "oscAddressPattern": "/Effect/Eventide/SplitEQ",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -2720,12 +2684,12 @@
     {
       "id": "8BUj9k4J-1bM_XP8REYlI",
       "name": "49",
-      "groupId": "ztSuRq2C3YNCEULcwrjX7",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Eventide/Physion II",
+        "oscAddressPattern": "/Effect/Eventide/Physion II",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -2766,12 +2730,12 @@
     {
       "id": "LSvTQWyYCnrTQB6fCtp9l",
       "name": "49",
-      "groupId": "ztSuRq2C3YNCEULcwrjX7",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Eventide/DeBoom",
+        "oscAddressPattern": "/Effect/Eventide/DeBoom",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -2812,12 +2776,12 @@
     {
       "id": "h7_QsUCU6UBFMyGxCO12z",
       "name": "49",
-      "groupId": "ztSuRq2C3YNCEULcwrjX7",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Eventide/Sheen Machine",
+        "oscAddressPattern": "/Effect/Eventide/Sheen Machine",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -2858,12 +2822,12 @@
     {
       "id": "1PF5tU4Sc9mod8v6vnluX",
       "name": "61",
-      "groupId": "CXhKv5h2XuQyscx832Jmr",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/SSL/Meter",
+        "oscAddressPattern": "/Effect/SSL/Meter",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -2904,12 +2868,12 @@
     {
       "id": "cLmKJ-cuIpAQXQqIB24Fj",
       "name": "61",
-      "groupId": "CXhKv5h2XuQyscx832Jmr",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/SSL/LMC+",
+        "oscAddressPattern": "/Effect/SSL/LMC+",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -2950,12 +2914,12 @@
     {
       "id": "L7A0gqzWJBwMP1qDm1Qj0",
       "name": "61",
-      "groupId": "CXhKv5h2XuQyscx832Jmr",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/SSL/DeEss",
+        "oscAddressPattern": "/Effect/SSL/DeEss",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -2996,12 +2960,12 @@
     {
       "id": "Nv5wIqH-ngny98JCsXj5O",
       "name": "61",
-      "groupId": "CXhKv5h2XuQyscx832Jmr",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/SSL/SubGen",
+        "oscAddressPattern": "/Effect/SSL/SubGen",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -3042,12 +3006,12 @@
     {
       "id": "7BgCANABl_Ede4IvK8Qm4",
       "name": "61",
-      "groupId": "CXhKv5h2XuQyscx832Jmr",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/SSL/Native BusComp 2",
+        "oscAddressPattern": "/Effect/SSL/Native BusComp 2",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -3088,12 +3052,12 @@
     {
       "id": "TM5shv0Ip0_Qrw5QHMksl",
       "name": "61",
-      "groupId": "CXhKv5h2XuQyscx832Jmr",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/SSL/Multi BusComp_G3",
+        "oscAddressPattern": "/Effect/SSL/Multi BusComp_G3",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -3134,12 +3098,12 @@
     {
       "id": "yFDBJTgB6KY4h9mbxcrYr",
       "name": "61",
-      "groupId": "CXhKv5h2XuQyscx832Jmr",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/SSL/Drum Strip",
+        "oscAddressPattern": "/Effect/SSL/Drum Strip",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -3180,12 +3144,12 @@
     {
       "id": "NbhFEaBQzMgMVtgbttwXK",
       "name": "61",
-      "groupId": "CXhKv5h2XuQyscx832Jmr",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/SSL/Guitar Strip",
+        "oscAddressPattern": "/Effect/SSL/Guitar Strip",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -3226,12 +3190,12 @@
     {
       "id": "6aohP0BwqIMqchEYWmMps",
       "name": "61",
-      "groupId": "CXhKv5h2XuQyscx832Jmr",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/SSL/Fusion HF Comp",
+        "oscAddressPattern": "/Effect/SSL/Fusion HF Comp",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -3272,12 +3236,12 @@
     {
       "id": "Xou4WL4guoVYoHPJv5Lju",
       "name": "61",
-      "groupId": "CXhKv5h2XuQyscx832Jmr",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/SSL/Fusion Image",
+        "oscAddressPattern": "/Effect/SSL/Fusion Image",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -3318,12 +3282,12 @@
     {
       "id": "Ok1u8AOchUj_WUdPijN0v",
       "name": "61",
-      "groupId": "CXhKv5h2XuQyscx832Jmr",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/SSL/Fusion Transformer",
+        "oscAddressPattern": "/Effect/SSL/Fusion Transformer",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -3364,12 +3328,12 @@
     {
       "id": "2mRmwYSXIXatmgE62f8vn",
       "name": "61",
-      "groupId": "CXhKv5h2XuQyscx832Jmr",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/SSL/Fusion Drive",
+        "oscAddressPattern": "/Effect/SSL/Fusion Drive",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -3410,12 +3374,12 @@
     {
       "id": "AqfDTAoxJ1xlyCZmQp0Rg",
       "name": "73",
-      "groupId": "HUChDSaGXSzNBp29SmCp1",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Kiive Audio/NFuse",
+        "oscAddressPattern": "/Effect/Kiive Audio/NFuse",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -3457,12 +3421,12 @@
     {
       "id": "acaQasqhkgwtJmgq9ccD3",
       "name": "73",
-      "groupId": "HUChDSaGXSzNBp29SmCp1",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Kiive Audio/Xtressor",
+        "oscAddressPattern": "/Effect/Kiive Audio/Xtressor",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -3503,12 +3467,12 @@
     {
       "id": "363SDYgaoBa7zPKmQDz_T",
       "name": "73",
-      "groupId": "HUChDSaGXSzNBp29SmCp1",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Kiive Audio/Filkchannel MK2",
+        "oscAddressPattern": "/Effect/Kiive Audio/Filkchannel MK2",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -3549,12 +3513,12 @@
     {
       "id": "qe0375AdhtWLjgxZhuWVR",
       "name": "73",
-      "groupId": "HUChDSaGXSzNBp29SmCp1",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Kiive Audio/Tube KC-1",
+        "oscAddressPattern": "/Effect/Kiive Audio/Tube KC-1",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -3595,12 +3559,12 @@
     {
       "id": "hJIl-tg40BDzMgoTQcsdO",
       "name": "73",
-      "groupId": "HUChDSaGXSzNBp29SmCp1",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Kiive Audio/Tubetizer",
+        "oscAddressPattern": "/Effect/Kiive Audio/Tubetizer",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -3641,12 +3605,12 @@
     {
       "id": "f_GtD8LBy0QtB__CjZ8uJ",
       "name": "73",
-      "groupId": "HUChDSaGXSzNBp29SmCp1",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Kiive Audio/XTComp",
+        "oscAddressPattern": "/Effect/Kiive Audio/XTComp",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -3687,12 +3651,12 @@
     {
       "id": "STQ9odY_zTMJaU2OclNz_",
       "name": "73",
-      "groupId": "HUChDSaGXSzNBp29SmCp1",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Kiive Audio/Tape Face",
+        "oscAddressPattern": "/Effect/Kiive Audio/Tape Face",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -3733,12 +3697,12 @@
     {
       "id": "zJDRttmz0rsMjdnk5Z1kX",
       "name": "73",
-      "groupId": "HUChDSaGXSzNBp29SmCp1",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Kiive Audio/Distinct Pro",
+        "oscAddressPattern": "/Effect/Kiive Audio/Distinct Pro",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -3779,12 +3743,12 @@
     {
       "id": "xlO5jQk_I9Qz-EN450QBC",
       "name": "81",
-      "groupId": "bC_TBSLlPat5k4m_ulG4M",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/UAD/1176LN Rev E",
+        "oscAddressPattern": "/Effect/UAD/1176LN Rev E",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -3825,12 +3789,12 @@
     {
       "id": "VIBQgcKx3zkBd0r-3oVr5",
       "name": "81",
-      "groupId": "bC_TBSLlPat5k4m_ulG4M",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/UAD/1176 FET",
+        "oscAddressPattern": "/Effect/UAD/1176 FET",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -3871,12 +3835,12 @@
     {
       "id": "0Y0aLA4PQl1PEZQ-TsI9a",
       "name": "81",
-      "groupId": "bC_TBSLlPat5k4m_ulG4M",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/UAD/API 2500 Bus",
+        "oscAddressPattern": "/Effect/UAD/API 2500 Bus",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -3917,12 +3881,12 @@
     {
       "id": "cX0SXjYzpmKPs_wB4X-Aw",
       "name": "81",
-      "groupId": "bC_TBSLlPat5k4m_ulG4M",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/UAD/SSL G Bus",
+        "oscAddressPattern": "/Effect/UAD/SSL G Bus",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -3963,12 +3927,12 @@
     {
       "id": "K8W3_ULhhHderAxrpU3s3",
       "name": "81",
-      "groupId": "bC_TBSLlPat5k4m_ulG4M",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/UAD/LA-2A Silver",
+        "oscAddressPattern": "/Effect/UAD/LA-2A Silver",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -4009,12 +3973,12 @@
     {
       "id": "l4mxYPi2qFlTXhlU8JWWf",
       "name": "81",
-      "groupId": "bC_TBSLlPat5k4m_ulG4M",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/UAD/LA-2A Gray",
+        "oscAddressPattern": "/Effect/UAD/LA-2A Gray",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -4055,12 +4019,12 @@
     {
       "id": "4bKXikXJGPsidBaFZ2TDZ",
       "name": "81",
-      "groupId": "bC_TBSLlPat5k4m_ulG4M",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/UAD/Tape Echo Galaxy",
+        "oscAddressPattern": "/Effect/UAD/Tape Echo Galaxy",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -4101,12 +4065,12 @@
     {
       "id": "dd0QSH6KZ0C70ygC66Bmb",
       "name": "81",
-      "groupId": "bC_TBSLlPat5k4m_ulG4M",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/UAD/Lexicon 224",
+        "oscAddressPattern": "/Effect/UAD/Lexicon 224",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -4147,12 +4111,12 @@
     {
       "id": "xk2-WRHWx5GJ3AGoBQz_4",
       "name": "81",
-      "groupId": "bC_TBSLlPat5k4m_ulG4M",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/UAD/Pultec EQP-1A",
+        "oscAddressPattern": "/Effect/UAD/Pultec EQP-1A",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -4193,12 +4157,12 @@
     {
       "id": "816jLAIbUMKZakdwYFaOX",
       "name": "81",
-      "groupId": "bC_TBSLlPat5k4m_ulG4M",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/UAD/Pultec MEQ-5",
+        "oscAddressPattern": "/Effect/UAD/Pultec MEQ-5",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -4239,12 +4203,12 @@
     {
       "id": "ICTHsba3sYEup1LHqinbl",
       "name": "81",
-      "groupId": "bC_TBSLlPat5k4m_ulG4M",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/UAD/Pultec HLF-3C",
+        "oscAddressPattern": "/Effect/UAD/Pultec HLF-3C",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -4285,12 +4249,12 @@
     {
       "id": "6DWovHo9Hw4IqFUxwPTBB",
       "name": "81",
-      "groupId": "bC_TBSLlPat5k4m_ulG4M",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/UAD/Neve 1073",
+        "oscAddressPattern": "/Effect/UAD/Neve 1073",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -4331,12 +4295,13 @@
     {
       "id": "X1O_xKDr8bbJ8QxOUp1qY",
       "name": "93",
-      "groupId": "81n9UwpuPldRp-H6QB9WU",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Native Instruments/Kontakt 6",
+        "oscAddressPattern": "/Instrument/NI/Kontakt_6",
+        "oscArgIndex": 0,
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -4378,12 +4343,13 @@
     {
       "id": "me7ogX_jCfGOORDD3kXN6",
       "name": "93",
-      "groupId": "81n9UwpuPldRp-H6QB9WU",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Native Instruments/Kontakt 7",
+        "oscAddressPattern": "/Instrument/NI/Kontakt_7",
+        "oscArgIndex": 0,
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -4425,12 +4391,13 @@
     {
       "id": "-mwl11mHF6TjBwUrEpdmz",
       "name": "93",
-      "groupId": "81n9UwpuPldRp-H6QB9WU",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Native Instruments/Kontakt 8",
+        "oscAddressPattern": "/Instrument/NI/Kontakt_8",
+        "oscArgIndex": 0,
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -4472,12 +4439,12 @@
     {
       "id": "w6VNgF6dwCFaHj811Og92",
       "name": "93",
-      "groupId": "w6Es5W9zGlF4arro9UEI4",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Fiedler_Audio/Dolby Atmos Composer/",
+        "oscAddressPattern": "/Effect/Fiedler_Audio/Dolby Atmos Composer/",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -4519,12 +4486,12 @@
     {
       "id": "c6MLCGm_YLYXch2RqyPu9",
       "name": "93",
-      "groupId": "w6Es5W9zGlF4arro9UEI4",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Fiedler_Audio/Dolby Atmos Beam",
+        "oscAddressPattern": "/Effect/Fiedler_Audio/Dolby Atmos Beam",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -4566,12 +4533,12 @@
     {
       "id": "TMTUNfuUrawTxWDAMLoEZ",
       "name": "93",
-      "groupId": "w6Es5W9zGlF4arro9UEI4",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Fiedler Audio/Spacelab",
+        "oscAddressPattern": "/Effect/Fiedler Audio/Spacelab",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -4613,12 +4580,12 @@
     {
       "id": "2JBR_BwS-ePx4DE6H8ySn",
       "name": "93",
-      "groupId": "w6Es5W9zGlF4arro9UEI4",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Fiedler Audio/Spacelab Beam",
+        "oscAddressPattern": "/Effect/Fiedler Audio/Spacelab Beam",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -4660,12 +4627,12 @@
     {
       "id": "9xz_ukN9DwbrXDrc7g0-0",
       "name": "93",
-      "groupId": "KtLwOY-X5DrDeUxq13R4L",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Cockos/ReaPitch",
+        "oscAddressPattern": "/Effect/Cockos/ReaPitch",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -4707,12 +4674,12 @@
     {
       "id": "XqHtUpLkPzc28SU3WbKBX",
       "name": "93",
-      "groupId": "81n9UwpuPldRp-H6QB9WU",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Cockos/ReaSurroundPan",
+        "oscAddressPattern": "/Effect/Cockos/ReaSurroundPan",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -4754,12 +4721,12 @@
     {
       "id": "eiUoVrVl95cy-e1D3A7Ef",
       "name": "93",
-      "groupId": "KtLwOY-X5DrDeUxq13R4L",
+      "groupId": "GbB2buJMCkjcUv9MXNWmo",
       "source": {
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/FX/Add/Cockos/Container",
+        "oscAddressPattern": "/Effect/Cockos/Container",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -39991,9 +39958,4 @@
           "axis": "X"
         },
         "takeMappingSnapshot": {
-          "kind": "LastLoaded"
-        }
-      }
-    }
-  ]
-}
+          "kind": 
