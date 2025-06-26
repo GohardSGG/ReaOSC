@@ -10,6 +10,7 @@ namespace Loupedeck.ReaOSCPlugin
     using Rug.Osc;
     using System.IO;
     using System.Net;
+    using System.Timers;
 
     public class ReaOSCPlugin : Plugin
     {
@@ -23,7 +24,10 @@ namespace Loupedeck.ReaOSCPlugin
         // === WebSocket 连接相关 ===
         private const String WS_SERVER = "ws://localhost:9122";
         private WebSocket _wsClient;
-        private Boolean _isReconnecting;
+        private Boolean _isReconnecting = false;
+        private System.Timers.Timer _reconnectTimer;
+        private Boolean _isManuallyClosed = false;
+        private const Int32 RECONNECT_DELAY_MS = 5000;
 
         // === 初始化 ===
         public ReaOSCPlugin()
@@ -37,9 +41,63 @@ namespace Loupedeck.ReaOSCPlugin
         // === WebSocket连接与管理 ===
         private void InitializeWebSocket()
         {
-            this._wsClient = new WebSocket(WS_SERVER);
-            this._wsClient.OnMessage += this.OnWebSocketMessage;
-            this.Connect();
+            PluginLog.Info("WebSocket: Attempting to initialize and connect...");
+            this._isManuallyClosed = false;
+
+            if (this._wsClient != null)
+            {
+                PluginLog.Info("WebSocket: Cleaning up existing WebSocket client before reinitialization.");
+                this._wsClient.OnOpen -= this.OnWebSocketOpen;
+                this._wsClient.OnMessage -= this.OnWebSocketMessage;
+                this._wsClient.OnClose -= this.OnWebSocketClose;
+                this._wsClient.OnError -= this.OnWebSocketError;
+
+                if (this._wsClient.IsAlive)
+                {
+                    try
+                    {
+                        this._wsClient.Close(CloseStatusCode.Normal, "Reinitializing WebSocket");
+                        PluginLog.Info("WebSocket: Old client closed during reinitialization.");
+                    }
+                    catch (Exception ex)
+                    {
+                        PluginLog.Error(ex, "WebSocket: Exception during old client Close() on reinitialization.");
+                    }
+                }
+                this._wsClient = null;
+                PluginLog.Info("WebSocket: Old client instance nullified.");
+            }
+
+            try
+            {
+                this._wsClient = new WebSocket(WS_SERVER);
+                PluginLog.Info($"WebSocket: New client created for {WS_SERVER}.");
+
+                this._wsClient.OnOpen += this.OnWebSocketOpen;
+                this._wsClient.OnMessage += this.OnWebSocketMessage;
+                this._wsClient.OnClose += this.OnWebSocketClose;
+                this._wsClient.OnError += this.OnWebSocketError;
+                PluginLog.Info("WebSocket: Event handlers subscribed.");
+
+                this._wsClient.Connect();
+                PluginLog.Info("WebSocket: Connection attempt initiated (Connect() called).");
+            }
+            catch (Exception ex)
+            {
+                PluginLog.Error(ex, "WebSocket: Exception during new WebSocket client creation or Connect() call in InitializeWebSocket.");
+                this.ScheduleDelayedReconnect();
+            }
+        }
+
+        private void OnWebSocketOpen(Object sender, EventArgs e)
+        {
+            PluginLog.Info("WebSocket: Connection opened successfully.");
+            this._isReconnecting = false;
+            if (this._reconnectTimer != null)
+            {
+                this._reconnectTimer.Stop();
+                PluginLog.Info("WebSocket: Reconnect timer stopped due to successful connection.");
+            }
         }
 
         private void OnWebSocketMessage(Object sender, MessageEventArgs e)
@@ -50,7 +108,6 @@ namespace Loupedeck.ReaOSCPlugin
                 var (address, parsedValue, isValid) = this.ParseOSCMessage(e.RawData);
                 if (isValid && !String.IsNullOrEmpty(address))
                 {
-                    // 【新增】在将消息传递给OSCStateManager之前，检查地址是否与插件相关
                     if (Loupedeck.ReaOSCPlugin.Base.Logic_Manager_Base.Instance.IsAddressRelevant(address))
                     {
                         OSCStateManager.Instance.UpdateState(address, parsedValue);
@@ -63,43 +120,70 @@ namespace Loupedeck.ReaOSCPlugin
             }
         }
 
-        private void Connect()
+        private void OnWebSocketClose(Object sender, CloseEventArgs e)
         {
-            if (this._wsClient?.IsAlive == true)
+            PluginLog.Warning($"WebSocket: Connection closed. WasClean: {e.WasClean}, Code: {e.Code} ({((CloseStatusCode)e.Code).ToString()}), Reason: '{e.Reason}'");
+            if (!this._isManuallyClosed)
             {
-                return;
+                PluginLog.Info("WebSocket: Connection closed unexpectedly. Scheduling reconnect...");
+                this.ScheduleDelayedReconnect();
             }
-
-            Task.Run(() =>
+            else
             {
-                try
-                {
-                    this._wsClient?.Connect();
-                    //PluginLog.Info("WebSocket连接成功");
-                }
-                catch (Exception)
-                {
-                    //PluginLog.Error($"连接失败: {ex.Message}");
-                    this.ScheduleReconnect();
-                }
-            });
+                PluginLog.Info("WebSocket: Connection closed manually (or during reinitialization). No reconnect scheduled by this event.");
+            }
         }
 
-        private void ScheduleReconnect()
+        private void OnWebSocketError(Object sender, WebSocketSharp.ErrorEventArgs e)
         {
-            if (this._isReconnecting)
+            PluginLog.Error(e.Exception, $"WebSocket: Error occurred: {e.Message}");
+            if (!this._isManuallyClosed)
             {
+                PluginLog.Info("WebSocket: Error indicates potential connection issue. Scheduling reconnect.");
+                this.ScheduleDelayedReconnect();
+            }
+            else
+            {
+                PluginLog.Info("WebSocket: Error occurred but manual close is flagged. No reconnect scheduled by this event.");
+            }
+        }
+
+        private void ScheduleDelayedReconnect()
+        {
+            if (this._isManuallyClosed)
+            {
+                PluginLog.Info("WebSocket: Plugin is shutting down or connection was manually closed, skipping reconnect schedule.");
                 return;
             }
-            this._isReconnecting = true;
 
-            Task.Run(async () =>
+            if (this._isReconnecting)
             {
-                await Task.Delay(5000);
-                //PluginLog.Info("尝试重新连接...");
-                this._isReconnecting = false;
-                this.InitializeWebSocket();
-            });
+                PluginLog.Info("WebSocket: Reconnect already in progress or scheduled by another event. Skipping duplicate schedule.");
+                return;
+            }
+
+            this._isReconnecting = true;
+            PluginLog.Info($"WebSocket: Scheduling reconnect attempt in {RECONNECT_DELAY_MS / 1000} seconds...");
+
+            if (this._reconnectTimer == null)
+            {
+                this._reconnectTimer = new System.Timers.Timer(RECONNECT_DELAY_MS);
+                this._reconnectTimer.Elapsed += this.OnReconnectTimerElapsed;
+                this._reconnectTimer.AutoReset = false;
+            }
+            else
+            {
+                this._reconnectTimer.Interval = RECONNECT_DELAY_MS;
+                this._reconnectTimer.Stop();
+            }
+            this._reconnectTimer.Start();
+        }
+
+        private void OnReconnectTimerElapsed(Object sender, System.Timers.ElapsedEventArgs e)
+        {
+            PluginLog.Info("WebSocket: Reconnect timer elapsed. Attempting to re-initialize WebSocket.");
+            this._isReconnecting = false;
+            this.InitializeWebSocket();
         }
 
         // === OSC二进制消息解析 ===
@@ -215,7 +299,7 @@ namespace Loupedeck.ReaOSCPlugin
         {
             if (Instance?._wsClient?.IsAlive != true)
             {
-                //PluginLog.Error("WebSocket连接未建立，发送OSC消息失败");
+                PluginLog.Warning($"WebSocket: Connection not alive. Cannot send OSC: {address} -> {value}");
                 return;
             }
 
@@ -228,29 +312,29 @@ namespace Loupedeck.ReaOSCPlugin
             }
             catch (Exception ex)
             {
-                PluginLog.Error($"发送OSC消息失败: {ex.Message}");
-                Instance.ScheduleReconnect();
+                PluginLog.Error(ex, $"发送OSC消息失败: {address} -> {value}");
+                Instance.ScheduleDelayedReconnect();
             }
         }
 
         public static void SendOSCMessage(String address, String value)
         {
+            String valueForLog = value != null ? value.Replace("\"", "\\\"") : "null"; // 为日志预处理，将引号转义为\"
             if (Instance?._wsClient?.IsAlive != true)
             {
-                //PluginLog.Error("WebSocket连接未建立，发送OSC消息失败");
+                PluginLog.Warning($"WebSocket: Connection not alive. Cannot send OSC: {address} -> (String) \"{valueForLog}\"");
                 return;
             }
             try
             {
                 var oscData = CreateOSCMessage(address, value);
                 Instance._wsClient.Send(oscData);
-                // Corrected: Logging string value with proper escaping for quotes inside the interpolated string.
-                PluginLog.Info($"发送OSC消息成功: {address} -> (String) \"{value?.Replace("\"", "\\\"")}\"");
+                PluginLog.Info($"发送OSC消息成功: {address} -> (String) \"{valueForLog}\"");
             }
             catch (Exception ex)
             {
-                PluginLog.Error($"发送OSC消息失败: {ex.Message}");
-                Instance.ScheduleReconnect();
+                PluginLog.Error(ex, $"发送OSC消息失败: {address} -> (String) \"{valueForLog}\"");
+                Instance.ScheduleDelayedReconnect();
             }
         }
 
@@ -307,7 +391,8 @@ namespace Loupedeck.ReaOSCPlugin
             }
             catch (Exception ex)
             {
-                PluginLog.Error(ex, $"[CreateOSCMessage] Error creating or serializing OSC message with Rug.Osc for address '{address}' and string value \"{value?.Replace("\"", "\\\"")}\".");
+                String valueForLogEx = value != null ? value.Replace("\"", "\\\"") : "null";
+                PluginLog.Error(ex, $"[CreateOSCMessage] Error creating or serializing OSC message with Rug.Osc for address '{address}' and string value \"{valueForLogEx}\".");
                 return new Byte[0];
             }
         }
@@ -330,20 +415,23 @@ namespace Loupedeck.ReaOSCPlugin
         {
             if (Instance?._wsClient?.IsAlive != true)
             {
-                PluginLog.Error("WebSocket未连接，无法发送通用消息");
+                PluginLog.Warning("WebSocket未连接，无法发送通用消息");
                 return;
             }
 
-            // 拼接地址: /category/address
             var fullAddress = $"/{category}/{address}".Replace("//", "/");
-            Single floatValue = value; // int隐式转float
-
-            // OSC 封装
+            Single floatValue = value;
             var oscData = CreateOSCMessage(fullAddress, floatValue);
-
-            // 通过WebSocket发送
-            Instance._wsClient.Send(oscData);
-            PluginLog.Verbose($"[SendGeneralMessage] 已发送: {fullAddress} -> {floatValue}");
+            try
+            {
+                Instance._wsClient.Send(oscData);
+                PluginLog.Verbose($"[SendGeneralMessage] 已发送: {fullAddress} -> {floatValue}");
+            }
+            catch (Exception ex)
+            {
+                PluginLog.Error(ex, $"[SendGeneralMessage] 发送失败: {fullAddress} -> {floatValue}");
+                Instance.ScheduleDelayedReconnect();
+            }
         }
 
         // ========== 特定消息发送封装 ==========
@@ -375,12 +463,54 @@ namespace Loupedeck.ReaOSCPlugin
         /// </summary>
         public override void Unload()
         {
-            if (this._wsClient?.IsAlive == true)
+            PluginLog.Info("WebSocket: Plugin Unload called. Cleaning up WebSocket resources.");
+            this._isManuallyClosed = true;
+
+            if (this._reconnectTimer != null)
             {
-                this._wsClient.Close(CloseStatusCode.Normal); // 安全关闭连接
-                PluginLog.Info("WebSocket连接已关闭");
+                this._reconnectTimer.Stop();
+                this._reconnectTimer.Elapsed -= this.OnReconnectTimerElapsed;
+                this._reconnectTimer.Dispose();
+                this._reconnectTimer = null;
+                PluginLog.Info("WebSocket: Reconnect timer stopped and disposed.");
             }
+
+            if (this._wsClient != null)
+            {
+                this._wsClient.OnOpen -= this.OnWebSocketOpen;
+                this._wsClient.OnMessage -= this.OnWebSocketMessage;
+                this._wsClient.OnClose -= this.OnWebSocketClose;
+                this._wsClient.OnError -= this.OnWebSocketError;
+                PluginLog.Info("WebSocket: Event handlers unsubscribed for Unload.");
+
+                if (this._wsClient.IsAlive)
+                {
+                    try
+                    {
+                        this._wsClient.Close(CloseStatusCode.Normal, "Plugin unloading");
+                        PluginLog.Info("WebSocket: Connection closed on Unload.");
+                    }
+                    catch (Exception ex)
+                    {
+                        PluginLog.Error(ex, "WebSocket: Exception during Close() on Unload.");
+                    }
+                }
+                else
+                {
+                    PluginLog.Info("WebSocket: Connection was not alive during Unload.");
+                }
+                this._wsClient = null;
+                PluginLog.Info("WebSocket: Client instance nullified.");
+            }
+            else
+            {
+                PluginLog.Info("WebSocket: Client instance was already null on Unload.");
+            }
+            
+            this._isReconnecting = false;
+
             base.Unload();
+            PluginLog.Info("插件已成功卸载。");
         }
 
    
@@ -465,10 +595,8 @@ namespace Loupedeck.ReaOSCPlugin
         }
 
         // Added: GetRawState
-        public Object GetRawState(String address)
-        {
-            return this._stateCache.TryGetValue(address, out var value) ? value : null;
-        }
+        public Object GetRawState(String address) => 
+            this._stateCache.TryGetValue(address, out var value) ? value : null;
 
         // Added: GetStringState
         public String GetStringState(String address)
@@ -481,10 +609,8 @@ namespace Loupedeck.ReaOSCPlugin
         }
 
         // Corrected: GetAllStates returns IDictionary<String, Object>
-        public IDictionary<String, Object> GetAllStates()
-        {
-            return new Dictionary<String, Object>(this._stateCache);
-        }
+        public IDictionary<String, Object> GetAllStates() => 
+            new Dictionary<String, Object>(this._stateCache);
     }
 
 }

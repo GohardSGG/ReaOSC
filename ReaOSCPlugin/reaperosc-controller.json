@@ -5913,57 +5913,6 @@
       }
     },
     {
-      "id": "xGTGi3tm_bupwO3g9nC4z",
-      "name": "125",
-      "groupId": "fZaM3wa-jlIJwiMtAvQRQ",
-      "source": {
-        "category": "osc",
-        "isRegistered": false,
-        "is14Bit": false,
-        "oscAddressPattern": "/FX/Sample",
-        "oscArgIndex": 0,
-        "buttonIndex": 0,
-        "buttonDesign": {
-          "background": {
-            "kind": "Color"
-          },
-          "foreground": {
-            "kind": "None"
-          },
-          "static_text": ""
-        }
-      },
-      "mode": {
-        "minStepSize": 1.0,
-        "maxStepSize": 1.0,
-        "minStepFactor": 1,
-        "maxStepFactor": 1
-      },
-      "target": {
-        "type": 53,
-        "invocationType": 0,
-        "trackGUID": "selected",
-        "fxAnchor": "focused",
-        "useSelectionGanging": false,
-        "useTrackGrouping": false,
-        "paramType": "dynamic",
-        "paramExpression": "",
-        "seekBehavior": "Immediate",
-        "useProject": true,
-        "moveView": true,
-        "seekPlay": true,
-        "fxDisplayType": "chain",
-        "oscArgIndex": 0,
-        "mouseAction": {
-          "kind": "MoveTo",
-          "axis": "X"
-        },
-        "takeMappingSnapshot": {
-          "kind": "LastLoaded"
-        }
-      }
-    },
-    {
       "id": "YGbOKj4sSDWKXB5kQYNQV",
       "name": "128",
       "groupId": "8XhNDauY7R5NrduwmzNk2",
