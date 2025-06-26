@@ -50,8 +50,15 @@ namespace Loupedeck.ReaOSCPlugin
                 var (address, parsedValue, isValid) = this.ParseOSCMessage(e.RawData);
                 if (isValid && !String.IsNullOrEmpty(address))
                 {
-                    // 状态变化通知相关
-                    OSCStateManager.Instance.UpdateState(address, parsedValue);
+                    // 【新增】在将消息传递给OSCStateManager之前，检查地址是否与插件相关
+                    if (Loupedeck.ReaOSCPlugin.Base.Logic_Manager_Base.Instance.IsAddressRelevant(address))
+                    {
+                        OSCStateManager.Instance.UpdateState(address, parsedValue);
+                    }
+                    else
+                    {
+                        PluginLog.Verbose($"[ReaOSCPlugin|OnWebSocketMessage] Discarding irrelevant OSC message for address: {address}");
+                    }
                 }
             }
         }

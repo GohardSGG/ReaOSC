@@ -174,6 +174,8 @@ namespace Loupedeck.ReaOSCPlugin.Base
         // 键: 唯一的标题字段标识符
         // 值: 如果该标题字段来自OSC，则这里存储其OSC地址
         private readonly Dictionary<String, String> _titleFieldToOscAddressMapping = new Dictionary<String, String>();
+        // 【新增】反向映射：从OSC地址到监听该地址的动态标题唯一键列表
+        private readonly Dictionary<String, List<String>> _oscAddressToDynamicTitleKeys = new Dictionary<String, List<String>>();
 
         private Boolean _isInitialized = false;
         private String _customConfigBasePath;
@@ -635,17 +637,24 @@ namespace Loupedeck.ReaOSCPlugin.Base
         {
             PluginLog.Info($"[LogicManager|OnOSCStateChanged] Received OSC: Address='{e.Address}', Value='{(e.IsString ? e.StringValue : e.Value.ToString(System.Globalization.CultureInfo.InvariantCulture))}' IsString={e.IsString}"); 
 
-            // 【新增】处理动态标题更新
-            bool handledAsDynamicTitleUpdate = false;
-            // 使用 ToList() 创建副本，以允许在迭代时修改原始字典 (虽然我们这里不修改 _titleFieldToOscAddressMapping)
-            foreach (var mappingEntry in this._titleFieldToOscAddressMapping.ToList()) 
+            // --- 新增：提前退出逻辑 ---
+            // 使用 IsAddressRelevant 方法进行统一判断
+            if (!this.IsAddressRelevant(e.Address))
             {
-                if (mappingEntry.Value == e.Address) // mappingEntry.Value is the OSC address
-                {
-                    string uniqueKey = mappingEntry.Key;
-                    // 优先使用字符串值，如果不是字符串，则将数字值转为字符串
-                    string newTemplate = e.IsString ? e.StringValue : e.Value.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                PluginLog.Verbose($"[LogicManager|OnOSCStateChanged] OSC Address '{e.Address}' is not relevant for dynamic titles or actions. Skipping further processing.");
+                return;
+            }
+            // --- 结束：提前退出逻辑 ---
 
+            bool isRelevantForDynamicTitle = this._oscAddressToDynamicTitleKeys.ContainsKey(e.Address);
+            // bool isRelevantForAction = this._oscAddressToActionParameterMap.ContainsKey(e.Address); // 已在IsAddressRelevant中检查
+
+            // 【修改】处理动态标题更新 - 使用新的反向映射字典
+            if (isRelevantForDynamicTitle && this._oscAddressToDynamicTitleKeys.TryGetValue(e.Address, out var uniqueKeysToUpdateList))
+            {
+                string newTemplate = e.IsString ? e.StringValue : e.Value.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                foreach (string uniqueKey in uniqueKeysToUpdateList)
+                {
                     // 检查值是否真的改变了，避免不必要的更新和日志
                     if (!_dynamicTitleSourceStrings.TryGetValue(uniqueKey, out var oldTemplate) || oldTemplate != newTemplate)
                     {
@@ -665,21 +674,15 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     }
                     else
                     {
-                        PluginLog.Verbose($"[LogicManager|OnOSCStateChanged] Dynamic title for key '{uniqueKey}' received same template value ('{newTemplate}'). No state change or refresh triggered for this key.");
+                        PluginLog.Verbose($"[LogicManager|OnOSCStateChanged] Dynamic title for key '{uniqueKey}' (OSC Address: '{e.Address}') received same template value ('{newTemplate}'). No state change or refresh triggered for this key.");
                     }
-                    handledAsDynamicTitleUpdate = true;
-                    // 假设一个OSC地址通常只更新一个特定的动态标题字段。
-                    // 如果将来需要一个OSC地址更新多个标题模板，则不应在此处break。
-                    // 为清晰起见，暂定一个地址对应一个标题模板更新。
-                    // break; // 如果确定一个地址只对应一个标题，可以取消注释以提高效率
                 }
             }
-            // 如果此OSC消息主要用于更新动态标题，并且我们不希望它再被后续的功能性状态逻辑（如ToggleButton）处理
-            // (例如，如果一个地址 /foo/bar 用于标题，而另一个地址 /foo/bar/toggle 用于开关状态)
-            // 可以在这里根据 handledAsDynamicTitleUpdate 和一些条件判断是否提前返回。
-            // 当前设计：允许消息继续传递给后续的功能状态处理逻辑，因为地址可能是独立的。
+            // --- 结束：处理动态标题更新 ---
 
-            if (this._oscAddressToActionParameterMap.TryGetValue(e.Address, out String mappedActionParameter))
+            // 后续的功能性状态更新逻辑 (例如 ToggleButton, ControlDial)
+            // 仅当地址与功能性操作相关时执行
+            if (this._oscAddressToActionParameterMap.TryGetValue(e.Address, out String mappedActionParameter)) // isRelevantForAction 隐含在此查找中
             {
                 var config = this.GetConfig(mappedActionParameter);
                 if (config == null && mappedActionParameter.Contains("#")) // 可能是 ModeControlDial 的内部模式
@@ -814,9 +817,9 @@ namespace Loupedeck.ReaOSCPlugin.Base
                     }
                 }
             }
-            else
+            else if (!isRelevantForDynamicTitle) // 仅当它也不是动态标题地址时，才记录"未在功能映射中找到"
             {
-                PluginLog.Info($"[LogicManager|OnOSCStateChanged] OSC Address '{e.Address}' NOT found in _oscAddressToActionParameterMap."); // 新增日志：未匹配到地址
+                PluginLog.Info($"[LogicManager|OnOSCStateChanged] OSC Address '{e.Address}' NOT found in _oscAddressToActionParameterMap (and was not a dynamic title)."); 
             }
         }
 
@@ -2557,34 +2560,43 @@ namespace Loupedeck.ReaOSCPlugin.Base
         {
             if (config == null || string.IsNullOrEmpty(actionParameter)) return;
 
+            // 辅助方法，用于注册单个标题字段及其可能的OSC地址
+            Action<string, string, int> registerFieldLogic = (fieldName, fieldValue, fieldSubIndex) =>
+            {
+                if (string.IsNullOrEmpty(fieldValue)) return;
+
+                string uniqueKey = GetUniqueTitleFieldKey(actionParameter, fieldName, fieldSubIndex);
+                if (fieldValue.StartsWith("/")) // 如果字段值是一个OSC地址
+                {
+                    // 仍然保留_titleFieldToOscAddressMapping，以防其他地方用到或用于调试
+                    _titleFieldToOscAddressMapping[uniqueKey] = fieldValue; 
+                    _dynamicTitleSourceStrings[uniqueKey] = fieldValue; // 初始占位符设为OSC地址本身
+
+                    // 填充新的反向映射字典 _oscAddressToDynamicTitleKeys
+                    if (!this._oscAddressToDynamicTitleKeys.ContainsKey(fieldValue))
+                    {
+                        this._oscAddressToDynamicTitleKeys[fieldValue] = new List<String>();
+                    }
+                    // 避免重复添加同一个uniqueKey到列表 (虽然在正常注册流程中不太可能发生)
+                    if (!this._oscAddressToDynamicTitleKeys[fieldValue].Contains(uniqueKey))
+                    {
+                        this._oscAddressToDynamicTitleKeys[fieldValue].Add(uniqueKey);
+                    }
+                    PluginLog.Verbose($"[LogicManager|RegisterDynamicTitleFields] Registered dynamic title for Key: '{uniqueKey}', OSC Address: '{fieldValue}' (ActionParam: '{actionParameter}')");
+                }
+                else // 字段值是静态模板字符串
+                {
+                    _dynamicTitleSourceStrings[uniqueKey] = fieldValue ?? string.Empty;
+                }
+            };
+
             // 处理 config.Title
-            string titleKey = GetUniqueTitleFieldKey(actionParameter, "Title");
-            if (!string.IsNullOrEmpty(config.Title) && config.Title.StartsWith("/"))
-            {
-                _titleFieldToOscAddressMapping[titleKey] = config.Title;
-                _dynamicTitleSourceStrings[titleKey] = config.Title; // 初始占位符 (OSC地址本身)
-                PluginLog.Verbose($"[LogicManager|RegisterDynamicTitleFields] Registered dynamic title for Key: '{titleKey}', OSC Address: '{config.Title}' (ActionParam: '{actionParameter}')");
-            }
-            else
-            {
-                _dynamicTitleSourceStrings[titleKey] = config.Title ?? string.Empty;
-            }
+            registerFieldLogic("Title", config.Title, -1);
 
             // 处理 config.Title_Mode2 (主要用于 ActionType "2ModeTickDial"等)
-            // 可根据 ActionType 进一步约束，或普遍处理此字段
-            if (!string.IsNullOrEmpty(config.Title_Mode2)) // 只要字段存在就处理
+            if (!string.IsNullOrEmpty(config.Title_Mode2)) 
             {
-                string titleMode2Key = GetUniqueTitleFieldKey(actionParameter, "Title_Mode2");
-                if (config.Title_Mode2.StartsWith("/"))
-                {
-                    _titleFieldToOscAddressMapping[titleMode2Key] = config.Title_Mode2;
-                    _dynamicTitleSourceStrings[titleMode2Key] = config.Title_Mode2; // 初始占位符
-                    PluginLog.Verbose($"[LogicManager|RegisterDynamicTitleFields] Registered dynamic Title_Mode2 for Key: '{titleMode2Key}', OSC Address: '{config.Title_Mode2}' (ActionParam: '{actionParameter}')");
-                }
-                else
-                {
-                    _dynamicTitleSourceStrings[titleMode2Key] = config.Title_Mode2 ?? string.Empty;
-                }
+                registerFieldLogic("Title_Mode2", config.Title_Mode2, -1);
             }
 
             // 处理 config.Titles 数组 (如果存在且有元素)
@@ -2593,19 +2605,8 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 for (int i = 0; i < config.Titles.Count; i++)
                 {
                     string currentTitleElement = config.Titles[i];
-                    if (string.IsNullOrEmpty(currentTitleElement)) continue; // 跳过空元素
-
-                    string titlesElementKey = GetUniqueTitleFieldKey(actionParameter, "Titles_Element", i);
-                    if (currentTitleElement.StartsWith("/"))
-                    {
-                        _titleFieldToOscAddressMapping[titlesElementKey] = currentTitleElement;
-                        _dynamicTitleSourceStrings[titlesElementKey] = currentTitleElement; // 初始占位符
-                        PluginLog.Verbose($"[LogicManager|RegisterDynamicTitleFields] Registered dynamic Titles[{i}] for Key: '{titlesElementKey}', OSC Address: '{currentTitleElement}' (ActionParam: '{actionParameter}')");
-                    }
-                    else
-                    {
-                        _dynamicTitleSourceStrings[titlesElementKey] = currentTitleElement;
-                    }
+                    // registerFieldLogic 内部会检查 currentTitleElement 是否为空
+                    registerFieldLogic("Titles_Element", currentTitleElement, i);
                 }
             }
              // 注意: ModeControlDial 的内部模式标题可能需要更复杂的处理，
@@ -2666,6 +2667,15 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 }
             }
             return $"ErrTpl:{uniqueKey.Substring(Math.Max(0,uniqueKey.Length-15))}"; // 返回部分键名以帮助调试
+        }
+
+        // 【新增】公共辅助方法：判断地址是否与插件相关
+        public bool IsAddressRelevant(string address)
+        {
+            if (string.IsNullOrEmpty(address)) return false;
+            // 检查地址是否在动态标题的OSC地址映射中，或者在常规操作的OSC地址映射中
+            return this._oscAddressToDynamicTitleKeys.ContainsKey(address) || 
+                   this._oscAddressToActionParameterMap.ContainsKey(address);
         }
 
     }

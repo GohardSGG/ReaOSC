@@ -1,5 +1,6 @@
 {
     "Type": [
+        "Group",
         "Guitar",
         "Bass",
         "Drums",
@@ -9,12 +10,36 @@
         "Strings",
         "Brass",
         "Woodwinds",
-        "Other",
-        "Group"
+        "Other"
     ],
-    "Favorite": [
-      "Distortion Guitar",
-      "Crunch Guitar"
+    "Group": [
+        {
+            "DisplayName": "Guitar"
+        },
+        {
+            "DisplayName": "Bass"
+        },
+        {
+            "DisplayName": "Drums"
+        },
+        {
+            "DisplayName": "Vocal"
+        },
+        {
+            "DisplayName": "Synth"
+        },
+        {
+            "DisplayName": "Piano"
+        },
+        {
+            "DisplayName": "Strings"
+        },
+        {
+            "DisplayName": "Brass"
+        },
+        {
+            "DisplayName": "Woodwinds"
+        }
     ],
     "Guitar": [
         {
@@ -220,35 +245,6 @@
     "Other": [
         {
             "DisplayName": "Other"
-        }
-    ],
-    "Group": [
-        {
-            "DisplayName": "Guitar"
-        },
-        {
-            "DisplayName": "Bass"
-        },
-        {
-            "DisplayName": "Drums"
-        },
-        {
-            "DisplayName": "Vocal"
-        },
-        {
-            "DisplayName": "Synth"
-        },
-        {
-            "DisplayName": "Piano"
-        },
-        {
-            "DisplayName": "Strings"
-        },
-        {
-            "DisplayName": "Brass"
-        },
-        {
-            "DisplayName": "Woodwinds"
         }
     ]
 }
