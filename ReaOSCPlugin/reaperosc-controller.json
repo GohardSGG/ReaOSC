@@ -572,7 +572,7 @@
         "category": "osc",
         "isRegistered": false,
         "is14Bit": false,
-        "oscAddressPattern": "/Effect/FabFilter/Pro-Q 4",
+        "oscAddressPattern": "/Effect/FabFilter/Pro-Q_4",
         "buttonIndex": 0,
         "buttonDesign": {
           "background": {
@@ -39991,6 +39991,1896 @@
       "target": {
         "type": 0,
         "commandName": "41142",
+        "fxAnchor": "id",
+        "useSelectionGanging": false,
+        "useTrackGrouping": false,
+        "seekBehavior": "Immediate",
+        "useProject": true,
+        "moveView": true,
+        "seekPlay": true,
+        "oscArgIndex": 0,
+        "mouseAction": {
+          "kind": "MoveTo",
+          "axis": "X"
+        },
+        "takeMappingSnapshot": {
+          "kind": "LastLoaded"
+        }
+      }
+    },
+    {
+      "id": "CK-vnLrPgYM-B05vzpS0M",
+      "name": "812",
+      "groupId": "a0gYPYAW_8NAMXRFI-dMM",
+      "source": {
+        "category": "osc",
+        "isRegistered": false,
+        "is14Bit": false,
+        "oscAddressPattern": "/Track/Slot/1/Name",
+        "oscArgIndex": 0,
+        "oscArgType": "string",
+        "buttonIndex": 0,
+        "buttonDesign": {
+          "background": {
+            "kind": "Color"
+          },
+          "foreground": {
+            "kind": "None"
+          },
+          "static_text": ""
+        }
+      },
+      "mode": {
+        "maxStepSize": 0.05,
+        "minStepFactor": 1,
+        "maxStepFactor": 5,
+        "eelFeedbackTransformation": "{{target.track.name}}",
+        "feedbackType": 1
+      },
+      "target": {
+        "type": 44,
+        "trackExpression": "selected_track_index",
+        "fxAnchor": "id",
+        "useSelectionGanging": false,
+        "useTrackGrouping": false,
+        "seekBehavior": "Immediate",
+        "useProject": true,
+        "moveView": true,
+        "seekPlay": true,
+        "oscArgIndex": 0,
+        "mouseAction": {
+          "kind": "MoveTo",
+          "axis": "X"
+        },
+        "takeMappingSnapshot": {
+          "kind": "LastLoaded"
+        }
+      }
+    },
+    {
+      "id": "DL0woMsQhZN-C16w0qT1N",
+      "name": "812",
+      "groupId": "a0gYPYAW_8NAMXRFI-dMM",
+      "source": {
+        "category": "osc",
+        "isRegistered": false,
+        "is14Bit": false,
+        "oscAddressPattern": "/Track/Slot/2/Name",
+        "oscArgIndex": 0,
+        "oscArgType": "string",
+        "buttonIndex": 0,
+        "buttonDesign": {
+          "background": {
+            "kind": "Color"
+          },
+          "foreground": {
+            "kind": "None"
+          },
+          "static_text": ""
+        }
+      },
+      "mode": {
+        "maxStepSize": 0.05,
+        "minStepFactor": 1,
+        "maxStepFactor": 5,
+        "eelFeedbackTransformation": "{{target.track.name}}",
+        "feedbackType": 1
+      },
+      "target": {
+        "type": 44,
+        "trackExpression": "selected_track_index + 1",
+        "fxAnchor": "id",
+        "useSelectionGanging": false,
+        "useTrackGrouping": false,
+        "seekBehavior": "Immediate",
+        "useProject": true,
+        "moveView": true,
+        "seekPlay": true,
+        "oscArgIndex": 0,
+        "mouseAction": {
+          "kind": "MoveTo",
+          "axis": "X"
+        },
+        "takeMappingSnapshot": {
+          "kind": "LastLoaded"
+        }
+      }
+    },
+    {
+      "id": "EM1xpNtRiAO-D27x1rU2O",
+      "name": "812",
+      "groupId": "a0gYPYAW_8NAMXRFI-dMM",
+      "source": {
+        "category": "osc",
+        "isRegistered": false,
+        "is14Bit": false,
+        "oscAddressPattern": "/Track/Slot/3/Name",
+        "oscArgIndex": 0,
+        "oscArgType": "string",
+        "buttonIndex": 0,
+        "buttonDesign": {
+          "background": {
+            "kind": "Color"
+          },
+          "foreground": {
+            "kind": "None"
+          },
+          "static_text": ""
+        }
+      },
+      "mode": {
+        "maxStepSize": 0.05,
+        "minStepFactor": 1,
+        "maxStepFactor": 5,
+        "eelFeedbackTransformation": "{{target.track.name}}",
+        "feedbackType": 1
+      },
+      "target": {
+        "type": 44,
+        "trackExpression": "selected_track_index + 2",
+        "fxAnchor": "id",
+        "useSelectionGanging": false,
+        "useTrackGrouping": false,
+        "seekBehavior": "Immediate",
+        "useProject": true,
+        "moveView": true,
+        "seekPlay": true,
+        "oscArgIndex": 0,
+        "mouseAction": {
+          "kind": "MoveTo",
+          "axis": "X"
+        },
+        "takeMappingSnapshot": {
+          "kind": "LastLoaded"
+        }
+      }
+    },
+    {
+      "id": "FN2yqOuSjBP-E38y2sV3P",
+      "name": "812",
+      "groupId": "a0gYPYAW_8NAMXRFI-dMM",
+      "source": {
+        "category": "osc",
+        "isRegistered": false,
+        "is14Bit": false,
+        "oscAddressPattern": "/Track/Slot/4/Name",
+        "oscArgIndex": 0,
+        "oscArgType": "string",
+        "buttonIndex": 0,
+        "buttonDesign": {
+          "background": {
+            "kind": "Color"
+          },
+          "foreground": {
+            "kind": "None"
+          },
+          "static_text": ""
+        }
+      },
+      "mode": {
+        "maxStepSize": 0.05,
+        "minStepFactor": 1,
+        "maxStepFactor": 5,
+        "eelFeedbackTransformation": "{{target.track.name}}",
+        "feedbackType": 1
+      },
+      "target": {
+        "type": 44,
+        "trackExpression": "selected_track_index + 3",
+        "fxAnchor": "id",
+        "useSelectionGanging": false,
+        "useTrackGrouping": false,
+        "seekBehavior": "Immediate",
+        "useProject": true,
+        "moveView": true,
+        "seekPlay": true,
+        "oscArgIndex": 0,
+        "mouseAction": {
+          "kind": "MoveTo",
+          "axis": "X"
+        },
+        "takeMappingSnapshot": {
+          "kind": "LastLoaded"
+        }
+      }
+    },
+    {
+      "id": "GO3zrPvTkCQ-F49z3tW4Q",
+      "name": "812",
+      "groupId": "a0gYPYAW_8NAMXRFI-dMM",
+      "source": {
+        "category": "osc",
+        "isRegistered": false,
+        "is14Bit": false,
+        "oscAddressPattern": "/Track/Slot/5/Name",
+        "oscArgIndex": 0,
+        "oscArgType": "string",
+        "buttonIndex": 0,
+        "buttonDesign": {
+          "background": {
+            "kind": "Color"
+          },
+          "foreground": {
+            "kind": "None"
+          },
+          "static_text": ""
+        }
+      },
+      "mode": {
+        "maxStepSize": 0.05,
+        "minStepFactor": 1,
+        "maxStepFactor": 5,
+        "eelFeedbackTransformation": "{{target.track.name}}",
+        "feedbackType": 1
+      },
+      "target": {
+        "type": 44,
+        "trackExpression": "selected_track_index + 4",
+        "fxAnchor": "id",
+        "useSelectionGanging": false,
+        "useTrackGrouping": false,
+        "seekBehavior": "Immediate",
+        "useProject": true,
+        "moveView": true,
+        "seekPlay": true,
+        "oscArgIndex": 0,
+        "mouseAction": {
+          "kind": "MoveTo",
+          "axis": "X"
+        },
+        "takeMappingSnapshot": {
+          "kind": "LastLoaded"
+        }
+      }
+    },
+    {
+      "id": "HP40sQwUlDR-G5004uX5R",
+      "name": "812",
+      "groupId": "a0gYPYAW_8NAMXRFI-dMM",
+      "source": {
+        "category": "osc",
+        "isRegistered": false,
+        "is14Bit": false,
+        "oscAddressPattern": "/Track/Slot/6/Name",
+        "oscArgIndex": 0,
+        "oscArgType": "string",
+        "buttonIndex": 0,
+        "buttonDesign": {
+          "background": {
+            "kind": "Color"
+          },
+          "foreground": {
+            "kind": "None"
+          },
+          "static_text": ""
+        }
+      },
+      "mode": {
+        "maxStepSize": 0.05,
+        "minStepFactor": 1,
+        "maxStepFactor": 5,
+        "eelFeedbackTransformation": "{{target.track.name}}",
+        "feedbackType": 1
+      },
+      "target": {
+        "type": 44,
+        "trackExpression": "selected_track_index + 5",
+        "fxAnchor": "id",
+        "useSelectionGanging": false,
+        "useTrackGrouping": false,
+        "seekBehavior": "Immediate",
+        "useProject": true,
+        "moveView": true,
+        "seekPlay": true,
+        "oscArgIndex": 0,
+        "mouseAction": {
+          "kind": "MoveTo",
+          "axis": "X"
+        },
+        "takeMappingSnapshot": {
+          "kind": "LastLoaded"
+        }
+      }
+    },
+    {
+      "id": "IQ51tRxVmES-H6115vY6S",
+      "name": "812",
+      "groupId": "a0gYPYAW_8NAMXRFI-dMM",
+      "source": {
+        "category": "osc",
+        "isRegistered": false,
+        "is14Bit": false,
+        "oscAddressPattern": "/Track/Slot/7/Name",
+        "oscArgIndex": 0,
+        "oscArgType": "string",
+        "buttonIndex": 0,
+        "buttonDesign": {
+          "background": {
+            "kind": "Color"
+          },
+          "foreground": {
+            "kind": "None"
+          },
+          "static_text": ""
+        }
+      },
+      "mode": {
+        "maxStepSize": 0.05,
+        "minStepFactor": 1,
+        "maxStepFactor": 5,
+        "eelFeedbackTransformation": "{{target.track.name}}",
+        "feedbackType": 1
+      },
+      "target": {
+        "type": 44,
+        "trackExpression": "selected_track_index + 6",
+        "fxAnchor": "id",
+        "useSelectionGanging": false,
+        "useTrackGrouping": false,
+        "seekBehavior": "Immediate",
+        "useProject": true,
+        "moveView": true,
+        "seekPlay": true,
+        "oscArgIndex": 0,
+        "mouseAction": {
+          "kind": "MoveTo",
+          "axis": "X"
+        },
+        "takeMappingSnapshot": {
+          "kind": "LastLoaded"
+        }
+      }
+    },
+    {
+      "id": "JR62uSyWnFT-I7226wZ7T",
+      "name": "812",
+      "groupId": "a0gYPYAW_8NAMXRFI-dMM",
+      "source": {
+        "category": "osc",
+        "isRegistered": false,
+        "is14Bit": false,
+        "oscAddressPattern": "/Track/Slot/8/Name",
+        "oscArgIndex": 0,
+        "oscArgType": "string",
+        "buttonIndex": 0,
+        "buttonDesign": {
+          "background": {
+            "kind": "Color"
+          },
+          "foreground": {
+            "kind": "None"
+          },
+          "static_text": ""
+        }
+      },
+      "mode": {
+        "maxStepSize": 0.05,
+        "minStepFactor": 1,
+        "maxStepFactor": 5,
+        "eelFeedbackTransformation": "{{target.track.name}}",
+        "feedbackType": 1
+      },
+      "target": {
+        "type": 44,
+        "trackExpression": "selected_track_index + 7",
+        "fxAnchor": "id",
+        "useSelectionGanging": false,
+        "useTrackGrouping": false,
+        "seekBehavior": "Immediate",
+        "useProject": true,
+        "moveView": true,
+        "seekPlay": true,
+        "oscArgIndex": 0,
+        "mouseAction": {
+          "kind": "MoveTo",
+          "axis": "X"
+        },
+        "takeMappingSnapshot": {
+          "kind": "LastLoaded"
+        }
+      }
+    },
+    {
+      "id": "KS73vTzXoGU-J8337xa8U",
+      "name": "812",
+      "groupId": "a0gYPYAW_8NAMXRFI-dMM",
+      "source": {
+        "category": "osc",
+        "isRegistered": false,
+        "is14Bit": false,
+        "oscAddressPattern": "/Track/Slot/9/Name",
+        "oscArgIndex": 0,
+        "oscArgType": "string",
+        "buttonIndex": 0,
+        "buttonDesign": {
+          "background": {
+            "kind": "Color"
+          },
+          "foreground": {
+            "kind": "None"
+          },
+          "static_text": ""
+        }
+      },
+      "mode": {
+        "maxStepSize": 0.05,
+        "minStepFactor": 1,
+        "maxStepFactor": 5,
+        "eelFeedbackTransformation": "{{target.track.name}}",
+        "feedbackType": 1
+      },
+      "target": {
+        "type": 44,
+        "trackExpression": "selected_track_index + 8",
+        "fxAnchor": "id",
+        "useSelectionGanging": false,
+        "useTrackGrouping": false,
+        "seekBehavior": "Immediate",
+        "useProject": true,
+        "moveView": true,
+        "seekPlay": true,
+        "oscArgIndex": 0,
+        "mouseAction": {
+          "kind": "MoveTo",
+          "axis": "X"
+        },
+        "takeMappingSnapshot": {
+          "kind": "LastLoaded"
+        }
+      }
+    },
+    {
+      "id": "LT84wU0YpHV-K9448yb9V",
+      "name": "812",
+      "groupId": "a0gYPYAW_8NAMXRFI-dMM",
+      "source": {
+        "category": "osc",
+        "isRegistered": false,
+        "is14Bit": false,
+        "oscAddressPattern": "/Track/Slot/10/Name",
+        "oscArgIndex": 0,
+        "oscArgType": "string",
+        "buttonIndex": 0,
+        "buttonDesign": {
+          "background": {
+            "kind": "Color"
+          },
+          "foreground": {
+            "kind": "None"
+          },
+          "static_text": ""
+        }
+      },
+      "mode": {
+        "maxStepSize": 0.05,
+        "minStepFactor": 1,
+        "maxStepFactor": 5,
+        "eelFeedbackTransformation": "{{target.track.name}}",
+        "feedbackType": 1
+      },
+      "target": {
+        "type": 44,
+        "trackExpression": "selected_track_index + 9",
+        "fxAnchor": "id",
+        "useSelectionGanging": false,
+        "useTrackGrouping": false,
+        "seekBehavior": "Immediate",
+        "useProject": true,
+        "moveView": true,
+        "seekPlay": true,
+        "oscArgIndex": 0,
+        "mouseAction": {
+          "kind": "MoveTo",
+          "axis": "X"
+        },
+        "takeMappingSnapshot": {
+          "kind": "LastLoaded"
+        }
+      }
+    },
+    {
+      "id": "-EYJhuNcHGWweRoL_UMMn",
+      "name": "814",
+      "groupId": "a0gYPYAW_8NAMXRFI-dMM",
+      "source": {
+        "category": "osc",
+        "isRegistered": false,
+        "is14Bit": false,
+        "oscAddressPattern": "/Track/Slot/1/Volume",
+        "oscArgIndex": 0,
+        "buttonIndex": 0,
+        "buttonDesign": {
+          "background": {
+            "kind": "Color"
+          },
+          "foreground": {
+            "kind": "None"
+          },
+          "static_text": ""
+        }
+      },
+      "mode": {
+        "maxStepSize": 0.05,
+        "minStepFactor": 1,
+        "maxStepFactor": 5
+      },
+      "target": {
+        "type": 2,
+        "trackExpression": "selected_track_index",
+        "fxAnchor": "id",
+        "useSelectionGanging": false,
+        "useTrackGrouping": false,
+        "seekBehavior": "Immediate",
+        "useProject": true,
+        "moveView": true,
+        "seekPlay": true,
+        "oscArgIndex": 0,
+        "mouseAction": {
+          "kind": "MoveTo",
+          "axis": "X"
+        },
+        "takeMappingSnapshot": {
+          "kind": "LastLoaded"
+        }
+      }
+    },
+    {
+      "id": "R6OJyb63GAnSQ1z4QJAzx",
+      "name": "814",
+      "groupId": "a0gYPYAW_8NAMXRFI-dMM",
+      "source": {
+        "category": "osc",
+        "isRegistered": false,
+        "is14Bit": false,
+        "oscAddressPattern": "/Track/Slot/2/Volume",
+        "oscArgIndex": 0,
+        "buttonIndex": 0,
+        "buttonDesign": {
+          "background": {
+            "kind": "Color"
+          },
+          "foreground": {
+            "kind": "None"
+          },
+          "static_text": ""
+        }
+      },
+      "mode": {
+        "maxStepSize": 0.05,
+        "minStepFactor": 1,
+        "maxStepFactor": 5
+      },
+      "target": {
+        "type": 2,
+        "trackExpression": "selected_track_index + 1",
+        "fxAnchor": "id",
+        "useSelectionGanging": false,
+        "useTrackGrouping": false,
+        "seekBehavior": "Immediate",
+        "useProject": true,
+        "moveView": true,
+        "seekPlay": true,
+        "oscArgIndex": 0,
+        "mouseAction": {
+          "kind": "MoveTo",
+          "axis": "X"
+        },
+        "takeMappingSnapshot": {
+          "kind": "LastLoaded"
+        }
+      }
+    },
+    {
+      "id": "oYW6_2S4n2RtER43SpDG6",
+      "name": "814",
+      "groupId": "a0gYPYAW_8NAMXRFI-dMM",
+      "source": {
+        "category": "osc",
+        "isRegistered": false,
+        "is14Bit": false,
+        "oscAddressPattern": "/Track/Slot/3/Volume",
+        "oscArgIndex": 0,
+        "buttonIndex": 0,
+        "buttonDesign": {
+          "background": {
+            "kind": "Color"
+          },
+          "foreground": {
+            "kind": "None"
+          },
+          "static_text": ""
+        }
+      },
+      "mode": {
+        "maxStepSize": 0.05,
+        "minStepFactor": 1,
+        "maxStepFactor": 5
+      },
+      "target": {
+        "type": 2,
+        "trackExpression": "selected_track_index + 2",
+        "fxAnchor": "id",
+        "useSelectionGanging": false,
+        "useTrackGrouping": false,
+        "seekBehavior": "Immediate",
+        "useProject": true,
+        "moveView": true,
+        "seekPlay": true,
+        "oscArgIndex": 0,
+        "mouseAction": {
+          "kind": "MoveTo",
+          "axis": "X"
+        },
+        "takeMappingSnapshot": {
+          "kind": "LastLoaded"
+        }
+      }
+    },
+    {
+      "id": "pZX7_3T5o3SuFR54TqEH7",
+      "name": "814",
+      "groupId": "a0gYPYAW_8NAMXRFI-dMM",
+      "source": {
+        "category": "osc",
+        "isRegistered": false,
+        "is14Bit": false,
+        "oscAddressPattern": "/Track/Slot/4/Volume",
+        "oscArgIndex": 0,
+        "buttonIndex": 0,
+        "buttonDesign": {
+          "background": {
+            "kind": "Color"
+          },
+          "foreground": {
+            "kind": "None"
+          },
+          "static_text": ""
+        }
+      },
+      "mode": {
+        "maxStepSize": 0.05,
+        "minStepFactor": 1,
+        "maxStepFactor": 5
+      },
+      "target": {
+        "type": 2,
+        "trackExpression": "selected_track_index + 3",
+        "fxAnchor": "id",
+        "useSelectionGanging": false,
+        "useTrackGrouping": false,
+        "seekBehavior": "Immediate",
+        "useProject": true,
+        "moveView": true,
+        "seekPlay": true,
+        "oscArgIndex": 0,
+        "mouseAction": {
+          "kind": "MoveTo",
+          "axis": "X"
+        },
+        "takeMappingSnapshot": {
+          "kind": "LastLoaded"
+        }
+      }
+    },
+    {
+      "id": "qAY8-4U6p4TvGS65UrFI8",
+      "name": "814",
+      "groupId": "a0gYPYAW_8NAMXRFI-dMM",
+      "source": {
+        "category": "osc",
+        "isRegistered": false,
+        "is14Bit": false,
+        "oscAddressPattern": "/Track/Slot/5/Volume",
+        "oscArgIndex": 0,
+        "buttonIndex": 0,
+        "buttonDesign": {
+          "background": {
+            "kind": "Color"
+          },
+          "foreground": {
+            "kind": "None"
+          },
+          "static_text": ""
+        }
+      },
+      "mode": {
+        "maxStepSize": 0.05,
+        "minStepFactor": 1,
+        "maxStepFactor": 5
+      },
+      "target": {
+        "type": 2,
+        "trackExpression": "selected_track_index + 4",
+        "fxAnchor": "id",
+        "useSelectionGanging": false,
+        "useTrackGrouping": false,
+        "seekBehavior": "Immediate",
+        "useProject": true,
+        "moveView": true,
+        "seekPlay": true,
+        "oscArgIndex": 0,
+        "mouseAction": {
+          "kind": "MoveTo",
+          "axis": "X"
+        },
+        "takeMappingSnapshot": {
+          "kind": "LastLoaded"
+        }
+      }
+    },
+    {
+      "id": "rBZ9_5V7q5UwHT76VsGJ9",
+      "name": "814",
+      "groupId": "a0gYPYAW_8NAMXRFI-dMM",
+      "source": {
+        "category": "osc",
+        "isRegistered": false,
+        "is14Bit": false,
+        "oscAddressPattern": "/Track/Slot/6/Volume",
+        "oscArgIndex": 0,
+        "buttonIndex": 0,
+        "buttonDesign": {
+          "background": {
+            "kind": "Color"
+          },
+          "foreground": {
+            "kind": "None"
+          },
+          "static_text": ""
+        }
+      },
+      "mode": {
+        "maxStepSize": 0.05,
+        "minStepFactor": 1,
+        "maxStepFactor": 5
+      },
+      "target": {
+        "type": 2,
+        "trackExpression": "selected_track_index + 5",
+        "fxAnchor": "id",
+        "useSelectionGanging": false,
+        "useTrackGrouping": false,
+        "seekBehavior": "Immediate",
+        "useProject": true,
+        "moveView": true,
+        "seekPlay": true,
+        "oscArgIndex": 0,
+        "mouseAction": {
+          "kind": "MoveTo",
+          "axis": "X"
+        },
+        "takeMappingSnapshot": {
+          "kind": "LastLoaded"
+        }
+      }
+    },
+    {
+      "id": "sCa0-6W8r6VxIU87WtHK0",
+      "name": "814",
+      "groupId": "a0gYPYAW_8NAMXRFI-dMM",
+      "source": {
+        "category": "osc",
+        "isRegistered": false,
+        "is14Bit": false,
+        "oscAddressPattern": "/Track/Slot/7/Volume",
+        "oscArgIndex": 0,
+        "buttonIndex": 0,
+        "buttonDesign": {
+          "background": {
+            "kind": "Color"
+          },
+          "foreground": {
+            "kind": "None"
+          },
+          "static_text": ""
+        }
+      },
+      "mode": {
+        "maxStepSize": 0.05,
+        "minStepFactor": 1,
+        "maxStepFactor": 5
+      },
+      "target": {
+        "type": 2,
+        "trackExpression": "selected_track_index + 6",
+        "fxAnchor": "id",
+        "useSelectionGanging": false,
+        "useTrackGrouping": false,
+        "seekBehavior": "Immediate",
+        "useProject": true,
+        "moveView": true,
+        "seekPlay": true,
+        "oscArgIndex": 0,
+        "mouseAction": {
+          "kind": "MoveTo",
+          "axis": "X"
+        },
+        "takeMappingSnapshot": {
+          "kind": "LastLoaded"
+        }
+      }
+    },
+    {
+      "id": "tDb1_7X9s7WyJV98XuIL1",
+      "name": "814",
+      "groupId": "a0gYPYAW_8NAMXRFI-dMM",
+      "source": {
+        "category": "osc",
+        "isRegistered": false,
+        "is14Bit": false,
+        "oscAddressPattern": "/Track/Slot/8/Volume",
+        "oscArgIndex": 0,
+        "buttonIndex": 0,
+        "buttonDesign": {
+          "background": {
+            "kind": "Color"
+          },
+          "foreground": {
+            "kind": "None"
+          },
+          "static_text": ""
+        }
+      },
+      "mode": {
+        "maxStepSize": 0.05,
+        "minStepFactor": 1,
+        "maxStepFactor": 5
+      },
+      "target": {
+        "type": 2,
+        "trackExpression": "selected_track_index + 7",
+        "fxAnchor": "id",
+        "useSelectionGanging": false,
+        "useTrackGrouping": false,
+        "seekBehavior": "Immediate",
+        "useProject": true,
+        "moveView": true,
+        "seekPlay": true,
+        "oscArgIndex": 0,
+        "mouseAction": {
+          "kind": "MoveTo",
+          "axis": "X"
+        },
+        "takeMappingSnapshot": {
+          "kind": "LastLoaded"
+        }
+      }
+    },
+    {
+      "id": "uEc2-8Y0t8XzKW09YvJM2",
+      "name": "814",
+      "groupId": "a0gYPYAW_8NAMXRFI-dMM",
+      "source": {
+        "category": "osc",
+        "isRegistered": false,
+        "is14Bit": false,
+        "oscAddressPattern": "/Track/Slot/9/Volume",
+        "oscArgIndex": 0,
+        "buttonIndex": 0,
+        "buttonDesign": {
+          "background": {
+            "kind": "Color"
+          },
+          "foreground": {
+            "kind": "None"
+          },
+          "static_text": ""
+        }
+      },
+      "mode": {
+        "maxStepSize": 0.05,
+        "minStepFactor": 1,
+        "maxStepFactor": 5
+      },
+      "target": {
+        "type": 2,
+        "trackExpression": "selected_track_index + 8",
+        "fxAnchor": "id",
+        "useSelectionGanging": false,
+        "useTrackGrouping": false,
+        "seekBehavior": "Immediate",
+        "useProject": true,
+        "moveView": true,
+        "seekPlay": true,
+        "oscArgIndex": 0,
+        "mouseAction": {
+          "kind": "MoveTo",
+          "axis": "X"
+        },
+        "takeMappingSnapshot": {
+          "kind": "LastLoaded"
+        }
+      }
+    },
+    {
+      "id": "vFd3_9Z1u9Y0LX10ZwKN3",
+      "name": "814",
+      "groupId": "a0gYPYAW_8NAMXRFI-dMM",
+      "source": {
+        "category": "osc",
+        "isRegistered": false,
+        "is14Bit": false,
+        "oscAddressPattern": "/Track/Slot/10/Volume",
+        "oscArgIndex": 0,
+        "buttonIndex": 0,
+        "buttonDesign": {
+          "background": {
+            "kind": "Color"
+          },
+          "foreground": {
+            "kind": "None"
+          },
+          "static_text": ""
+        }
+      },
+      "mode": {
+        "maxStepSize": 0.05,
+        "minStepFactor": 1,
+        "maxStepFactor": 5
+      },
+      "target": {
+        "type": 2,
+        "trackExpression": "selected_track_index + 9",
+        "fxAnchor": "id",
+        "useSelectionGanging": false,
+        "useTrackGrouping": false,
+        "seekBehavior": "Immediate",
+        "useProject": true,
+        "moveView": true,
+        "seekPlay": true,
+        "oscArgIndex": 0,
+        "mouseAction": {
+          "kind": "MoveTo",
+          "axis": "X"
+        },
+        "takeMappingSnapshot": {
+          "kind": "LastLoaded"
+        }
+      }
+    },
+    {
+      "id": "SIyNigh_KsnS4YxQSDIVM",
+      "name": "814",
+      "groupId": "a0gYPYAW_8NAMXRFI-dMM",
+      "source": {
+        "category": "osc",
+        "isRegistered": false,
+        "is14Bit": false,
+        "oscAddressPattern": "/Track/Slot/1/Solo",
+        "oscArgIndex": 0,
+        "oscArgType": "bool",
+        "buttonIndex": 0,
+        "buttonDesign": {
+          "background": {
+            "kind": "Color"
+          },
+          "foreground": {
+            "kind": "None"
+          },
+          "static_text": ""
+        }
+      },
+      "mode": {
+        "maxStepSize": 0.05,
+        "minStepFactor": 1,
+        "maxStepFactor": 5
+      },
+      "target": {
+        "type": 8,
+        "trackExpression": "selected_track_index",
+        "fxAnchor": "id",
+        "useSelectionGanging": false,
+        "useTrackGrouping": false,
+        "seekBehavior": "Immediate",
+        "useProject": true,
+        "moveView": true,
+        "seekPlay": true,
+        "oscArgIndex": 0,
+        "mouseAction": {
+          "kind": "MoveTo",
+          "axis": "X"
+        },
+        "takeMappingSnapshot": {
+          "kind": "LastLoaded"
+        }
+      }
+    },
+    {
+      "id": "TJzOjhi_LtoT5ZyRTEJWN",
+      "name": "814",
+      "groupId": "a0gYPYAW_8NAMXRFI-dMM",
+      "source": {
+        "category": "osc",
+        "isRegistered": false,
+        "is14Bit": false,
+        "oscAddressPattern": "/Track/Slot/2/Solo",
+        "oscArgIndex": 0,
+        "oscArgType": "bool",
+        "buttonIndex": 0,
+        "buttonDesign": {
+          "background": {
+            "kind": "Color"
+          },
+          "foreground": {
+            "kind": "None"
+          },
+          "static_text": ""
+        }
+      },
+      "mode": {
+        "maxStepSize": 0.05,
+        "minStepFactor": 1,
+        "maxStepFactor": 5
+      },
+      "target": {
+        "type": 8,
+        "trackExpression": "selected_track_index + 1",
+        "fxAnchor": "id",
+        "useSelectionGanging": false,
+        "useTrackGrouping": false,
+        "seekBehavior": "Immediate",
+        "useProject": true,
+        "moveView": true,
+        "seekPlay": true,
+        "oscArgIndex": 0,
+        "mouseAction": {
+          "kind": "MoveTo",
+          "axis": "X"
+        },
+        "takeMappingSnapshot": {
+          "kind": "LastLoaded"
+        }
+      }
+    },
+    {
+      "id": "UK0pki_MNupU6azSUFKWO",
+      "name": "814",
+      "groupId": "a0gYPYAW_8NAMXRFI-dMM",
+      "source": {
+        "category": "osc",
+        "isRegistered": false,
+        "is14Bit": false,
+        "oscAddressPattern": "/Track/Slot/3/Solo",
+        "oscArgIndex": 0,
+        "oscArgType": "bool",
+        "buttonIndex": 0,
+        "buttonDesign": {
+          "background": {
+            "kind": "Color"
+          },
+          "foreground": {
+            "kind": "None"
+          },
+          "static_text": ""
+        }
+      },
+      "mode": {
+        "maxStepSize": 0.05,
+        "minStepFactor": 1,
+        "maxStepFactor": 5
+      },
+      "target": {
+        "type": 8,
+        "trackExpression": "selected_track_index + 2",
+        "fxAnchor": "id",
+        "useSelectionGanging": false,
+        "useTrackGrouping": false,
+        "seekBehavior": "Immediate",
+        "useProject": true,
+        "moveView": true,
+        "seekPlay": true,
+        "oscArgIndex": 0,
+        "mouseAction": {
+          "kind": "MoveTo",
+          "axis": "X"
+        },
+        "takeMappingSnapshot": {
+          "kind": "LastLoaded"
+        }
+      }
+    },
+    {
+      "id": "VL1qlj_NOvqV7bzTVGLXP",
+      "name": "814",
+      "groupId": "a0gYPYAW_8NAMXRFI-dMM",
+      "source": {
+        "category": "osc",
+        "isRegistered": false,
+        "is14Bit": false,
+        "oscAddressPattern": "/Track/Slot/4/Solo",
+        "oscArgIndex": 0,
+        "oscArgType": "bool",
+        "buttonIndex": 0,
+        "buttonDesign": {
+          "background": {
+            "kind": "Color"
+          },
+          "foreground": {
+            "kind": "None"
+          },
+          "static_text": ""
+        }
+      },
+      "mode": {
+        "maxStepSize": 0.05,
+        "minStepFactor": 1,
+        "maxStepFactor": 5
+      },
+      "target": {
+        "type": 8,
+        "trackExpression": "selected_track_index + 3",
+        "fxAnchor": "id",
+        "useSelectionGanging": false,
+        "useTrackGrouping": false,
+        "seekBehavior": "Immediate",
+        "useProject": true,
+        "moveView": true,
+        "seekPlay": true,
+        "oscArgIndex": 0,
+        "mouseAction": {
+          "kind": "MoveTo",
+          "axis": "X"
+        },
+        "takeMappingSnapshot": {
+          "kind": "LastLoaded"
+        }
+      }
+    },
+    {
+      "id": "WM2rmk_OPwrW8czUWHMYQ",
+      "name": "814",
+      "groupId": "a0gYPYAW_8NAMXRFI-dMM",
+      "source": {
+        "category": "osc",
+        "isRegistered": false,
+        "is14Bit": false,
+        "oscAddressPattern": "/Track/Slot/5/Solo",
+        "oscArgIndex": 0,
+        "oscArgType": "bool",
+        "buttonIndex": 0,
+        "buttonDesign": {
+          "background": {
+            "kind": "Color"
+          },
+          "foreground": {
+            "kind": "None"
+          },
+          "static_text": ""
+        }
+      },
+      "mode": {
+        "maxStepSize": 0.05,
+        "minStepFactor": 1,
+        "maxStepFactor": 5
+      },
+      "target": {
+        "type": 8,
+        "trackExpression": "selected_track_index + 4",
+        "fxAnchor": "id",
+        "useSelectionGanging": false,
+        "useTrackGrouping": false,
+        "seekBehavior": "Immediate",
+        "useProject": true,
+        "moveView": true,
+        "seekPlay": true,
+        "oscArgIndex": 0,
+        "mouseAction": {
+          "kind": "MoveTo",
+          "axis": "X"
+        },
+        "takeMappingSnapshot": {
+          "kind": "LastLoaded"
+        }
+      }
+    },
+    {
+      "id": "XN3snl_PQxtX9d0VXINZR",
+      "name": "814",
+      "groupId": "a0gYPYAW_8NAMXRFI-dMM",
+      "source": {
+        "category": "osc",
+        "isRegistered": false,
+        "is14Bit": false,
+        "oscAddressPattern": "/Track/Slot/6/Solo",
+        "oscArgIndex": 0,
+        "oscArgType": "bool",
+        "buttonIndex": 0,
+        "buttonDesign": {
+          "background": {
+            "kind": "Color"
+          },
+          "foreground": {
+            "kind": "None"
+          },
+          "static_text": ""
+        }
+      },
+      "mode": {
+        "maxStepSize": 0.05,
+        "minStepFactor": 1,
+        "maxStepFactor": 5
+      },
+      "target": {
+        "type": 8,
+        "trackExpression": "selected_track_index + 5",
+        "fxAnchor": "id",
+        "useSelectionGanging": false,
+        "useTrackGrouping": false,
+        "seekBehavior": "Immediate",
+        "useProject": true,
+        "moveView": true,
+        "seekPlay": true,
+        "oscArgIndex": 0,
+        "mouseAction": {
+          "kind": "MoveTo",
+          "axis": "X"
+        },
+        "takeMappingSnapshot": {
+          "kind": "LastLoaded"
+        }
+      }
+    },
+    {
+      "id": "YO4tom_QRYyY-e1WYJO0S",
+      "name": "814",
+      "groupId": "a0gYPYAW_8NAMXRFI-dMM",
+      "source": {
+        "category": "osc",
+        "isRegistered": false,
+        "is14Bit": false,
+        "oscAddressPattern": "/Track/Slot/7/Solo",
+        "oscArgIndex": 0,
+        "oscArgType": "bool",
+        "buttonIndex": 0,
+        "buttonDesign": {
+          "background": {
+            "kind": "Color"
+          },
+          "foreground": {
+            "kind": "None"
+          },
+          "static_text": ""
+        }
+      },
+      "mode": {
+        "maxStepSize": 0.05,
+        "minStepFactor": 1,
+        "maxStepFactor": 5
+      },
+      "target": {
+        "type": 8,
+        "trackExpression": "selected_track_index + 6",
+        "fxAnchor": "id",
+        "useSelectionGanging": false,
+        "useTrackGrouping": false,
+        "seekBehavior": "Immediate",
+        "useProject": true,
+        "moveView": true,
+        "seekPlay": true,
+        "oscArgIndex": 0,
+        "mouseAction": {
+          "kind": "MoveTo",
+          "axis": "X"
+        },
+        "takeMappingSnapshot": {
+          "kind": "LastLoaded"
+        }
+      }
+    },
+    {
+      "id": "ZP5upn_SSZzZ_f2XZKP1T",
+      "name": "814",
+      "groupId": "a0gYPYAW_8NAMXRFI-dMM",
+      "source": {
+        "category": "osc",
+        "isRegistered": false,
+        "is14Bit": false,
+        "oscAddressPattern": "/Track/Slot/8/Solo",
+        "oscArgIndex": 0,
+        "oscArgType": "bool",
+        "buttonIndex": 0,
+        "buttonDesign": {
+          "background": {
+            "kind": "Color"
+          },
+          "foreground": {
+            "kind": "None"
+          },
+          "static_text": ""
+        }
+      },
+      "mode": {
+        "maxStepSize": 0.05,
+        "minStepFactor": 1,
+        "maxStepFactor": 5
+      },
+      "target": {
+        "type": 8,
+        "trackExpression": "selected_track_index + 7",
+        "fxAnchor": "id",
+        "useSelectionGanging": false,
+        "useTrackGrouping": false,
+        "seekBehavior": "Immediate",
+        "useProject": true,
+        "moveView": true,
+        "seekPlay": true,
+        "oscArgIndex": 0,
+        "mouseAction": {
+          "kind": "MoveTo",
+          "axis": "X"
+        },
+        "takeMappingSnapshot": {
+          "kind": "LastLoaded"
+        }
+      }
+    },
+    {
+      "id": "aQ6vq_0Ta00a0g3YaLQ2U",
+      "name": "814",
+      "groupId": "a0gYPYAW_8NAMXRFI-dMM",
+      "source": {
+        "category": "osc",
+        "isRegistered": false,
+        "is14Bit": false,
+        "oscAddressPattern": "/Track/Slot/9/Solo",
+        "oscArgIndex": 0,
+        "oscArgType": "bool",
+        "buttonIndex": 0,
+        "buttonDesign": {
+          "background": {
+            "kind": "Color"
+          },
+          "foreground": {
+            "kind": "None"
+          },
+          "static_text": ""
+        }
+      },
+      "mode": {
+        "maxStepSize": 0.05,
+        "minStepFactor": 1,
+        "maxStepFactor": 5
+      },
+      "target": {
+        "type": 8,
+        "trackExpression": "selected_track_index + 8",
+        "fxAnchor": "id",
+        "useSelectionGanging": false,
+        "useTrackGrouping": false,
+        "seekBehavior": "Immediate",
+        "useProject": true,
+        "moveView": true,
+        "seekPlay": true,
+        "oscArgIndex": 0,
+        "mouseAction": {
+          "kind": "MoveTo",
+          "axis": "X"
+        },
+        "takeMappingSnapshot": {
+          "kind": "LastLoaded"
+        }
+      }
+    },
+    {
+      "id": "bR7wr_1Ub11b1h4ZbMR3V",
+      "name": "814",
+      "groupId": "a0gYPYAW_8NAMXRFI-dMM",
+      "source": {
+        "category": "osc",
+        "isRegistered": false,
+        "is14Bit": false,
+        "oscAddressPattern": "/Track/Slot/10/Solo",
+        "oscArgIndex": 0,
+        "oscArgType": "bool",
+        "buttonIndex": 0,
+        "buttonDesign": {
+          "background": {
+            "kind": "Color"
+          },
+          "foreground": {
+            "kind": "None"
+          },
+          "static_text": ""
+        }
+      },
+      "mode": {
+        "maxStepSize": 0.05,
+        "minStepFactor": 1,
+        "maxStepFactor": 5
+      },
+      "target": {
+        "type": 8,
+        "trackExpression": "selected_track_index + 9",
+        "fxAnchor": "id",
+        "useSelectionGanging": false,
+        "useTrackGrouping": false,
+        "seekBehavior": "Immediate",
+        "useProject": true,
+        "moveView": true,
+        "seekPlay": true,
+        "oscArgIndex": 0,
+        "mouseAction": {
+          "kind": "MoveTo",
+          "axis": "X"
+        },
+        "takeMappingSnapshot": {
+          "kind": "LastLoaded"
+        }
+      }
+    },
+    {
+      "id": "IjlSlC9pi-B83pPoAIFbU",
+      "name": "814",
+      "groupId": "a0gYPYAW_8NAMXRFI-dMM",
+      "source": {
+        "category": "osc",
+        "isRegistered": false,
+        "is14Bit": false,
+        "oscAddressPattern": "/Track/Slot/1/Mute",
+        "oscArgIndex": 0,
+        "oscArgType": "bool",
+        "buttonIndex": 0,
+        "buttonDesign": {
+          "background": {
+            "kind": "Color"
+          },
+          "foreground": {
+            "kind": "None"
+          },
+          "static_text": ""
+        }
+      },
+      "mode": {
+        "maxStepSize": 0.05,
+        "minStepFactor": 1,
+        "maxStepFactor": 5
+      },
+      "target": {
+        "type": 7,
+        "trackExpression": "selected_track_index",
+        "fxAnchor": "id",
+        "useSelectionGanging": false,
+        "useTrackGrouping": false,
+        "seekBehavior": "Immediate",
+        "useProject": true,
+        "moveView": true,
+        "seekPlay": true,
+        "oscArgIndex": 0,
+        "mouseAction": {
+          "kind": "MoveTo",
+          "axis": "X"
+        },
+        "takeMappingSnapshot": {
+          "kind": "LastLoaded"
+        }
+      }
+    },
+    {
+      "id": "JkmTmDAqj_C94qQpBJGcV",
+      "name": "814",
+      "groupId": "a0gYPYAW_8NAMXRFI-dMM",
+      "source": {
+        "category": "osc",
+        "isRegistered": false,
+        "is14Bit": false,
+        "oscAddressPattern": "/Track/Slot/2/Mute",
+        "oscArgIndex": 0,
+        "oscArgType": "bool",
+        "buttonIndex": 0,
+        "buttonDesign": {
+          "background": {
+            "kind": "Color"
+          },
+          "foreground": {
+            "kind": "None"
+          },
+          "static_text": ""
+        }
+      },
+      "mode": {
+        "maxStepSize": 0.05,
+        "minStepFactor": 1,
+        "maxStepFactor": 5
+      },
+      "target": {
+        "type": 7,
+        "trackExpression": "selected_track_index + 1",
+        "fxAnchor": "id",
+        "useSelectionGanging": false,
+        "useTrackGrouping": false,
+        "seekBehavior": "Immediate",
+        "useProject": true,
+        "moveView": true,
+        "seekPlay": true,
+        "oscArgIndex": 0,
+        "mouseAction": {
+          "kind": "MoveTo",
+          "axis": "X"
+        },
+        "takeMappingSnapshot": {
+          "kind": "LastLoaded"
+        }
+      }
+    },
+    {
+      "id": "KlnUnEBrk-D05rRqCKHdW",
+      "name": "814",
+      "groupId": "a0gYPYAW_8NAMXRFI-dMM",
+      "source": {
+        "category": "osc",
+        "isRegistered": false,
+        "is14Bit": false,
+        "oscAddressPattern": "/Track/Slot/3/Mute",
+        "oscArgIndex": 0,
+        "oscArgType": "bool",
+        "buttonIndex": 0,
+        "buttonDesign": {
+          "background": {
+            "kind": "Color"
+          },
+          "foreground": {
+            "kind": "None"
+          },
+          "static_text": ""
+        }
+      },
+      "mode": {
+        "maxStepSize": 0.05,
+        "minStepFactor": 1,
+        "maxStepFactor": 5
+      },
+      "target": {
+        "type": 7,
+        "trackExpression": "selected_track_index + 2",
+        "fxAnchor": "id",
+        "useSelectionGanging": false,
+        "useTrackGrouping": false,
+        "seekBehavior": "Immediate",
+        "useProject": true,
+        "moveView": true,
+        "seekPlay": true,
+        "oscArgIndex": 0,
+        "mouseAction": {
+          "kind": "MoveTo",
+          "axis": "X"
+        },
+        "takeMappingSnapshot": {
+          "kind": "LastLoaded"
+        }
+      }
+    },
+    {
+      "id": "LmoVoFCsl_E16sSrDLIeX",
+      "name": "814",
+      "groupId": "a0gYPYAW_8NAMXRFI-dMM",
+      "source": {
+        "category": "osc",
+        "isRegistered": false,
+        "is14Bit": false,
+        "oscAddressPattern": "/Track/Slot/4/Mute",
+        "oscArgIndex": 0,
+        "oscArgType": "bool",
+        "buttonIndex": 0,
+        "buttonDesign": {
+          "background": {
+            "kind": "Color"
+          },
+          "foreground": {
+            "kind": "None"
+          },
+          "static_text": ""
+        }
+      },
+      "mode": {
+        "maxStepSize": 0.05,
+        "minStepFactor": 1,
+        "maxStepFactor": 5
+      },
+      "target": {
+        "type": 7,
+        "trackExpression": "selected_track_index + 3",
+        "fxAnchor": "id",
+        "useSelectionGanging": false,
+        "useTrackGrouping": false,
+        "seekBehavior": "Immediate",
+        "useProject": true,
+        "moveView": true,
+        "seekPlay": true,
+        "oscArgIndex": 0,
+        "mouseAction": {
+          "kind": "MoveTo",
+          "axis": "X"
+        },
+        "takeMappingSnapshot": {
+          "kind": "LastLoaded"
+        }
+      }
+    },
+    {
+      "id": "MnpWpGDtm-F27tTsEMJfY",
+      "name": "814",
+      "groupId": "a0gYPYAW_8NAMXRFI-dMM",
+      "source": {
+        "category": "osc",
+        "isRegistered": false,
+        "is14Bit": false,
+        "oscAddressPattern": "/Track/Slot/5/Mute",
+        "oscArgIndex": 0,
+        "oscArgType": "bool",
+        "buttonIndex": 0,
+        "buttonDesign": {
+          "background": {
+            "kind": "Color"
+          },
+          "foreground": {
+            "kind": "None"
+          },
+          "static_text": ""
+        }
+      },
+      "mode": {
+        "maxStepSize": 0.05,
+        "minStepFactor": 1,
+        "maxStepFactor": 5
+      },
+      "target": {
+        "type": 7,
+        "trackExpression": "selected_track_index + 4",
+        "fxAnchor": "id",
+        "useSelectionGanging": false,
+        "useTrackGrouping": false,
+        "seekBehavior": "Immediate",
+        "useProject": true,
+        "moveView": true,
+        "seekPlay": true,
+        "oscArgIndex": 0,
+        "mouseAction": {
+          "kind": "MoveTo",
+          "axis": "X"
+        },
+        "takeMappingSnapshot": {
+          "kind": "LastLoaded"
+        }
+      }
+    },
+    {
+      "id": "NoqXqHEun_G38uUtFNKgZ",
+      "name": "814",
+      "groupId": "a0gYPYAW_8NAMXRFI-dMM",
+      "source": {
+        "category": "osc",
+        "isRegistered": false,
+        "is14Bit": false,
+        "oscAddressPattern": "/Track/Slot/6/Mute",
+        "oscArgIndex": 0,
+        "oscArgType": "bool",
+        "buttonIndex": 0,
+        "buttonDesign": {
+          "background": {
+            "kind": "Color"
+          },
+          "foreground": {
+            "kind": "None"
+          },
+          "static_text": ""
+        }
+      },
+      "mode": {
+        "maxStepSize": 0.05,
+        "minStepFactor": 1,
+        "maxStepFactor": 5
+      },
+      "target": {
+        "type": 7,
+        "trackExpression": "selected_track_index + 5",
+        "fxAnchor": "id",
+        "useSelectionGanging": false,
+        "useTrackGrouping": false,
+        "seekBehavior": "Immediate",
+        "useProject": true,
+        "moveView": true,
+        "seekPlay": true,
+        "oscArgIndex": 0,
+        "mouseAction": {
+          "kind": "MoveTo",
+          "axis": "X"
+        },
+        "takeMappingSnapshot": {
+          "kind": "LastLoaded"
+        }
+      }
+    },
+    {
+      "id": "OprYrIFvo-H49vVuGOLha",
+      "name": "814",
+      "groupId": "a0gYPYAW_8NAMXRFI-dMM",
+      "source": {
+        "category": "osc",
+        "isRegistered": false,
+        "is14Bit": false,
+        "oscAddressPattern": "/Track/Slot/7/Mute",
+        "oscArgIndex": 0,
+        "oscArgType": "bool",
+        "buttonIndex": 0,
+        "buttonDesign": {
+          "background": {
+            "kind": "Color"
+          },
+          "foreground": {
+            "kind": "None"
+          },
+          "static_text": ""
+        }
+      },
+      "mode": {
+        "maxStepSize": 0.05,
+        "minStepFactor": 1,
+        "maxStepFactor": 5
+      },
+      "target": {
+        "type": 7,
+        "trackExpression": "selected_track_index + 6",
+        "fxAnchor": "id",
+        "useSelectionGanging": false,
+        "useTrackGrouping": false,
+        "seekBehavior": "Immediate",
+        "useProject": true,
+        "moveView": true,
+        "seekPlay": true,
+        "oscArgIndex": 0,
+        "mouseAction": {
+          "kind": "MoveTo",
+          "axis": "X"
+        },
+        "takeMappingSnapshot": {
+          "kind": "LastLoaded"
+        }
+      }
+    },
+    {
+      "id": "PqsZsJGwp_I50wWvHPMib",
+      "name": "814",
+      "groupId": "a0gYPYAW_8NAMXRFI-dMM",
+      "source": {
+        "category": "osc",
+        "isRegistered": false,
+        "is14Bit": false,
+        "oscAddressPattern": "/Track/Slot/8/Mute",
+        "oscArgIndex": 0,
+        "oscArgType": "bool",
+        "buttonIndex": 0,
+        "buttonDesign": {
+          "background": {
+            "kind": "Color"
+          },
+          "foreground": {
+            "kind": "None"
+          },
+          "static_text": ""
+        }
+      },
+      "mode": {
+        "maxStepSize": 0.05,
+        "minStepFactor": 1,
+        "maxStepFactor": 5
+      },
+      "target": {
+        "type": 7,
+        "trackExpression": "selected_track_index + 7",
+        "fxAnchor": "id",
+        "useSelectionGanging": false,
+        "useTrackGrouping": false,
+        "seekBehavior": "Immediate",
+        "useProject": true,
+        "moveView": true,
+        "seekPlay": true,
+        "oscArgIndex": 0,
+        "mouseAction": {
+          "kind": "MoveTo",
+          "axis": "X"
+        },
+        "takeMappingSnapshot": {
+          "kind": "LastLoaded"
+        }
+      }
+    },
+    {
+      "id": "Qrt0tKHxq-J61xXwIQNjc",
+      "name": "814",
+      "groupId": "a0gYPYAW_8NAMXRFI-dMM",
+      "source": {
+        "category": "osc",
+        "isRegistered": false,
+        "is14Bit": false,
+        "oscAddressPattern": "/Track/Slot/9/Mute",
+        "oscArgIndex": 0,
+        "oscArgType": "bool",
+        "buttonIndex": 0,
+        "buttonDesign": {
+          "background": {
+            "kind": "Color"
+          },
+          "foreground": {
+            "kind": "None"
+          },
+          "static_text": ""
+        }
+      },
+      "mode": {
+        "maxStepSize": 0.05,
+        "minStepFactor": 1,
+        "maxStepFactor": 5
+      },
+      "target": {
+        "type": 7,
+        "trackExpression": "selected_track_index + 8",
+        "fxAnchor": "id",
+        "useSelectionGanging": false,
+        "useTrackGrouping": false,
+        "seekBehavior": "Immediate",
+        "useProject": true,
+        "moveView": true,
+        "seekPlay": true,
+        "oscArgIndex": 0,
+        "mouseAction": {
+          "kind": "MoveTo",
+          "axis": "X"
+        },
+        "takeMappingSnapshot": {
+          "kind": "LastLoaded"
+        }
+      }
+    },
+    {
+      "id": "Rsu1uLIyr_K72yYxJROkd",
+      "name": "814",
+      "groupId": "a0gYPYAW_8NAMXRFI-dMM",
+      "source": {
+        "category": "osc",
+        "isRegistered": false,
+        "is14Bit": false,
+        "oscAddressPattern": "/Track/Slot/10/Mute",
+        "oscArgIndex": 0,
+        "oscArgType": "bool",
+        "buttonIndex": 0,
+        "buttonDesign": {
+          "background": {
+            "kind": "Color"
+          },
+          "foreground": {
+            "kind": "None"
+          },
+          "static_text": ""
+        }
+      },
+      "mode": {
+        "maxStepSize": 0.05,
+        "minStepFactor": 1,
+        "maxStepFactor": 5
+      },
+      "target": {
+        "type": 7,
+        "trackExpression": "selected_track_index + 9",
         "fxAnchor": "id",
         "useSelectionGanging": false,
         "useTrackGrouping": false,
