@@ -573,7 +573,7 @@ namespace Loupedeck.ReaOSCPlugin
             {
                 eventArgs.StringValue = value?.ToString(); 
                 eventArgs.Value = Single.NaN;
-                eventArgs.IsString = (value is String); // Check again, though should be covered
+                eventArgs.IsString = value is String; // Check again, though should be covered
             }
             this.StateChanged?.Invoke(this, eventArgs);
         }

@@ -1481,109 +1481,62 @@ namespace Loupedeck.ReaOSCPlugin.Base
         {
             if (!dialConfig.HasUnitConversion) { return parameterValue; }
 
-            Single p_clamped = Math.Clamp(parameterValue, dialConfig.MinValue, dialConfig.MaxValue);
+            Single p_clamped = Math.Clamp(parameterValue, dialConfig.MinValue, dialConfig.MaxValue); // p_clamped is the input 'p' (0-1)
 
             if (dialConfig.DisplayUnitString.Equals("dB", StringComparison.OrdinalIgnoreCase))
             {
-                const Single epsilon = 0.00001f; // 比较浮点数的容差
+                // 【新公式替换开始】
+                const float K_FADER_CONST = 1.991f;
+                float p = p_clamped; // p is the input parameter (0-1)
 
-                // 精确匹配校准点（优先处理）
-                if (p_clamped <= dialConfig.MinValue + epsilon) { return Single.NegativeInfinity; }
-                if (Math.Abs(p_clamped - 0.005f) < epsilon) { return -132.0f; }
-                if (Math.Abs(p_clamped - 0.01f)  < epsilon) { return -114.0f; }
-                if (Math.Abs(p_clamped - 0.05f)  < epsilon) { return -72.0f; }
-                if (Math.Abs(p_clamped - 0.1f)   < epsilon) { return -54.0f; }
-                if (Math.Abs(p_clamped - 0.25f)  < epsilon) { return -30.0f; }
-                if (Math.Abs(p_clamped - 0.5f)   < epsilon) { return -11.0f; }
-                if (Math.Abs(p_clamped - P_AT_0DB) < epsilon) { return 0.0f; }   // 0.716f
-                if (Math.Abs(p_clamped - 0.8f)   < epsilon) { return 3.76f; }
-                if (Math.Abs(p_clamped - 0.85f)  < epsilon) { return 5.90f; }
-                if (Math.Abs(p_clamped - 0.9f)   < epsilon) { return 7.99f; }
-                if (Math.Abs(p_clamped - 0.95f)  < epsilon) { return 10.00f; }
-                if (Math.Abs(p_clamped - 0.98f)  < epsilon) { return 11.20f; }
-                if (p_clamped >= dialConfig.MaxValue - epsilon) { return dialConfig.UnitMax; } // 通常是 +12dB @ p=1.0f
-
-                // 分段线性插值
-                if (p_clamped > dialConfig.MinValue && p_clamped < 0.005f) { Single p = (p_clamped - dialConfig.MinValue) / (0.005f - dialConfig.MinValue); return EFFECTIVE_MIN_DB_FOR_0_TO_0005_INTERPOLATION + p * (-132.0f - EFFECTIVE_MIN_DB_FOR_0_TO_0005_INTERPOLATION); }
-                if (p_clamped > 0.005f && p_clamped < 0.01f)  { Single p = (p_clamped - 0.005f) / (0.01f - 0.005f); return -132.0f + p * (-114.0f - (-132.0f)); }
-                if (p_clamped > 0.01f  && p_clamped < 0.05f)  { Single p = (p_clamped - 0.01f) / (0.05f - 0.01f); return -114.0f + p * (-72.0f - (-114.0f)); }
-                if (p_clamped > 0.05f  && p_clamped < 0.1f)   { Single p = (p_clamped - 0.05f) / (0.1f - 0.05f); return -72.0f + p * (-54.0f - (-72.0f)); }
-                if (p_clamped > 0.1f   && p_clamped < 0.25f)  { Single p = (p_clamped - 0.1f) / (0.25f - 0.1f); return -54.0f + p * (-30.0f - (-54.0f)); }
-                if (p_clamped > 0.25f  && p_clamped < 0.5f)   { Single p = (p_clamped - 0.25f) / (0.5f - 0.25f); return -30.0f + p * (-11.0f - (-30.0f)); }
-                if (p_clamped > 0.5f   && p_clamped < P_AT_0DB) { Single p = (p_clamped - 0.5f) / (P_AT_0DB - 0.5f); return -11.0f + p * (0.0f - (-11.0f)); }
-                if (p_clamped > P_AT_0DB && p_clamped < 0.8f)   { Single p = (p_clamped - P_AT_0DB) / (0.8f - P_AT_0DB); return 0.0f + p * (3.76f - 0.0f); }
-                if (p_clamped > 0.8f   && p_clamped < 0.85f)  { Single p = (p_clamped - 0.8f) / (0.85f - 0.8f); return 3.76f + p * (5.90f - 3.76f); }
-                if (p_clamped > 0.85f  && p_clamped < 0.9f)   { Single p = (p_clamped - 0.85f) / (0.9f - 0.85f); return 5.90f + p * (7.99f - 5.90f); }
-                if (p_clamped > 0.9f   && p_clamped < 0.95f)  { Single p = (p_clamped - 0.9f) / (0.95f - 0.9f); return 7.99f + p * (10.00f - 7.99f); }
-                if (p_clamped > 0.95f  && p_clamped < 0.98f)  { Single p = (p_clamped - 0.95f) / (0.98f - 0.95f); return 10.00f + p * (11.20f - 10.00f); }
-                if (p_clamped > 0.98f  && p_clamped < dialConfig.MaxValue) { Single p = (p_clamped - 0.98f) / (dialConfig.MaxValue - 0.98f); return 11.20f + p * (dialConfig.UnitMax - 11.20f); }
-
-                PluginLog.Warning($"[ConvertParameterToUnit][dB] Parameter {p_clamped:F5} did not fit any interpolation segment. Returning closest boundary.");
-                // Fallback clamping to nearest known point if somehow not caught by exact matches or segments
-                if (p_clamped < 0.005f)
+                // 1. 处理边界情况 p = 0 和 p = 1
+                // 这些边界应精确匹配 dialConfig 中定义的 UnitMin 和 UnitMax
+                if (p <= 1e-7f) // 对于非常接近0的p值
                 {
-                    return -132.0f;
+                    return dialConfig.UnitMin; // 通常是 Single.NegativeInfinity
+                }
+                if (Math.Abs(p - 1.0f) < 1e-7f) // 对于非常接近1的p值
+                {
+                    return dialConfig.UnitMax; // 例如 +12dB
                 }
 
-                if (p_clamped < 0.01f)
+                // 2. 应用核心公式
+                float p3 = p * p * p;
+                float p6 = p3 * p3;
+
+                float sum_p3_p6 = p3 + p6;
+                if (sum_p3_p6 <= 1e-30f) // 如果 p3+p6 的和非常非常小
                 {
-                    return -114.0f;
+                    return dialConfig.UnitMin; // 对应的dB值趋近负无穷
                 }
 
-                if (p_clamped < 0.05f)
+                float linear_factor_scaled = K_FADER_CONST * sum_p3_p6;
+                if (linear_factor_scaled <= 0) // 防御性检查，避免Log10(非正数)
                 {
-                    return -72.0f;
+                    return dialConfig.UnitMin;
                 }
 
-                if (p_clamped < 0.1f)
+                float calculated_db = 20.0f * (float)Math.Log10(linear_factor_scaled);
+
+                // 3. 确保计算结果仍在 dialConfig 定义的 UnitMin/Max 界限内
+                //    (虽然理论上公式在p=0和p=1时应精确匹配边界，但浮点运算可能引入微小误差)
+                if (!Single.IsNegativeInfinity(dialConfig.UnitMin) && calculated_db < dialConfig.UnitMin)
                 {
-                    return -54.0f;
+                    calculated_db = dialConfig.UnitMin;
+                }
+                else if (Single.IsNegativeInfinity(dialConfig.UnitMin) && calculated_db < -300f) // 如果理论下限是-inf，但算出来一个巨大的负数
+                {
+                    // 可以根据需要设定一个实际的非常低的dB值下限，或者直接信任dialConfig.UnitMin
+                    // 但由于前面p<=1e-7f已经返回dialConfig.UnitMin，这里不太可能触发更低的值
                 }
 
-                if (p_clamped < 0.25f)
+                if (!Single.IsPositiveInfinity(dialConfig.UnitMax) && calculated_db > dialConfig.UnitMax)
                 {
-                    return -30.0f;
+                    calculated_db = dialConfig.UnitMax;
                 }
-
-                if (p_clamped < 0.5f)
-                {
-                    return -11.0f;
-                }
-
-
-                if (p_clamped < P_AT_0DB)
-                {
-                    return 0.0f;
-                }
-
-                if (p_clamped < 0.8f)
-                {
-                    return 3.76f;
-                }
-
-                if (p_clamped < 0.85f)
-                {
-                    return 5.90f;
-                }
-
-
-                if (p_clamped < 0.9f)
-                {
-                    return 7.99f;
-                }
-
-                if (p_clamped < 0.95f)
-                {
-                    return 10.00f;
-                }
-
-                if (p_clamped < 0.98f)
-                {
-                    return 11.20f;
-                }
-
-
-                return dialConfig.UnitMax;
+                
+                return calculated_db;
+                // 【新公式替换结束】
             }
             else { /* non-dB (linear) remains same */ Single pm = dialConfig.MinValue; Single pM = dialConfig.MaxValue; Single um = dialConfig.UnitMin; Single uM = dialConfig.UnitMax; if (Math.Abs(pM - pm) < 0.00001f) { return um; } Single prop = (p_clamped - pm) / (pM - pm); return um + prop * (uM - um); }
         }
@@ -1592,65 +1545,76 @@ namespace Loupedeck.ReaOSCPlugin.Base
         {
             if (!dialConfig.HasUnitConversion) { return unitValue; }
 
-            Single paramMin = dialConfig.MinValue;
-            Single paramMax = dialConfig.MaxValue;
-            Single unitMax = dialConfig.UnitMax; 
+            // dialConfig.MinValue and dialConfig.MaxValue are for 'p' (0-1)
+            // dialConfig.UnitMin and dialConfig.UnitMax are for the unit (e.g., dB range)
 
             if (dialConfig.DisplayUnitString.Equals("dB", StringComparison.OrdinalIgnoreCase))
             {
-                const Single dbEpsilon = 0.001f; 
+                // 【新公式逆运算替换开始】
+                const float K_FADER_CONST = 1.991f;
+                float db_value = unitValue;
+                float p_result;
 
-                if (Single.IsNegativeInfinity(unitValue)) { return paramMin; }
-                if (unitValue >= unitMax - dbEpsilon) { return paramMax; }
-                if (Math.Abs(unitValue - 11.20f) < dbEpsilon) { return 0.98f; }
-                if (Math.Abs(unitValue - 10.00f) < dbEpsilon) { return 0.95f; }
-                if (Math.Abs(unitValue - 7.99f)  < dbEpsilon) { return 0.9f; }
-                if (Math.Abs(unitValue - 5.90f)  < dbEpsilon) { return 0.85f; }
-                if (Math.Abs(unitValue - 3.76f)  < dbEpsilon) { return 0.8f; }
-                if (Math.Abs(unitValue - 0.0f)   < dbEpsilon) { return P_AT_0DB; }
-                if (Math.Abs(unitValue - (-11.0f)) < dbEpsilon) { return 0.5f; }
-                if (Math.Abs(unitValue - (-30.0f)) < dbEpsilon) { return 0.25f; }
-                if (Math.Abs(unitValue - (-54.0f)) < dbEpsilon) { return 0.1f; }
-                if (Math.Abs(unitValue - (-72.0f)) < dbEpsilon) { return 0.05f; }
-                if (Math.Abs(unitValue - (-114.0f))< dbEpsilon) { return 0.01f; }
-                if (Math.Abs(unitValue - (-132.0f))< dbEpsilon) { return 0.005f; }
-                // If unitValue is less than -132dB but not -inf, map to param range [0, 0.005]
-                if (unitValue < -132.0f) { Single p = (unitValue - EFFECTIVE_MIN_DB_FOR_0_TO_0005_INTERPOLATION) / (-132.0f - EFFECTIVE_MIN_DB_FOR_0_TO_0005_INTERPOLATION); return paramMin + p * (0.005f - paramMin); }
+                // 1. 处理dB值的边界情况
+                if (Single.IsNegativeInfinity(db_value) || (!Single.IsNegativeInfinity(dialConfig.UnitMin) && db_value <= dialConfig.UnitMin))
+                {
+                    return dialConfig.MinValue; // 通常是 0.0f
+                }
+                if (!Single.IsPositiveInfinity(dialConfig.UnitMax) && db_value >= dialConfig.UnitMax)
+                {
+                    return dialConfig.MaxValue; // 通常是 1.0f
+                }
+                // 如果 dialConfig.UnitMax 是正无穷，理论上不应该有db_value >= 正无穷的情况，除非db_value也是正无穷
+                // 但我们的公式在p=1时给出有限dB (+12dB)，所以不需要特别处理db_value为正无穷
 
-                // 분할 선형 보간
-                if (unitValue > -132.0f && unitValue < -114.0f) { Single t = (unitValue - (-132.0f)) / (-114.0f - (-132.0f)); return 0.005f + t * (0.01f - 0.005f); }
-                if (unitValue > -114.0f && unitValue < -72.0f)  { Single t = (unitValue - (-114.0f)) / (-72.0f - (-114.0f)); return 0.01f + t * (0.05f - 0.01f); }
-                if (unitValue > -72.0f  && unitValue < -54.0f)  { Single t = (unitValue - (-72.0f)) / (-54.0f - (-72.0f)); return 0.05f + t * (0.1f - 0.05f); }
-                if (unitValue > -54.0f  && unitValue < -30.0f)  { Single t = (unitValue - (-54.0f)) / (-30.0f - (-54.0f)); return 0.1f + t * (0.25f - 0.1f); }
-                if (unitValue > -30.0f  && unitValue < -11.0f)  { Single t = (unitValue - (-30.0f)) / (-11.0f - (-30.0f)); return 0.25f + t * (0.5f - 0.25f); }
-                if (unitValue > -11.0f  && unitValue < 0.0f)    { Single t = (unitValue - (-11.0f)) / (0.0f - (-11.0f)); return 0.5f + t * (P_AT_0DB - 0.5f); }
-                if (unitValue > 0.0f    && unitValue < 3.76f)   { Single t = (unitValue - 0.0f) / (3.76f - 0.0f); return P_AT_0DB + t * (0.8f - P_AT_0DB); }
-                if (unitValue > 3.76f   && unitValue < 5.90f)   { Single t = (unitValue - 3.76f) / (5.90f - 3.76f); return 0.8f + t * (0.85f - 0.8f); }
-                if (unitValue > 5.90f   && unitValue < 7.99f)   { Single t = (unitValue - 5.90f) / (7.99f - 5.90f); return 0.85f + t * (0.9f - 0.85f); }
-                if (unitValue > 7.99f   && unitValue < 10.00f)  { Single t = (unitValue - 7.99f) / (10.00f - 7.99f); return 0.9f + t * (0.95f - 0.9f); }
-                if (unitValue > 10.00f  && unitValue < 11.20f)  { Single t = (unitValue - 10.00f) / (11.20f - 10.00f); return 0.95f + t * (0.98f - 0.95f); }
-                if (unitValue > 11.20f  && unitValue < unitMax)   { Single t = (unitValue - 11.20f) / (unitMax - 11.20f); return 0.98f + t * (paramMax - 0.98f); }
+                // 2. 执行逆运算
+                // db = 20 * log10(K_FADER_CONST * (p^3 + p^6))
+                // 10^(db / 20) = K_FADER_CONST * (p^3 + p^6)
+                double linear_term = Math.Pow(10.0, db_value / 20.0);
+
+                // (p^3 + p^6) = linear_term / K_FADER_CONST
+                double sum_p3_p6 = linear_term / K_FADER_CONST;
+
+                // 设 z = p^3. 则方程为 z^2 + z - sum_p3_p6 = 0
+                // z = (-1 ± sqrt(1 + 4 * sum_p3_p6)) / 2
                 
-                PluginLog.Warning($"[ConvertUnitToParameter][dB] Unit value {unitValue:F2} did not fit any interpolation segment. Clamping to parameter bounds.");
-                if (unitValue < -132.0f)
+                // 防御: 如果 sum_p3_p6 导致 (1 + 4*sum_p3_p6) 为负 (理论上不应发生，因为 linear_term >=0, K_FADER_CONST > 0)
+                // 这种情况可能发生在 db_value 非常非常小 (例如 -700dB)，导致 linear_term 极小，sum_p3_p6 也极小但为正。
+                // 此时 1 + 4*sum_p3_p6 仍然为正。
+                // 如果 sum_p3_p6 < 0 (因为非常大的负dB值导致linear_term在浮点精度下变成0或负数？不太可能)
+                // 或者 K_FADER_CONST 为0或负数 (不可能)
+                if (sum_p3_p6 < 0 && Math.Abs(sum_p3_p6) > 1e-9) // 如果sum_p3_p6明显为负
                 {
-                    return paramMin; // Should have been caught by specific < -132 check already
+                    // 这表明输入的db_value可能超出了公式能合理反推的范围的下限
+                    // (例如，远低于公式在p->0时的极限dB值，或 K_FADER_CONST 为负值，但此处 K 是正的)
+                    // 安全地返回 p 的下限
+                    PluginLog.Warning($"[ConvertUnitToParameter|dB] sum_p3_p6 ({sum_p3_p6:G9}) is negative for db_value {db_value}. Returning MinValue {dialConfig.MinValue}.");
+                    return dialConfig.MinValue;
+                }
+                // 即使sum_p3_p6很小但为正，(1+4*sum_p3_p6) 也为正。
+
+                double discriminant = 1.0 + 4.0 * sum_p3_p6;
+                if (discriminant < 0) // 再次防御，理论上discriminant应 >= 1
+                {
+                     PluginLog.Warning($"[ConvertUnitToParameter|dB] Discriminant ({discriminant:G9}) is negative for db_value {db_value}, sum_p3_p6 {sum_p3_p6:G9}. Returning MinValue {dialConfig.MinValue}.");
+                    discriminant = 0; 
                 }
 
+                double z = (-1.0 + Math.Sqrt(discriminant)) / 2.0;
 
-                if (unitValue < -114.0f)
+                if (z < 0) // p^3 (即z) 不能为负，理论上 z 求解出来应该是 >= 0
                 {
-                    return 0.01f;
+                    // 如果 z < 0，意味着 sqrt(1+4*sum_p3_p6) < 1，即 1+4*sum_p3_p6 < 1，即 4*sum_p3_p6 < 0，即 sum_p3_p6 < 0。
+                    // 这与上面 sum_p3_p6 < 0 的检查点类似。
+                    // PluginLog.Warning($"[ConvertUnitToParameter|dB] z ({z:G9}) is negative. Returning MinValue {dialConfig.MinValue}.");
+                    z = 0; 
                 }
-                // ... (add more fallback clamps based on nearest known point) ...
-
-                if (unitValue > 11.20f)
-                {
-                    return paramMax; // Should have been caught by >= unitMax check
-                }
-
-
-                return P_AT_0DB; // Default fallback
+                
+                p_result = (float)Math.Pow(z, 1.0 / 3.0);
+                
+                // 3. 确保最终的p值在定义的范围内
+                return Math.Clamp(p_result, dialConfig.MinValue, dialConfig.MaxValue);
+                // 【新公式逆运算替换结束】
             }
             else { /* non-dB (linear) remains same */ Single pm = dialConfig.MinValue; Single pM = dialConfig.MaxValue; Single um = dialConfig.UnitMin; Single uM = dialConfig.UnitMax; if (Math.Abs(uM - um) < 0.00001f) { return pm; } Single prop = (unitValue - um) / (uM - um); Single res = pm + prop * (pM - pm); return Math.Clamp(res, pm, pM); }
         }
@@ -1706,6 +1670,13 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 else if (parsedDialConfig.DisplayUnitString.Equals("dB", StringComparison.OrdinalIgnoreCase))
                 {
                     Single unitValue = this.ConvertParameterToUnit(parameterValue, parsedDialConfig); 
+                    
+                    // 【修改】吸附到0.0dB的阈值从0.005f扩大到0.05f
+                    if (Math.Abs(unitValue - 0.0f) < 0.05f) // 值在 +/-0.0499...dB 范围会显示为 0.0
+                    {
+                        unitValue = 0.0f;
+                    }
+
                     String valueText;
                     if (Single.IsNegativeInfinity(unitValue)) { valueText = "-inf"; }
                     else { valueText = unitValue.ToString("F1", System.Globalization.CultureInfo.InvariantCulture); }
@@ -2383,47 +2354,46 @@ namespace Loupedeck.ReaOSCPlugin.Base
             Single valueForOsc;        // 发送到OSC的值 (参数刻度值)
             String oscAddressToSend;
             ControlDialParsedConfig effectiveConfig; // 当前有效的内部或独立配置
-            // Int32 currentActiveModeIndexForMCD = -1; // 在ModeControlDial分支中局部定义即可
+            Single currentParamValue; // 当前的参数 p (0-1)
 
             if (topConfig.ActionType == "ControlDial")
             {
                 if (!this._controlDialConfigs.TryGetValue(globalActionParameter, out effectiveConfig) ||
-                    !this._controlDialCurrentValues.TryGetValue(globalActionParameter, out var currentParamValue))
+                    !this._controlDialCurrentValues.TryGetValue(globalActionParameter, out currentParamValue))
                 {
                     PluginLog.Warning($"[LogicManager|ProcessAdvancedDialAdjustment] ControlDial '{globalActionParameter}' (DisplayName: '{topConfig.DisplayName}'): Config or current value not found.");
                     return;
                 }
-                newParamValueToStore = CalculateAdjustedParamValue(currentParamValue, ticks, effectiveConfig);
-                this._controlDialCurrentValues[globalActionParameter] = newParamValueToStore;
+                // newParamValueToStore = CalculateAdjustedParamValue(currentParamValue, ticks, effectiveConfig); // 旧的调用
+                // this._controlDialCurrentValues[globalActionParameter] = newParamValueToStore;
                 oscAddressToSend = this.GetResolvedOscAddress(topConfig, topConfig.OscAddress ?? topConfig.Title ?? topConfig.DisplayName);
             }
             else if (topConfig.ActionType == "ModeControlDial")
             {
-                if (!TryGetCurrentModeControlDialContext(globalActionParameter, out effectiveConfig, out var currentInternalValue, out var activeExtModeIdx))
+                if (!TryGetCurrentModeControlDialContext(globalActionParameter, out effectiveConfig, out currentParamValue, out var activeExtModeIdx))
                 {
                     PluginLog.Warning($"[LogicManager|ProcessAdvancedDialAdjustment] ModeControlDial '{globalActionParameter}' (DisplayName: '{topConfig.DisplayName}'): Could not get current mode context.");
                     return;
                 }
-                newParamValueToStore = CalculateAdjustedParamValue(currentInternalValue, ticks, effectiveConfig);
-                this._modeControlDialCurrentValuesByMode[globalActionParameter][activeExtModeIdx] = newParamValueToStore;
+                // newParamValueToStore = CalculateAdjustedParamValue(currentInternalValue, ticks, effectiveConfig); // 旧的调用 (currentInternalValue is currentParamValue here)
+                // this._modeControlDialCurrentValuesByMode[globalActionParameter][activeExtModeIdx] = newParamValueToStore;
                 
-                // OSC地址构造
                 String baseOscPathSend = DetermineBaseOscPathForModeControlDialSend(topConfig, globalActionParameter);
                 String currentModeStrSend = SanitizeOscPathSegment(this.GetCurrentModeString(topConfig.ModeName));
-                if (!String.IsNullOrEmpty(topConfig.OscAddress)) // 如果顶层OscAddress字段存在
+                if (!String.IsNullOrEmpty(topConfig.OscAddress)) 
                 {
-                    oscAddressToSend = ResolveTextWithMode(topConfig, topConfig.OscAddress); // {mode} 会被替换
-                    if (!oscAddressToSend.StartsWith("/")) // 如果是相对路径，则拼接
+                    oscAddressToSend = ResolveTextWithMode(topConfig, topConfig.OscAddress); 
+                    if (!oscAddressToSend.StartsWith("/")) 
                     {
                         oscAddressToSend = $"{baseOscPathSend}/{oscAddressToSend}".Replace("//", "/");
                     }
                 }
-                else // 顶层OscAddress字段不存在或为空，则使用 基础路径/模式名
+                else 
                 {
                     oscAddressToSend = $"{baseOscPathSend}/{currentModeStrSend}".Replace("//", "/");
                 }
                 oscAddressToSend = oscAddressToSend.TrimEnd('/');
-                if (String.IsNullOrEmpty(oscAddressToSend)) { oscAddressToSend = "/"; } // 避免完全空地址
+                if (String.IsNullOrEmpty(oscAddressToSend)) { oscAddressToSend = "/"; } 
             }
             else
             {
@@ -2431,80 +2401,144 @@ namespace Loupedeck.ReaOSCPlugin.Base
                 return;
             }
 
-            // 确定发送到OSC的值 (根据您的反馈，是参数刻度值，但需注意整数情况)
-            valueForOsc = newParamValueToStore;
-            if (effectiveConfig.IsParameterIntegerBased && !effectiveConfig.HasUnitConversion) // 如果是纯整数型参数（无单位转换，意味着不应是dB等需要浮点表示的）
+            // --- 新的参数调整逻辑 --- 
+            newParamValueToStore = CalculateAdjustedParamValueAdvanced(currentParamValue, ticks, effectiveConfig);
+
+            // 更新存储的参数值 p
+            if (topConfig.ActionType == "ControlDial")
             {
-                valueForOsc = (Single)Math.Round(newParamValueToStore); // 发送四舍五入后的整数对应的浮点数
+                this._controlDialCurrentValues[globalActionParameter] = newParamValueToStore;
             }
-            // 对于有单位转换的 (如dB) 或非整数基准的浮点参数，直接发送参数刻度值 (newParamValueToStore)
+            else if (topConfig.ActionType == "ModeControlDial")
+            {
+                // Need activeExtModeIdx again for ModeControlDial
+                if (this._modeControlDialCurrentValuesByMode.TryGetValue(globalActionParameter, out var valuesList) && 
+                    TryGetCurrentModeControlDialContext(globalActionParameter, out _, out _, out var activeExtModeIdx) && // Re-fetch to be safe or pass from above
+                    activeExtModeIdx >=0 && activeExtModeIdx < valuesList.Count)
+                {
+                    valuesList[activeExtModeIdx] = newParamValueToStore;
+                }
+                else
+                {
+                    PluginLog.Error($"[LogicManager|ProcessAdvancedDialAdjustment] ModeControlDial '{globalActionParameter}': Failed to update current value due to missing context/list.");
+                    // Potentially skip OSC send if update failed, or send based on calculated newParamValueToStore anyway if deemed safe
+                }
+            }
+
+            valueForOsc = newParamValueToStore; // OSC 发送的是参数p (0-1范围)
+            // 对于纯整数型参数（无单位转换），如果需要，可以在此四舍五入 valueForOsc
+            // 但通常直接发送精确的p值，让DAW处理
+            if (effectiveConfig.IsParameterIntegerBased && !effectiveConfig.HasUnitConversion) 
+            {
+                // valueForOsc = (Single)Math.Round(newParamValueToStore); // 如果DAW期望整数对应的精确p，可能不需要这步
+            }
             
             if (!String.IsNullOrEmpty(oscAddressToSend) && oscAddressToSend != "/")
             {
                 ReaOSCPlugin.SendOSCMessage(oscAddressToSend, valueForOsc);
-                PluginLog.Info($"[LogicManager|ProcessAdvancedDialAdjustment] '{topConfig.ActionType}' '{topConfig.DisplayName}' OSC sent to '{oscAddressToSend}' -> {valueForOsc:F3} (Stored ParamValue: {newParamValueToStore:F3})");
+                PluginLog.Info($"[LogicManager|ProcessAdvancedDialAdjustment] '{topConfig.ActionType}' '{topConfig.DisplayName}' OSC sent to '{oscAddressToSend}' -> {valueForOsc:F5} (Stored ParamValue: {newParamValueToStore:F5})");
             }
             else { PluginLog.Warning($"[LogicManager|ProcessAdvancedDialAdjustment] '{topConfig.ActionType}' '{topConfig.DisplayName}': Invalid OSC Address '{oscAddressToSend ?? "null"}' for sending."); }
         }
 
-        // 【新增】计算调整后的参数值的辅助方法
-        private Single CalculateAdjustedParamValue(Single currentParamValue, Int32 ticks, ControlDialParsedConfig dialConfig)
+        // 【移除旧的 CalculateAdjustedParamValue 方法，并用新的高级版本替换或重命名】
+        // private Single CalculateAdjustedParamValue(Single currentParamValue, Int32 ticks, ControlDialParsedConfig dialConfig)
+        // { ...旧逻辑... }
+
+        // 【新增】改进的参数调整计算方法 (替代旧的 CalculateAdjustedParamValue)
+        private Single CalculateAdjustedParamValueAdvanced(Single currentParamValue_p, Int32 ticks, ControlDialParsedConfig dialConfig)
         {
-            Single newParamValue = currentParamValue;
+            Single newParamValue_p = currentParamValue_p;
+
             if (dialConfig.HasUnitConversion && dialConfig.DisplayUnitString.Equals("dB", StringComparison.OrdinalIgnoreCase))
             {
-                Single currentUnitValue = this.ConvertParameterToUnit(currentParamValue, dialConfig);
-                Single targetUnitValue;
-                if (Single.IsNegativeInfinity(currentUnitValue))
+                float currentActualDb = this.ConvertParameterToUnit(currentParamValue_p, dialConfig);
+                float dbStepBase = currentActualDb;
+
+                // 【修改】如果当前实际dB非常接近0，阈值从0.005f扩大到0.05f
+                if (Math.Abs(dbStepBase - 0.0f) < 0.05f) 
                 {
-                    if (ticks > 0) 
-                    { 
-                        const Single firstStepParamOffset = 0.0001f; // 比0.005f小，确保能跳出-inf
-                        var firstParam = dialConfig.MinValue + firstStepParamOffset;
-                        if (firstParam >= 0.005f) { firstParam = 0.0049f; } // 确保在-inf到-132dB区间
-                        targetUnitValue = this.ConvertParameterToUnit(firstParam, dialConfig);
-                        if (Single.IsNegativeInfinity(targetUnitValue)) { targetUnitValue = EFFECTIVE_MIN_DB_FOR_0_TO_0005_INTERPOLATION; } // 回退到定义的有效最小值
-                        if (ticks > 1) { targetUnitValue += (ticks - 1) * 0.1f; } // dB模式下，ticks通常代表0.1dB步进
+                    dbStepBase = 0.0f;
+                }
+
+                float targetUnitValue_db; // 量化后的目标dB值
+                float desiredStepSize = 0.1f; // dB的步进大小
+
+                if (Single.IsNegativeInfinity(dbStepBase) && ticks > 0)
+                {
+                    // 从负无穷向上步进的逻辑
+                    float firstStepDbTarget = -160.0f; // 一个较低的、有限的dB值作为首次跳出负无穷的目标
+                    if (!Single.IsNegativeInfinity(dialConfig.UnitMin) && dialConfig.UnitMin > firstStepDbTarget) 
+                    {
+                        firstStepDbTarget = dialConfig.UnitMin;
                     }
-                    else { targetUnitValue = Single.NegativeInfinity; }
+                    // 目标是 firstStepDbTarget 加上 (ticks-1) 个步进（如果ticks>0）
+                    float rawTargetFromNegInf = firstStepDbTarget + (Math.Max(0, ticks - 1)) * desiredStepSize;
+                    targetUnitValue_db = (float)(Math.Round(rawTargetFromNegInf / desiredStepSize) * desiredStepSize);
                 }
-                else 
-                { 
-                    targetUnitValue = currentUnitValue + (ticks * 0.1f); 
-                }
-                if (!Single.IsNegativeInfinity(targetUnitValue))
+                else if (Single.IsPositiveInfinity(dbStepBase) && ticks < 0) // 对称处理正无穷 (理论上不应发生)
                 {
-                    targetUnitValue = Math.Min(targetUnitValue, dialConfig.UnitMax);
-                    if (!Single.IsNegativeInfinity(dialConfig.UnitMin)) { targetUnitValue = Math.Max(targetUnitValue, dialConfig.UnitMin); }
+                    float firstStepDbTarget = dialConfig.UnitMax; // 例如 +12dB
+                    if (Single.IsPositiveInfinity(firstStepDbTarget)) firstStepDbTarget = 20.0f; // 备用有限值
+                    float rawTargetFromPosInf = firstStepDbTarget + (Math.Min(0, ticks + 1)) * desiredStepSize;
+                    targetUnitValue_db = (float)(Math.Round(rawTargetFromPosInf / desiredStepSize) * desiredStepSize);
                 }
-                newParamValue = this.ConvertUnitToParameter(targetUnitValue, dialConfig);
+                else
+                {
+                    // 正常的dB步进
+                    float rawTargetDb = dbStepBase + (ticks * desiredStepSize);
+                    targetUnitValue_db = (float)(Math.Round(rawTargetDb / desiredStepSize) * desiredStepSize);
+                }
+
+                // 确保量化后的目标值仍在旋钮定义的UnitMin/UnitMax范围内
+                targetUnitValue_db = Math.Clamp(targetUnitValue_db, dialConfig.UnitMin, dialConfig.UnitMax);
+                newParamValue_p = this.ConvertUnitToParameter(targetUnitValue_db, dialConfig);
             }
-            else if (dialConfig.Mode == ControlDialMode.Continuous)
+            else if (dialConfig.Mode == ControlDialMode.Continuous) // 非dB单位的连续模式
             {
                 if (dialConfig.IsParameterIntegerBased)
                 {
-                    newParamValue = currentParamValue + ticks;
-                    newParamValue = (Single)Math.Round(newParamValue); 
+                    newParamValue_p = currentParamValue_p + ticks;
+                    newParamValue_p = (Single)Math.Round(newParamValue_p); 
                 }
                 else 
                 { 
-                    Single scaledAdjustment = ticks * 0.01f; 
-                    newParamValue = currentParamValue + scaledAdjustment;
+                    // 对于非dB、非整数的连续模式，可以定义一个标准化的调整幅度，例如满刻度的1%
+                    float range = dialConfig.MaxValue - dialConfig.MinValue;
+                    if (range <= 0) range = 1.0f; // 避免除零或负范围
+                    float scaledAdjustment = ticks * (range * 0.01f); // 每tick调整范围的1%
+                    newParamValue_p = currentParamValue_p + scaledAdjustment;
                 }
             }
-            else // Discrete Mode
+            else // 离散模式 (Discrete Mode)
             {
                 if (dialConfig.DiscreteValues != null && dialConfig.DiscreteValues.Any())
                 {
                     const Single tolerance = 0.0001f;
-                    Int32 currentIndex = dialConfig.DiscreteValues.FindIndex(dv => Math.Abs(dv - currentParamValue) < tolerance);
-                    if (currentIndex == -1) { currentIndex = 0; /* Default to first if not found */ }
+                    Int32 currentIndex = dialConfig.DiscreteValues.FindIndex(dv => Math.Abs(dv - currentParamValue_p) < tolerance);
+                    if (currentIndex == -1) 
+                    { 
+                        // 如果当前值不在列表中，尝试找到最近的一个作为起点
+                        float minDiff = Single.MaxValue;
+                        int bestMatchIndex = 0;
+                        for(int i=0; i < dialConfig.DiscreteValues.Count; i++)
+                        {
+                            float diff = Math.Abs(dialConfig.DiscreteValues[i] - currentParamValue_p);
+                            if(diff < minDiff)
+                            {
+                                minDiff = diff;
+                                bestMatchIndex = i;
+                            }
+                        }
+                        currentIndex = bestMatchIndex; 
+                    }
                     Int32 count = dialConfig.DiscreteValues.Count;
                     Int32 newIndex = (currentIndex + ticks % count + count) % count; 
-                    newParamValue = dialConfig.DiscreteValues[newIndex];
+                    newParamValue_p = dialConfig.DiscreteValues[newIndex];
                 }
             }
-            return Math.Clamp(newParamValue, dialConfig.MinValue, dialConfig.MaxValue);
+            // 最后，将计算出的新参数p值限定在配置的 MinValue/MaxValue (通常是0-1)
+            return Math.Clamp(newParamValue_p, dialConfig.MinValue, dialConfig.MaxValue);
         }
 
         // 【新增】统一处理 ControlDial 和 ModeControlDial 按下的私有方法
